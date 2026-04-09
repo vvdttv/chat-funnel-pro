@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, GitBranch, User } from 'lucide-react';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
@@ -683,7 +683,7 @@ const FunisPage = () => {
             className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
             title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
           >
-            {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <GitBranch size={18} className="text-primary" />}
+            {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
           </button>
 
           {/* Funnel selector (only in funnel mode) */}
