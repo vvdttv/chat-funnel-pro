@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Filter, ChevronDown, ChevronUp, RotateCcw, Play, GitBranch } from 'lucide-react';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Filter, ChevronDown, ChevronUp, RotateCcw, Play, GitBranch, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
@@ -706,70 +706,76 @@ const FunisPage = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        {/* View Mode Toggle */}
-        <div className="flex gap-1 p-1 bg-secondary rounded-xl mb-3">
+      {/* Toolbar row */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
           <button
-            onClick={() => handleModeChange('lead')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] ${
-              viewMode === 'lead' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-            }`}
+            onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
+            className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
+            title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
           >
-            Por Lead
+            {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <GitBranch size={18} className="text-primary" />}
           </button>
+
+          {/* Funnel selector (only in funnel mode) */}
+          {viewMode === 'funnel' && (
+            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+              <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {funnels.map(funnel => {
+                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                  return (
+                    <SelectItem key={funnel.id} value={funnel.id}>
+                      {funnel.name} ({count})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
+
+          {viewMode === 'lead' && <div className="flex-1" />}
+
+          {/* Filter toggle */}
           <button
-            onClick={() => handleModeChange('funnel')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] ${
-              viewMode === 'funnel' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+            onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+              filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
             }`}
           >
-            Por Funil
+            <Filter size={18} />
+          </button>
+
+          {/* AI toggle */}
+          <button
+            onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+              aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
+            }`}
+          >
+            <Sparkles size={18} />
           </button>
         </div>
-
-        {viewMode === 'funnel' && (
-          <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-            <SelectTrigger className="w-full gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold mb-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {funnels.map(funnel => {
-                const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                return (
-                  <SelectItem key={funnel.id} value={funnel.id}>
-                    {funnel.name} ({count})
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
-      {/* Stage Navigator (same for both modes) */}
+      {/* Expandable Filters */}
+      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+
+      {/* Expandable AI */}
+      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Stage Navigator */}
       <StageNavigator
         stages={stages}
         activeIndex={activeStageIdx}
         onPrev={() => handleStageNav('prev')}
         onNext={() => handleStageNav('next')}
         dealCount={currentDeals.length}
-        subtitle={`Etapa ${activeStageIdx + 1} de ${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'}`}
+        subtitle={`${activeStageIdx + 1}/${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'} · ${formatCurrency(stageTotal)}`}
       />
-
-      {/* Summary bar */}
-      <div className="px-4 pb-2">
-        <div className="bg-secondary rounded-xl p-3 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{currentDeals.length} leads</span>
-          <span className="text-sm font-bold text-primary">{formatCurrency(stageTotal)}</span>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <StageFilters filters={stageFilters} onChange={setStageFilters} />
-
-      {/* AI Analysis Panel (both modes) */}
-      <AIAnalysisPanel deals={currentDeals} />
 
       {/* Card Navigator */}
       <CardNavigator
