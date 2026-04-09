@@ -116,8 +116,8 @@ const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: 
           )}
         </div>
       </div>
-      <button onClick={() => setEditing(true)} className="p-1.5 text-muted-foreground active:scale-95"><Pencil size={12} /></button>
-      <button onClick={onDelete} className="p-1.5 text-destructive active:scale-95"><Trash2 size={12} /></button>
+      <button onClick={() => setEditing(true)} className="p-2.5 -m-1 text-muted-foreground active:scale-95"><Pencil size={16} /></button>
+      <button onClick={onDelete} className="p-2.5 -m-1 text-destructive active:scale-95"><Trash2 size={16} /></button>
     </div>
   );
 };
