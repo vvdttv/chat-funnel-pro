@@ -6,11 +6,11 @@ import IndicadoresPage from '@/pages/IndicadoresPage';
 import ConfigPage from '@/pages/ConfigPage';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('funnels');
+  const [activeTab, setActiveTab] = useState('leads');
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'funnels': return <FunisPage />;
+      case 'leads': return <FunisPage />;
       case 'activities': return <AtividadesPage />;
       case 'indicators': return <IndicadoresPage />;
       case 'settings': return <ConfigPage />;
