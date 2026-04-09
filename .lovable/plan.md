@@ -1,68 +1,60 @@
 
 
-# LeadFlow Imob — Mobile-First Real Estate CRM
+# Merge Inbox + Funnels into Multi-Funnel System
 
-## Overview
-A WhatsApp-focused real estate sales CRM built as a mobile-first app (max-width 430px, centered on desktop). Dark theme with WhatsApp green (#25D366) accents. Native app feel with bottom tab navigation.
+## What Changes
 
-## Architecture
+The "Caixa de Entrada" and "Funis" tabs merge into a single **"Funis"** tab. The bottom nav goes from 5 to 4 tabs. Each funnel is a separate pipeline with its own stages and deals — not a single pipeline with shared stages.
 
-### Shell & Navigation
-- App shell: `max-w-md mx-auto h-screen bg-neutral-950` centered layout
-- Fixed bottom navigation bar with 5 tabs: Caixa de Entrada, Funis, Atividades, Indicadores, Configurações
-- Touch-optimized (active:scale-95, no hover states)
-- Lucide React icons throughout
+## New Data Model
 
-### Module 1: Caixa de Entrada (Chat)
-- WhatsApp-style thread list (avatar, name, last message, connected number badge)
-- Full-screen chat view with smart header card (Lead name, deal value, funnel stage)
-- AI Coach notes as distinct purple/dashed-border bubbles with "🔒 Only you see this"
-- Text input fixed at bottom
+```text
+Funnel (e.g. "MCMV", "Alto Padrão", "Aluguel", "Inquilinos")
+  ├── name, description, color/icon
+  ├── stages[] (each funnel has its OWN stages)
+  │     └── e.g. MCMV: Novo Lead → Qualificação Crédito → Visita → Proposta → Contrato
+  │     └── e.g. Aluguel: Novo Lead → Visita → Análise Docs → Contrato
+  │     └── e.g. Inquilinos: Ativo → Renovação → Rescisão
+  └── deals[] (assigned to this funnel + one of its stages)
+```
 
-### Module 2: Funis (Kanban Pipeline)
-- Horizontal scrollable stage tabs (Novos → Qualificação → Visita → Proposta → Fechamento)
-- Deal cards showing: client name, property of interest, value (R$), closing probability %
-- Toggle between "All Deals" and "Group by Lead"
-- Bottom sheet for loss reason (required) when moving to "Perdido"
-- Secondary contacts section (Cônjuge, Fiador, Sócio)
+**Mock funnels:**
+- **MCMV** — Leads from paid ads, Minha Casa Minha Vida program. Stages: Novo Lead → Simulação Crédito → Visita → Proposta → Contrato Assinado
+- **Alto Padrão** — High-end leads from social media/video. Stages: Novo Lead → Qualificação → Visita → Negociação → Fechamento
+- **Aluguel** — Rental leads. Stages: Novo Lead → Visita → Análise Documentos → Contrato
+- **Inquilinos** — Post-contract tenants (from Aluguel). Stages: Ativo → Renovação → Rescisão
 
-### Module 3: Atividades (Activities)
-- Quick filters: Hoje, Atrasadas, Semana
-- Activity types: Ligar, Enviar Proposta, Visita, Follow-up
-- Swipe right = mark done, swipe left = postpone (date picker)
-- "Save to native calendar" button with Google/Outlook/Apple options
-- Recurring follow-up scheduling with AI loop option
+## UI Changes
 
-### Module 4: Indicadores (Dashboard BI)
-- Forecast card: Receita Prevista vs Receita Ganha
-- 2x2 KPI grid: Total Leads, Conversion Rate, Average Ticket, Sales Cycle
-- Accordion sections: Sales Funnel breakdown, Loss Reasons (donut chart), Channel/Origin analysis
+### Bottom Nav (4 tabs)
+1. **Funis** (ClipboardList) — merged module
+2. **Atividades** (Clock)
+3. **Indicadores** (BarChart3)
+4. **Config** (Settings)
 
-### Module 5: Configurações
-- Property catalog management (code, title, value, virtual tour link)
-- WhatsApp numbers hub with linked agents
-- AI Flow builder with vertical block tree, templates, clone option
+### Funis Page — New Layout
+1. **Funnel selector** at top — horizontal pill tabs to switch between funnels (MCMV, Alto Padrão, Aluguel, Inquilinos)
+2. Below that, **stage tabs** for the selected funnel (each funnel shows its own stages)
+3. Below that, the existing deal cards, summary bar, group-by-lead toggle, loss bottom sheet — all scoped to the selected funnel
+4. Chat threads from InboxPage get integrated: tapping a deal card opens the deal detail sheet which now includes a "Conversa" (chat) section with the WhatsApp thread and AI coach notes
 
-## Implementation Priority
-1. Bottom navigation shell + routing
-2. Funis module (deep: cards, stages, loss bottom sheet, grouping)
-3. Atividades module (deep: swipe gestures, calendar export, filters)
-4. Chat module (smart header, AI notes, thread list)
-5. Indicadores (forecast card, KPIs, charts)
-6. Configurações (property catalog, WA numbers, flow builder)
+### Deal Detail Sheet — Enhanced
+- Existing info (value, probability, stage, contacts)
+- New "Conversa" tab: shows the WhatsApp chat thread for that lead with AI coach notes inline
+- Smart header (lead name, deal value, current stage) stays at top
 
-## Design Tokens
-- Background: `#0a0a0a` (neutral-950)
-- Surface: `#171717` (neutral-900)
-- Card: `#262626` (neutral-800)
-- Primary accent: `#25D366` (WhatsApp green)
-- AI notes: purple-tinted dark background with dashed border
-- Text: white/neutral-400 hierarchy
-- All interactions touch-based with scale transforms
+## Files to Change
 
-## Mock Data
-- Realistic Brazilian real estate deals (R$ values)
-- Properties: apartments, houses in São Paulo, Rio
-- Leads with Brazilian names
-- Activities with realistic follow-up scenarios
+1. **`src/data/mockData.ts`** — Add `Funnel` interface with `stages[]`, create 4 mock funnels, assign each deal to a funnel, remove standalone `STAGES` constant
+2. **`src/components/BottomNav.tsx`** — Remove inbox tab, rename to 4-tab nav
+3. **`src/pages/FunisPage.tsx`** — Add funnel selector at top, dynamic stage tabs per funnel, integrate chat view into deal detail sheet
+4. **`src/pages/Index.tsx`** — Remove inbox case, remove InboxPage import, default to 'funnels'
+5. **`src/pages/InboxPage.tsx`** — Delete (merged into Funis)
+6. **`mem://index.md`** — Update nav structure to 4 tabs
+
+## Technical Notes
+- Each `Deal` gets a new `funnelId` field
+- Each `Funnel` has `id`, `name`, `icon`, `color`, `stages: { name: string, probability: number }[]`
+- Chat functionality moves into the deal detail bottom sheet as a sub-view
+- The funnel selector uses the same pill-tab pattern as the current stage tabs
 
