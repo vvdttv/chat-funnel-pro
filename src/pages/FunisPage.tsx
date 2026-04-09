@@ -380,7 +380,9 @@ const CardNavigator = ({
 // ========== AI ANALYSIS PANEL (inline expandable) ==========
 
 const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolean; onClose: () => void }) => {
-  const [period, setPeriod] = useState('7');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [question, setQuestion] = useState('');
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -388,13 +390,13 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
     setLoading(true);
     setTimeout(() => {
       const leadNames = deals.map(d => d.leadName).join(', ');
+      const q = question || 'resumo geral';
       setAnalysis(
-        `📋 **Resumo (últimos ${period} dias)**\n\n` +
+        `📋 **Análise: "${q}"**\n\n` +
         `**Leads nesta etapa:** ${leadNames || 'Nenhum'}\n\n` +
         `**O que foi tratado:** Conversas sobre condições de pagamento, visitas e documentação.\n\n` +
         `**Combinados:** Agendamento de visitas pendentes, envio de propostas formais.\n\n` +
         `**Pendências:** ${deals.length > 0 ? `${deals.length} lead(s) aguardando resposta ou ação.` : 'Nenhuma pendência.'}\n\n` +
-        `**Próximos passos:** Retomar contato com leads sem resposta, enviar materiais complementares.\n\n` +
         `**Sugestão:** Priorize os leads com maior valor de negócio e envie uma mensagem personalizada de retomada.`
       );
       setLoading(false);
@@ -405,8 +407,8 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
 
   return (
     <div className="px-4 pb-2">
-      <div className="bg-card rounded-xl p-3 border border-border">
-        <div className="flex items-center justify-between mb-2">
+      <div className="bg-card rounded-xl p-3 border border-border space-y-2">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Sparkles size={14} className="text-primary" />
             <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
@@ -414,27 +416,30 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
           <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={period}
-            onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
-            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1"
-          >
-            <option value="1">1 dia</option>
-            <option value="3">3 dias</option>
-            <option value="7">7 dias</option>
-            <option value="15">15 dias</option>
-            <option value="30">30 dias</option>
-          </select>
+          <div className="flex items-center gap-1 flex-1">
+            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+            <span className="text-[10px] text-muted-foreground">até</span>
+            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={question}
+            onChange={e => { setQuestion(e.target.value); setAnalysis(null); }}
+            placeholder="O que você gostaria de analisar?"
+            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1 placeholder:text-muted-foreground"
+          />
           <button
             onClick={handleAnalyze}
             disabled={loading || deals.length === 0}
-            className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+            className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
           >
-            <Play size={16} />
+            <Play size={14} />
           </button>
         </div>
         {analysis && (
-          <div className="bg-secondary rounded-xl p-3 mt-2">
+          <div className="bg-secondary rounded-xl p-3">
             <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
           </div>
         )}
