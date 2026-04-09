@@ -716,20 +716,9 @@ const FunisPage = () => {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [dealsList] = useState(mockDeals);
   const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
-  const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Close filters/AI panels on click outside
-  useEffect(() => {
-    if (!filtersOpen && !aiOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-        setAiOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [filtersOpen, aiOpen]);
+  const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
+
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
 
