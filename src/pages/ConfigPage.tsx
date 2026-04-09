@@ -379,7 +379,6 @@ const ConfigPage = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-foreground mb-4">Configurações</h1>
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4">
           {tabs.map(tab => {

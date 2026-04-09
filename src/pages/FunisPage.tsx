@@ -709,27 +709,6 @@ const FunisPage = () => {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-foreground">Leads</h1>
-          {viewMode === 'funnel' && (
-            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-              <SelectTrigger className="w-auto gap-1.5 h-8 px-3 rounded-lg bg-primary/15 border-primary/30 text-primary text-xs font-semibold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {funnels.map(funnel => {
-                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                  return (
-                    <SelectItem key={funnel.id} value={funnel.id}>
-                      {funnel.name} ({count})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
         {/* View Mode Toggle */}
         <div className="flex gap-1 p-1 bg-secondary rounded-xl mb-3">
           <button
@@ -749,6 +728,24 @@ const FunisPage = () => {
             Por Funil
           </button>
         </div>
+
+        {viewMode === 'funnel' && (
+          <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+            <SelectTrigger className="w-full gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold mb-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {funnels.map(funnel => {
+                const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                return (
+                  <SelectItem key={funnel.id} value={funnel.id}>
+                    {funnel.name} ({count})
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Stage Navigator (same for both modes) */}
