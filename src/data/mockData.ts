@@ -6,9 +6,19 @@ export interface Lead {
   origin: string;
 }
 
+export interface Touchpoint {
+  id: string;
+  type: 'agent' | 'ai';
+  action: string;
+  description: string;
+  delayHours: number;
+  channel: 'whatsapp' | 'email' | 'sms' | 'ligação';
+}
+
 export interface FunnelStage {
   name: string;
   probability: number;
+  touchpoints: Touchpoint[];
 }
 
 export interface Funnel {
