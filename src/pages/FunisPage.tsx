@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -716,20 +716,9 @@ const FunisPage = () => {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [dealsList] = useState(mockDeals);
   const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
-  const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Close filters/AI panels on click outside
-  useEffect(() => {
-    if (!filtersOpen && !aiOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-        setAiOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [filtersOpen, aiOpen]);
+  const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
+
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
 
@@ -796,12 +785,16 @@ const FunisPage = () => {
   const stageTotal = currentDeals.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar + panels wrapper (click outside closes panels) */}
-      <div ref={toolbarRef}>
+    <div className="flex flex-col h-full relative">
+      {/* Backdrop to close panels on any outside click */}
+      {(filtersOpen || aiOpen) && (
+        <div className="fixed inset-0 z-10" onMouseDown={closePanels} />
+      )}
+
+      {/* Toolbar + panels (above backdrop) */}
+      <div className="relative z-20">
         <div className="px-4 pt-3 pb-1">
           <div className="flex items-center gap-2">
-            {/* View mode toggle */}
             <button
               onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
               className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
@@ -810,7 +803,6 @@ const FunisPage = () => {
               {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
             </button>
 
-            {/* Funnel selector (only in funnel mode) */}
             {viewMode === 'funnel' && (
               <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
                 <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
@@ -831,7 +823,6 @@ const FunisPage = () => {
 
             {viewMode === 'lead' && <div className="flex-1" />}
 
-            {/* Filter toggle */}
             <button
               onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
               className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
@@ -841,7 +832,6 @@ const FunisPage = () => {
               <SlidersHorizontal size={18} />
             </button>
 
-            {/* AI toggle */}
             <button
               onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
               className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
@@ -853,10 +843,7 @@ const FunisPage = () => {
           </div>
         </div>
 
-        {/* Expandable Filters */}
         {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
-
-        {/* Expandable AI */}
         <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>
 
