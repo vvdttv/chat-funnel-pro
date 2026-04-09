@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal } from '@/data/mockData';
-import { Users, ChevronRight, X, AlertTriangle, ToggleLeft, ToggleRight, Send, Lock, MessageSquare } from 'lucide-react';
+import { Users, ChevronRight, X, AlertTriangle, ToggleLeft, ToggleRight, Send, Lock, MessageSquare, ChevronDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== COMPONENTS ==========
 
