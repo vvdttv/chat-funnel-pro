@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -718,6 +718,18 @@ const FunisPage = () => {
   const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
 
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filtersOpen && !aiOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        closePanels();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filtersOpen, aiOpen]);
 
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
@@ -786,13 +798,8 @@ const FunisPage = () => {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Backdrop to close panels on any outside click */}
-      {(filtersOpen || aiOpen) && (
-        <div className="fixed inset-0 z-10" onMouseDown={closePanels} />
-      )}
-
-      {/* Toolbar + panels (above backdrop) */}
-      <div className="relative z-20">
+      {/* Toolbar + panels */}
+      <div ref={toolbarRef}>
         <div className="px-4 pt-3 pb-1">
           <div className="flex items-center gap-2">
             <button
@@ -821,7 +828,7 @@ const FunisPage = () => {
               </Select>
             )}
 
-            {viewMode === 'lead' && <div className="flex-1" onMouseDown={closePanels} />}
+            {viewMode === 'lead' && <div className="flex-1" />}
 
             <button
               onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
