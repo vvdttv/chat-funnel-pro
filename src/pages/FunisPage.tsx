@@ -629,7 +629,9 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('funnel');
+  const [viewMode, setViewMode] = useState<ViewMode>('lead');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [activeFunnelId, setActiveFunnelId] = useState(funnels[0].id);
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
