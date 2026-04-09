@@ -1,10 +1,33 @@
 import { useState, useMemo } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare } from 'lucide-react';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Calendar } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
+
+// ========== LEAD STAGES ==========
+const LEAD_STAGES = [
+  { name: 'Não lidas pelo corretor', key: 'unread_agent' },
+  { name: 'Não lidas pelo cliente', key: 'unread_client' },
+  { name: 'Lidas sem resposta do cliente', key: 'no_reply_client' },
+  { name: 'Lidas sem resposta do corretor', key: 'no_reply_agent' },
+] as const;
+
+type LeadStageKey = typeof LEAD_STAGES[number]['key'];
+
+// Classify a deal into a lead stage based on chat data
+function classifyDealLeadStage(deal: Deal): LeadStageKey {
+  const thread = chatThreads.find(t => t.dealId === deal.id);
+  if (!thread) return 'unread_agent';
+  const msgs = chatMessages.filter(m => m.threadId === thread.id).filter(m => m.sender !== 'ai');
+  if (msgs.length === 0) return 'unread_agent';
+  const last = msgs[msgs.length - 1];
+  if (last.sender === 'lead' && thread.unread > 0) return 'unread_agent';
+  if (last.sender === 'agent' && thread.unread > 0) return 'unread_client';
+  if (last.sender === 'agent') return 'no_reply_client';
+  return 'no_reply_agent';
+}
 
 // ========== DEAL CARD (full-width single card) ==========
 
@@ -247,12 +270,14 @@ const StageNavigator = ({
   onPrev,
   onNext,
   dealCount,
+  subtitle,
 }: {
-  stages: { name: string; probability: number }[];
+  stages: { name: string }[];
   activeIndex: number;
   onPrev: () => void;
   onNext: () => void;
   dealCount: number;
+  subtitle?: string;
 }) => {
   const stage = stages[activeIndex];
   return (
@@ -267,7 +292,7 @@ const StageNavigator = ({
       <div className="flex-1 text-center">
         <p className="text-sm font-bold text-foreground">{stage.name}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Etapa {activeIndex + 1} de {stages.length} · {dealCount} {dealCount === 1 ? 'lead' : 'leads'} · {stage.probability}%
+          {subtitle || `Etapa ${activeIndex + 1} de ${stages.length} · ${dealCount} ${dealCount === 1 ? 'lead' : 'leads'}`}
         </p>
       </div>
       <button
@@ -352,6 +377,75 @@ const CardNavigator = ({
   );
 };
 
+// ========== AI ANALYSIS PANEL ==========
+
+const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
+  const [period, setPeriod] = useState('7');
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleAnalyze = () => {
+    setLoading(true);
+    // Mock AI analysis based on deals in this stage
+    setTimeout(() => {
+      const leadNames = deals.map(d => d.leadName).join(', ');
+      setAnalysis(
+        `📋 **Resumo (últimos ${period} dias)**\n\n` +
+        `**Leads nesta etapa:** ${leadNames || 'Nenhum'}\n\n` +
+        `**O que foi tratado:** Conversas sobre condições de pagamento, visitas e documentação.\n\n` +
+        `**Combinados:** Agendamento de visitas pendentes, envio de propostas formais.\n\n` +
+        `**Pendências:** ${deals.length > 0 ? `${deals.length} lead(s) aguardando resposta ou ação.` : 'Nenhuma pendência.'}\n\n` +
+        `**Próximos passos:** Retomar contato com leads sem resposta, enviar materiais complementares.\n\n` +
+        `**Sugestão:** Priorize os leads com maior valor de negócio e envie uma mensagem personalizada de retomada.`
+      );
+      setLoading(false);
+    }, 1200);
+  };
+
+  return (
+    <div className="px-4 pb-3">
+      <div className="bg-card rounded-2xl p-4 border border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={16} className="text-primary" />
+          <span className="text-xs font-semibold text-foreground">Análise IA</span>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1.5 bg-secondary rounded-lg px-3 py-1.5 flex-1">
+            <Calendar size={14} className="text-muted-foreground" />
+            <select
+              value={period}
+              onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
+              className="bg-transparent text-xs text-foreground outline-none flex-1"
+            >
+              <option value="1">Último dia</option>
+              <option value="3">Últimos 3 dias</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="15">Últimos 15 dias</option>
+              <option value="30">Últimos 30 dias</option>
+            </select>
+          </div>
+          <button
+            onClick={handleAnalyze}
+            disabled={loading || deals.length === 0}
+            className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40 flex items-center gap-1.5"
+          >
+            <Sparkles size={12} />
+            {loading ? 'Analisando...' : 'Analisar'}
+          </button>
+        </div>
+        {analysis && (
+          <div className="bg-secondary rounded-xl p-3 mt-2">
+            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
+          </div>
+        )}
+        {!analysis && deals.length === 0 && (
+          <p className="text-[10px] text-muted-foreground text-center">Nenhum lead nesta etapa para analisar</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
@@ -365,7 +459,7 @@ const FunisPage = () => {
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
 
-  // For "Por Funil": stages from selected funnel, deals filtered by funnel + stage
+  // ===== POR FUNIL =====
   const funnelStages = activeFunnel.stages;
   const currentStageName = funnelStages[stageIndex]?.name || '';
   const funnelStageDeals = useMemo(
@@ -373,26 +467,27 @@ const FunisPage = () => {
     [dealsList, activeFunnelId, currentStageName]
   );
 
-  // For "Por Lead": all unique leads, stages are all unique stages across all funnels for that lead
-  const allLeads = useMemo(() => {
-    const map = new Map<string, { leadId: string; leadName: string; deals: Deal[] }>();
+  // ===== POR LEAD =====
+  const leadStageDeals = useMemo(() => {
+    const grouped: Record<LeadStageKey, Deal[]> = {
+      unread_agent: [],
+      unread_client: [],
+      no_reply_client: [],
+      no_reply_agent: [],
+    };
     dealsList.forEach(d => {
-      if (!map.has(d.leadId)) map.set(d.leadId, { leadId: d.leadId, leadName: d.leadName, deals: [] });
-      map.get(d.leadId)!.deals.push(d);
+      const key = classifyDealLeadStage(d);
+      grouped[key].push(d);
     });
-    return Array.from(map.values());
+    return grouped;
   }, [dealsList]);
 
-  const [leadIndex, setLeadIndex] = useState(0);
-  const currentLead = allLeads[leadIndex];
-  const leadDeals = currentLead?.deals || [];
+  const [leadStageIndex, setLeadStageIndex] = useState(0);
+  const [leadCardIndex, setLeadCardIndex] = useState(0);
+  const currentLeadStage = LEAD_STAGES[leadStageIndex];
+  const currentLeadDeals = leadStageDeals[currentLeadStage.key];
 
-  // Derived stages and deals based on view mode
-  const stages = viewMode === 'funnel' ? funnelStages : [{ name: 'Todos os negócios', probability: 0 }];
-  const currentDeals = viewMode === 'funnel' ? funnelStageDeals : leadDeals;
-
-  const stageTotal = currentDeals.reduce((sum, d) => sum + d.value, 0);
-
+  // Handlers
   const handleFunnelChange = (funnelId: string) => {
     setActiveFunnelId(funnelId);
     setStageIndex(0);
@@ -400,18 +495,12 @@ const FunisPage = () => {
   };
 
   const handleStageNav = (dir: 'prev' | 'next') => {
-    setStageIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(funnelStages.length - 1, i + 1));
-    setCardIndex(0);
-  };
-
-  const handleCardNav = (dir: 'prev' | 'next') => {
-    const max = currentDeals.length - 1;
-    if (viewMode === 'lead') {
-      // In lead mode, card nav goes to next/prev lead
-      setLeadIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(allLeads.length - 1, i + 1));
+    if (viewMode === 'funnel') {
+      setStageIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(funnelStages.length - 1, i + 1));
       setCardIndex(0);
     } else {
-      setCardIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(max, i + 1));
+      setLeadStageIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(LEAD_STAGES.length - 1, i + 1));
+      setLeadCardIndex(0);
     }
   };
 
@@ -419,8 +508,18 @@ const FunisPage = () => {
     setViewMode(mode);
     setStageIndex(0);
     setCardIndex(0);
-    setLeadIndex(0);
+    setLeadStageIndex(0);
+    setLeadCardIndex(0);
   };
+
+  // Current view data
+  const stages = viewMode === 'funnel'
+    ? funnelStages.map(s => ({ name: s.name }))
+    : LEAD_STAGES.map(s => ({ name: s.name }));
+  const activeStageIdx = viewMode === 'funnel' ? stageIndex : leadStageIndex;
+  const currentDeals = viewMode === 'funnel' ? funnelStageDeals : currentLeadDeals;
+  const activeCardIdx = viewMode === 'funnel' ? cardIndex : leadCardIndex;
+  const stageTotal = currentDeals.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <div className="flex flex-col h-full">
@@ -468,85 +567,41 @@ const FunisPage = () => {
         </div>
       </div>
 
-      {/* Stage Navigator (funnel mode) or Lead Navigator (lead mode) */}
-      {viewMode === 'funnel' ? (
-        <>
-          <StageNavigator
-            stages={funnelStages}
-            activeIndex={stageIndex}
-            onPrev={() => handleStageNav('prev')}
-            onNext={() => handleStageNav('next')}
-            dealCount={currentDeals.length}
-          />
+      {/* Stage Navigator (same for both modes) */}
+      <StageNavigator
+        stages={stages}
+        activeIndex={activeStageIdx}
+        onPrev={() => handleStageNav('prev')}
+        onNext={() => handleStageNav('next')}
+        dealCount={currentDeals.length}
+        subtitle={`Etapa ${activeStageIdx + 1} de ${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'}`}
+      />
 
-          {/* Summary bar */}
-          <div className="px-4 pb-2">
-            <div className="bg-secondary rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{currentDeals.length} leads</span>
-              <span className="text-sm font-bold text-primary">{formatCurrency(stageTotal)}</span>
-            </div>
-          </div>
+      {/* Summary bar */}
+      <div className="px-4 pb-2">
+        <div className="bg-secondary rounded-xl p-3 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{currentDeals.length} leads</span>
+          <span className="text-sm font-bold text-primary">{formatCurrency(stageTotal)}</span>
+        </div>
+      </div>
 
-          {/* Card Navigator */}
-          <CardNavigator
-            deals={currentDeals}
-            activeIndex={Math.min(cardIndex, Math.max(0, currentDeals.length - 1))}
-            onPrev={() => handleCardNav('prev')}
-            onNext={() => handleCardNav('next')}
-            onCardClick={(deal) => setSelectedDeal(deal)}
-          />
-        </>
-      ) : (
-        <>
-          {/* Lead mode: navigate between leads */}
-          <div className="flex items-center gap-2 px-4 py-3">
-            <button
-              onClick={() => { setLeadIndex(i => Math.max(0, i - 1)); setCardIndex(0); }}
-              disabled={leadIndex === 0}
-              className="p-2.5 rounded-xl bg-secondary text-foreground disabled:opacity-30 active:scale-95 transition-transform"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div className="flex-1 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                  {currentLead?.leadName.split(' ').map(n => n[0]).join('') || '?'}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{currentLead?.leadName || 'Nenhum lead'}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Lead {leadIndex + 1} de {allLeads.length} · {leadDeals.length} {leadDeals.length === 1 ? 'negócio' : 'negócios'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => { setLeadIndex(i => Math.min(allLeads.length - 1, i + 1)); setCardIndex(0); }}
-              disabled={leadIndex === allLeads.length - 1}
-              className="p-2.5 rounded-xl bg-secondary text-foreground disabled:opacity-30 active:scale-95 transition-transform"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+      {/* AI Analysis Panel (both modes) */}
+      <AIAnalysisPanel deals={currentDeals} />
 
-          {/* Summary */}
-          <div className="px-4 pb-2">
-            <div className="bg-secondary rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{leadDeals.length} negócios</span>
-              <span className="text-sm font-bold text-primary">{formatCurrency(leadDeals.reduce((s, d) => s + d.value, 0))}</span>
-            </div>
-          </div>
-
-          {/* Cards for this lead */}
-          <CardNavigator
-            deals={leadDeals}
-            activeIndex={Math.min(cardIndex, Math.max(0, leadDeals.length - 1))}
-            onPrev={() => setCardIndex(i => Math.max(0, i - 1))}
-            onNext={() => setCardIndex(i => Math.min(leadDeals.length - 1, i + 1))}
-            onCardClick={(deal) => setSelectedDeal(deal)}
-          />
-        </>
-      )}
+      {/* Card Navigator */}
+      <CardNavigator
+        deals={currentDeals}
+        activeIndex={Math.min(activeCardIdx, Math.max(0, currentDeals.length - 1))}
+        onPrev={() => {
+          if (viewMode === 'funnel') setCardIndex(i => Math.max(0, i - 1));
+          else setLeadCardIndex(i => Math.max(0, i - 1));
+        }}
+        onNext={() => {
+          if (viewMode === 'funnel') setCardIndex(i => Math.min(funnelStageDeals.length - 1, i + 1));
+          else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
+        }}
+        onCardClick={(deal) => setSelectedDeal(deal)}
+      />
 
       <LossBottomSheet open={lossOpen} onClose={() => setLossOpen(false)} onConfirm={() => setLossOpen(false)} />
       <DealDetailSheet deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
