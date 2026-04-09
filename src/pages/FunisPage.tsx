@@ -797,66 +797,68 @@ const FunisPage = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar row */}
-      <div className="px-4 pt-3 pb-1">
-        <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <button
-            onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
-            className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
-            title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
-          >
-            {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
-          </button>
+      {/* Toolbar + panels wrapper (click outside closes panels) */}
+      <div ref={toolbarRef}>
+        <div className="px-4 pt-3 pb-1">
+          <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <button
+              onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
+              className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
+              title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
+            >
+              {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
+            </button>
 
-          {/* Funnel selector (only in funnel mode) */}
-          {viewMode === 'funnel' && (
-            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-              <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {funnels.map(funnel => {
-                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                  return (
-                    <SelectItem key={funnel.id} value={funnel.id}>
-                      {funnel.name} ({count})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
+            {/* Funnel selector (only in funnel mode) */}
+            {viewMode === 'funnel' && (
+              <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+                <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {funnels.map(funnel => {
+                    const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                    return (
+                      <SelectItem key={funnel.id} value={funnel.id}>
+                        {funnel.name} ({count})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
 
-          {viewMode === 'lead' && <div className="flex-1" />}
+            {viewMode === 'lead' && <div className="flex-1" />}
 
-          {/* Filter toggle */}
-          <button
-            onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
-            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
-              filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
-            }`}
-          >
-            <SlidersHorizontal size={18} />
-          </button>
+            {/* Filter toggle */}
+            <button
+              onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+                filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
+              }`}
+            >
+              <SlidersHorizontal size={18} />
+            </button>
 
-          {/* AI toggle */}
-          <button
-            onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
-            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
-              aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
-            }`}
-          >
-            <Sparkles size={18} />
-          </button>
+            {/* AI toggle */}
+            <button
+              onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+                aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
+              }`}
+            >
+              <Sparkles size={18} />
+            </button>
+          </div>
         </div>
+
+        {/* Expandable Filters */}
+        {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+
+        {/* Expandable AI */}
+        <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>
-
-      {/* Expandable Filters */}
-      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
-
-      {/* Expandable AI */}
-      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
       <StageNavigator
