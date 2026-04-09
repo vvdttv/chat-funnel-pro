@@ -639,6 +639,7 @@ const FunisPage = () => {
   const [lossOpen, setLossOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [dealsList] = useState(mockDeals);
+  const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
 
