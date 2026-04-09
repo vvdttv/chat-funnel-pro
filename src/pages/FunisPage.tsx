@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, activities } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Calendar, Filter, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Filter, RotateCcw, Play, GitBranch, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
@@ -377,16 +377,15 @@ const CardNavigator = ({
   );
 };
 
-// ========== AI ANALYSIS PANEL ==========
+// ========== AI ANALYSIS PANEL (inline expandable) ==========
 
-const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
+const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolean; onClose: () => void }) => {
   const [period, setPeriod] = useState('7');
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = () => {
     setLoading(true);
-    // Mock AI analysis based on deals in this stage
     setTimeout(() => {
       const leadNames = deals.map(d => d.leadName).join(', ');
       setAnalysis(
@@ -402,44 +401,42 @@ const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
     }, 1200);
   };
 
+  if (!open) return null;
+
   return (
-    <div className="px-4 pb-3">
-      <div className="bg-card rounded-2xl p-4 border border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="text-primary" />
-          <span className="text-xs font-semibold text-foreground">Análise IA</span>
-        </div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center gap-1.5 bg-secondary rounded-lg px-3 py-1.5 flex-1">
-            <Calendar size={14} className="text-muted-foreground" />
-            <select
-              value={period}
-              onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
-              className="bg-transparent text-xs text-foreground outline-none flex-1"
-            >
-              <option value="1">Último dia</option>
-              <option value="3">Últimos 3 dias</option>
-              <option value="7">Últimos 7 dias</option>
-              <option value="15">Últimos 15 dias</option>
-              <option value="30">Últimos 30 dias</option>
-            </select>
+    <div className="px-4 pb-2">
+      <div className="bg-card rounded-xl p-3 border border-border">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={14} className="text-primary" />
+            <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
           </div>
+          <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={period}
+            onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
+            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1"
+          >
+            <option value="1">1 dia</option>
+            <option value="3">3 dias</option>
+            <option value="7">7 dias</option>
+            <option value="15">15 dias</option>
+            <option value="30">30 dias</option>
+          </select>
           <button
             onClick={handleAnalyze}
             disabled={loading || deals.length === 0}
-            className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40 flex items-center gap-1.5"
+            className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
           >
-            <Sparkles size={12} />
-            {loading ? 'Analisando...' : 'Analisar'}
+            <Play size={16} />
           </button>
         </div>
         {analysis && (
           <div className="bg-secondary rounded-xl p-3 mt-2">
             <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
           </div>
-        )}
-        {!analysis && deals.length === 0 && (
-          <p className="text-[10px] text-muted-foreground text-center">Nenhum lead nesta etapa para analisar</p>
         )}
       </div>
     </div>
@@ -514,117 +511,85 @@ const DateRangeInput = ({ label, value, onChange }: { label: string; value: Date
 );
 
 const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
-  const [open, setOpen] = useState(false);
-
-  const activeCount = [
-    filters.responsavel,
-    filters.origem,
-    filters.atividadesAtrasadas,
-    filters.atividadesHoje,
-    filters.atividadesAmanha,
-    filters.periodoCriacao.from || filters.periodoCriacao.to,
-    filters.periodoAtualizacaoCorretor.from || filters.periodoAtualizacaoCorretor.to,
-    filters.periodoMsgLidaCliente.from || filters.periodoMsgLidaCliente.to,
-    filters.periodoMsgLidaCorretor.from || filters.periodoMsgLidaCorretor.to,
-    filters.periodoMsgEnviadaCliente.from || filters.periodoMsgEnviadaCliente.to,
-    filters.periodoMsgEnviadaCorretor.from || filters.periodoMsgEnviadaCorretor.to,
-    filters.periodoPrimeiraMsgCliente.from || filters.periodoPrimeiraMsgCliente.to,
-    filters.periodoPrimeiraMsgCorretor.from || filters.periodoPrimeiraMsgCorretor.to,
-    filters.periodoProximaAtividade.from || filters.periodoProximaAtividade.to,
-    filters.periodoUltimaAtividade.from || filters.periodoUltimaAtividade.to,
-  ].filter(Boolean).length;
-
   return (
     <div className="px-4 pb-2">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 w-full bg-card rounded-xl px-4 py-2.5 active:scale-[0.98] transition-transform border border-border"
-      >
-        <Filter size={14} className="text-muted-foreground" />
-        <span className="text-xs font-semibold text-foreground flex-1 text-left">Filtros</span>
-        {activeCount > 0 && (
-          <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">
-            {activeCount}
-          </span>
-        )}
-        {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-      </button>
-
-      {open && (
-        <div className="bg-card rounded-xl mt-2 p-4 border border-border space-y-4 max-h-[50vh] overflow-y-auto scrollbar-hide">
-          {/* Reset */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => onChange(defaultFilters)}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
-            >
-              <RotateCcw size={10} /> Limpar filtros
-            </button>
+      <div className="bg-card rounded-xl p-4 border border-border space-y-4 max-h-[50vh] overflow-y-auto scrollbar-hide">
+        {/* Reset */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Filter size={14} className="text-primary" />
+            <span className="text-[11px] font-semibold text-foreground">Filtros</span>
           </div>
-
-          {/* Responsável */}
-          <div>
-            <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Responsável</p>
-            <select
-              value={filters.responsavel}
-              onChange={e => onChange({ ...filters, responsavel: e.target.value })}
-              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-            >
-              <option value="">Todos</option>
-              <option value="João Silva">João Silva</option>
-              <option value="Maria Oliveira">Maria Oliveira</option>
-              <option value="Pedro Santos">Pedro Santos</option>
-            </select>
-          </div>
-
-          {/* Origem */}
-          <div>
-            <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Origem</p>
-            <select
-              value={filters.origem}
-              onChange={e => onChange({ ...filters, origem: e.target.value })}
-              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-            >
-              <option value="">Todas</option>
-              {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-
-          {/* Atividades checkboxes */}
-          <div className="space-y-2">
-            <p className="text-[10px] text-muted-foreground font-medium">Atividades</p>
-            {[
-              { key: 'atividadesAtrasadas' as const, label: 'Com atividades atrasadas/vencidas' },
-              { key: 'atividadesHoje' as const, label: 'Com atividades vencendo hoje' },
-              { key: 'atividadesAmanha' as const, label: 'Com atividades a partir de amanhã' },
-            ].map(item => (
-              <label key={item.key} className="flex items-center gap-2 active:scale-[0.98]">
-                <div
-                  onClick={() => onChange({ ...filters, [item.key]: !filters[item.key] })}
-                  className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                    filters[item.key] ? 'bg-primary border-primary' : 'border-border bg-secondary'
-                  }`}
-                >
-                  {filters[item.key] && <span className="text-primary-foreground text-[10px]">✓</span>}
-                </div>
-                <span className="text-xs text-foreground">{item.label}</span>
-              </label>
-            ))}
-          </div>
-
-          {/* Date range filters */}
-          <DateRangeInput label="Período da criação do cadastro" value={filters.periodoCriacao} onChange={v => onChange({ ...filters, periodoCriacao: v })} />
-          <DateRangeInput label="Última atualização pelo corretor" value={filters.periodoAtualizacaoCorretor} onChange={v => onChange({ ...filters, periodoAtualizacaoCorretor: v })} />
-          <DateRangeInput label="Última msg lida pelo cliente" value={filters.periodoMsgLidaCliente} onChange={v => onChange({ ...filters, periodoMsgLidaCliente: v })} />
-          <DateRangeInput label="Última msg lida pelo corretor" value={filters.periodoMsgLidaCorretor} onChange={v => onChange({ ...filters, periodoMsgLidaCorretor: v })} />
-          <DateRangeInput label="Última msg enviada pelo cliente" value={filters.periodoMsgEnviadaCliente} onChange={v => onChange({ ...filters, periodoMsgEnviadaCliente: v })} />
-          <DateRangeInput label="Última msg enviada pelo corretor" value={filters.periodoMsgEnviadaCorretor} onChange={v => onChange({ ...filters, periodoMsgEnviadaCorretor: v })} />
-          <DateRangeInput label="Primeira msg enviada pelo cliente" value={filters.periodoPrimeiraMsgCliente} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCliente: v })} />
-          <DateRangeInput label="Primeira msg enviada pelo corretor" value={filters.periodoPrimeiraMsgCorretor} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCorretor: v })} />
-          <DateRangeInput label="Próxima atividade agendada" value={filters.periodoProximaAtividade} onChange={v => onChange({ ...filters, periodoProximaAtividade: v })} />
-          <DateRangeInput label="Última atividade realizada" value={filters.periodoUltimaAtividade} onChange={v => onChange({ ...filters, periodoUltimaAtividade: v })} />
+          <button
+            onClick={() => onChange(defaultFilters)}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+          >
+            <RotateCcw size={10} /> Limpar
+          </button>
         </div>
-      )}
+
+        {/* Responsável */}
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Responsável</p>
+          <select
+            value={filters.responsavel}
+            onChange={e => onChange({ ...filters, responsavel: e.target.value })}
+            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
+          >
+            <option value="">Todos</option>
+            <option value="João Silva">João Silva</option>
+            <option value="Maria Oliveira">Maria Oliveira</option>
+            <option value="Pedro Santos">Pedro Santos</option>
+          </select>
+        </div>
+
+        {/* Origem */}
+        <div>
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Origem</p>
+          <select
+            value={filters.origem}
+            onChange={e => onChange({ ...filters, origem: e.target.value })}
+            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
+          >
+            <option value="">Todas</option>
+            {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+
+        {/* Atividades checkboxes */}
+        <div className="space-y-2">
+          <p className="text-[10px] text-muted-foreground font-medium">Atividades</p>
+          {[
+            { key: 'atividadesAtrasadas' as const, label: 'Atrasadas/vencidas' },
+            { key: 'atividadesHoje' as const, label: 'Vencendo hoje' },
+            { key: 'atividadesAmanha' as const, label: 'A partir de amanhã' },
+          ].map(item => (
+            <label key={item.key} className="flex items-center gap-2 active:scale-[0.98]">
+              <div
+                onClick={() => onChange({ ...filters, [item.key]: !filters[item.key] })}
+                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                  filters[item.key] ? 'bg-primary border-primary' : 'border-border bg-secondary'
+                }`}
+              >
+                {filters[item.key] && <span className="text-primary-foreground text-[10px]">✓</span>}
+              </div>
+              <span className="text-xs text-foreground">{item.label}</span>
+            </label>
+          ))}
+        </div>
+
+        {/* Date range filters */}
+        <DateRangeInput label="Criação do cadastro" value={filters.periodoCriacao} onChange={v => onChange({ ...filters, periodoCriacao: v })} />
+        <DateRangeInput label="Atualização pelo corretor" value={filters.periodoAtualizacaoCorretor} onChange={v => onChange({ ...filters, periodoAtualizacaoCorretor: v })} />
+        <DateRangeInput label="Msg lida pelo cliente" value={filters.periodoMsgLidaCliente} onChange={v => onChange({ ...filters, periodoMsgLidaCliente: v })} />
+        <DateRangeInput label="Msg lida pelo corretor" value={filters.periodoMsgLidaCorretor} onChange={v => onChange({ ...filters, periodoMsgLidaCorretor: v })} />
+        <DateRangeInput label="Msg enviada pelo cliente" value={filters.periodoMsgEnviadaCliente} onChange={v => onChange({ ...filters, periodoMsgEnviadaCliente: v })} />
+        <DateRangeInput label="Msg enviada pelo corretor" value={filters.periodoMsgEnviadaCorretor} onChange={v => onChange({ ...filters, periodoMsgEnviadaCorretor: v })} />
+        <DateRangeInput label="1ª msg do cliente" value={filters.periodoPrimeiraMsgCliente} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCliente: v })} />
+        <DateRangeInput label="1ª msg do corretor" value={filters.periodoPrimeiraMsgCorretor} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCorretor: v })} />
+        <DateRangeInput label="Próxima atividade" value={filters.periodoProximaAtividade} onChange={v => onChange({ ...filters, periodoProximaAtividade: v })} />
+        <DateRangeInput label="Última atividade" value={filters.periodoUltimaAtividade} onChange={v => onChange({ ...filters, periodoUltimaAtividade: v })} />
+      </div>
     </div>
   );
 };
@@ -632,7 +597,9 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('funnel');
+  const [viewMode, setViewMode] = useState<ViewMode>('lead');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [activeFunnelId, setActiveFunnelId] = useState(funnels[0].id);
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
@@ -707,70 +674,76 @@ const FunisPage = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        {/* View Mode Toggle */}
-        <div className="flex gap-1 p-1 bg-secondary rounded-xl mb-3">
+      {/* Toolbar row */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
           <button
-            onClick={() => handleModeChange('lead')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] ${
-              viewMode === 'lead' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-            }`}
+            onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
+            className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
+            title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
           >
-            Por Lead
+            {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <GitBranch size={18} className="text-primary" />}
           </button>
+
+          {/* Funnel selector (only in funnel mode) */}
+          {viewMode === 'funnel' && (
+            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+              <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {funnels.map(funnel => {
+                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                  return (
+                    <SelectItem key={funnel.id} value={funnel.id}>
+                      {funnel.name} ({count})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
+
+          {viewMode === 'lead' && <div className="flex-1" />}
+
+          {/* Filter toggle */}
           <button
-            onClick={() => handleModeChange('funnel')}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors active:scale-[0.98] ${
-              viewMode === 'funnel' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+            onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+              filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
             }`}
           >
-            Por Funil
+            <Filter size={18} />
+          </button>
+
+          {/* AI toggle */}
+          <button
+            onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
+              aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
+            }`}
+          >
+            <Sparkles size={18} />
           </button>
         </div>
-
-        {viewMode === 'funnel' && (
-          <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-            <SelectTrigger className="w-full gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold mb-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {funnels.map(funnel => {
-                const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                return (
-                  <SelectItem key={funnel.id} value={funnel.id}>
-                    {funnel.name} ({count})
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
-      {/* Stage Navigator (same for both modes) */}
+      {/* Expandable Filters */}
+      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+
+      {/* Expandable AI */}
+      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Stage Navigator */}
       <StageNavigator
         stages={stages}
         activeIndex={activeStageIdx}
         onPrev={() => handleStageNav('prev')}
         onNext={() => handleStageNav('next')}
         dealCount={currentDeals.length}
-        subtitle={`Etapa ${activeStageIdx + 1} de ${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'}`}
+        subtitle={`${activeStageIdx + 1}/${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'} · ${formatCurrency(stageTotal)}`}
       />
-
-      {/* Summary bar */}
-      <div className="px-4 pb-2">
-        <div className="bg-secondary rounded-xl p-3 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{currentDeals.length} leads</span>
-          <span className="text-sm font-bold text-primary">{formatCurrency(stageTotal)}</span>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <StageFilters filters={stageFilters} onChange={setStageFilters} />
-
-      {/* AI Analysis Panel (both modes) */}
-      <AIAnalysisPanel deals={currentDeals} />
 
       {/* Card Navigator */}
       <CardNavigator
