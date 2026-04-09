@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import BottomNav from '@/components/BottomNav';
-import InboxPage from '@/pages/InboxPage';
 import FunisPage from '@/pages/FunisPage';
 import AtividadesPage from '@/pages/AtividadesPage';
 import IndicadoresPage from '@/pages/IndicadoresPage';
@@ -11,7 +10,6 @@ const Index = () => {
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'inbox': return <InboxPage />;
       case 'funnels': return <FunisPage />;
       case 'activities': return <AtividadesPage />;
       case 'indicators': return <IndicadoresPage />;

@@ -1,4 +1,4 @@
-import { deals, formatCurrency, STAGES, STAGE_PROBABILITIES } from '@/data/mockData';
+import { deals, funnels, formatCurrency } from '@/data/mockData';
 import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -15,7 +15,12 @@ const IndicadoresPage = () => {
 
   const totalDeals = deals.length;
   const receitaPrevista = deals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
-  const receitaGanha = deals.filter(d => d.stage === 'Fechamento').reduce((sum, d) => sum + d.value, 0);
+  // "Ganha" = deals in last stage of their funnel
+  const receitaGanha = deals.filter(d => {
+    const funnel = funnels.find(f => f.id === d.funnelId);
+    if (!funnel) return false;
+    return d.stage === funnel.stages[funnel.stages.length - 1].name;
+  }).reduce((sum, d) => sum + d.value, 0);
   const ticketMedio = deals.reduce((sum, d) => sum + d.value, 0) / totalDeals;
 
   const toggleSection = (s: string) => setOpenSection(openSection === s ? null : s);
@@ -31,9 +36,9 @@ const IndicadoresPage = () => {
           <p className="text-2xl font-bold text-primary">{formatCurrency(receitaPrevista)}</p>
           <div className="flex items-center gap-2 mt-2">
             <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, (receitaGanha / receitaPrevista) * 100)}%` }} />
+              <div className="h-full bg-primary rounded-full" style={{ width: `${receitaPrevista > 0 ? Math.min(100, (receitaGanha / receitaPrevista) * 100) : 0}%` }} />
             </div>
-            <span className="text-xs text-muted-foreground">{Math.round((receitaGanha / receitaPrevista) * 100)}%</span>
+            <span className="text-xs text-muted-foreground">{receitaPrevista > 0 ? Math.round((receitaGanha / receitaPrevista) * 100) : 0}%</span>
           </div>
           <div className="flex items-center justify-between mt-3">
             <div>
@@ -50,10 +55,10 @@ const IndicadoresPage = () => {
         {/* KPI Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {[
-            { label: 'Total Leads', value: '6', icon: Users, color: 'text-primary' },
-            { label: 'Conversão', value: '16.7%', icon: Target, color: 'text-primary' },
+            { label: 'Total Leads', value: '8', icon: Users, color: 'text-primary' },
+            { label: 'Conversão', value: '15.4%', icon: Target, color: 'text-primary' },
             { label: 'Ticket Médio', value: formatCurrency(ticketMedio), icon: TrendingUp, color: 'text-primary' },
-            { label: 'Ciclo Médio', value: '23 dias', icon: Clock, color: 'text-warning' },
+            { label: 'Ciclo Médio', value: '23 dias', icon: Clock, color: 'text-muted-foreground' },
           ].map((kpi, i) => (
             <div key={i} className="bg-card rounded-xl p-4">
               <kpi.icon size={16} className={`${kpi.color} mb-2`} />
@@ -65,26 +70,36 @@ const IndicadoresPage = () => {
 
         {/* Accordion Sections */}
         <div className="space-y-2 pb-24">
-          {/* Funnel Breakdown */}
+          {/* Funnel Breakdown — per funnel */}
           <div className="bg-card rounded-xl overflow-hidden">
             <button onClick={() => toggleSection('funnel')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
-              <span className="text-sm font-semibold text-foreground">Funil de Vendas</span>
+              <span className="text-sm font-semibold text-foreground">Funis de Vendas</span>
               {openSection === 'funnel' ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
             </button>
             {openSection === 'funnel' && (
-              <div className="px-4 pb-4 space-y-2">
-                {STAGES.map(stage => {
-                  const stageDeals = deals.filter(d => d.stage === stage);
-                  const stageValue = stageDeals.reduce((s, d) => s + d.value, 0);
-                  const width = totalDeals > 0 ? (stageDeals.length / totalDeals) * 100 : 0;
+              <div className="px-4 pb-4 space-y-4">
+                {funnels.map(funnel => {
+                  const funnelDeals = deals.filter(d => d.funnelId === funnel.id);
                   return (
-                    <div key={stage}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">{stage}</span>
-                        <span className="text-foreground font-medium">{stageDeals.length} · {formatCurrency(stageValue)}</span>
-                      </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${width}%` }} />
+                    <div key={funnel.id}>
+                      <p className="text-xs font-semibold text-foreground mb-2">{funnel.name}</p>
+                      <div className="space-y-1.5">
+                        {funnel.stages.map(stage => {
+                          const stageDeals = funnelDeals.filter(d => d.stage === stage.name);
+                          const stageValue = stageDeals.reduce((s, d) => s + d.value, 0);
+                          const width = funnelDeals.length > 0 ? (stageDeals.length / funnelDeals.length) * 100 : 0;
+                          return (
+                            <div key={stage.name}>
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-muted-foreground">{stage.name}</span>
+                                <span className="text-foreground font-medium">{stageDeals.length} · {formatCurrency(stageValue)}</span>
+                              </div>
+                              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${width}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -132,10 +147,11 @@ const IndicadoresPage = () => {
             {openSection === 'channel' && (
               <div className="px-4 pb-4 space-y-2">
                 {[
-                  { channel: 'WhatsApp Business', leads: 3, ticket: 'R$ 906.667' },
-                  { channel: 'Site Imobiliária', leads: 1, ticket: 'R$ 2.125.000' },
+                  { channel: 'Facebook Ads', leads: 2, ticket: 'R$ 214.000' },
+                  { channel: 'Instagram Reels', leads: 1, ticket: 'R$ 3.100.000' },
                   { channel: 'Instagram Ads', leads: 1, ticket: 'R$ 1.200.000' },
-                  { channel: 'Portal ZAP', leads: 1, ticket: 'R$ 720.000' },
+                  { channel: 'Google Ads', leads: 1, ticket: 'R$ 245.000' },
+                  { channel: 'Portal ZAP', leads: 1, ticket: 'R$ 265.000' },
                 ].map((ch, i) => (
                   <div key={i} className="flex items-center justify-between bg-secondary rounded-lg p-3">
                     <div>
