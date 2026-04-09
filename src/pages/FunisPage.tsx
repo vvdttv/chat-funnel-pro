@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, activities } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Calendar, Filter, ChevronDown, ChevronUp, RotateCcw, GitBranch, Play } from 'lucide-react';
+import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, Filter, ChevronDown, ChevronUp, RotateCcw, Play, Funnel } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
