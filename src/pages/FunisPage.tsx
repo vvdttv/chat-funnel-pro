@@ -769,6 +769,9 @@ const FunisPage = () => {
         </div>
       </div>
 
+      {/* Filters */}
+      <StageFilters filters={stageFilters} onChange={setStageFilters} />
+
       {/* AI Analysis Panel (both modes) */}
       <AIAnalysisPanel deals={currentDeals} />
 
