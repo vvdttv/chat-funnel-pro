@@ -1,4 +1,4 @@
-import { ClipboardList, Clock, BarChart3, Settings } from 'lucide-react';
+import { Users, Clock, BarChart3, Settings } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
@@ -6,7 +6,7 @@ interface BottomNavProps {
 }
 
 const tabs = [
-  { id: 'funnels', icon: ClipboardList, label: 'Funis' },
+  { id: 'leads', icon: Users, label: 'Leads' },
   { id: 'activities', icon: Clock, label: 'Atividades' },
   { id: 'indicators', icon: BarChart3, label: 'Indicadores' },
   { id: 'settings', icon: Settings, label: 'Config' },
