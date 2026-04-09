@@ -517,7 +517,7 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
         {/* Reset */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Filter size={14} className="text-primary" />
+            <SlidersHorizontal size={14} className="text-primary" />
             <span className="text-[11px] font-semibold text-foreground">Filtros</span>
           </div>
           <button
@@ -714,7 +714,7 @@ const FunisPage = () => {
               filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
             }`}
           >
-            <Filter size={18} />
+            <SlidersHorizontal size={18} />
           </button>
 
           {/* AI toggle */}
