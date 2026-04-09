@@ -28,7 +28,6 @@ const IndicadoresPage = () => {
   return (
     <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
       <div className="px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-foreground mb-4">Indicadores</h1>
 
         {/* Forecast Card */}
         <div className="bg-card rounded-2xl p-5 mb-4">

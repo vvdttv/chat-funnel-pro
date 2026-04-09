@@ -710,7 +710,6 @@ const FunisPage = () => {
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-foreground">Leads</h1>
           {viewMode === 'funnel' && (
             <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
               <SelectTrigger className="w-auto gap-1.5 h-8 px-3 rounded-lg bg-primary/15 border-primary/30 text-primary text-xs font-semibold">

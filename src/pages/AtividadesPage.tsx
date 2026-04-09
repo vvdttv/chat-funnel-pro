@@ -125,8 +125,7 @@ const AtividadesPage = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground">Atividades</h1>
+        <div className="flex items-center justify-end mb-4">
           <button onClick={() => setCalendarOpen(true)} className="p-2 rounded-lg bg-secondary text-primary active:scale-95 transition-transform">
             <Calendar size={18} />
           </button>
