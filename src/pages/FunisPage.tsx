@@ -795,26 +795,41 @@ const FunisPage = () => {
             {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
           </button>
 
-          {/* Funnel selector (only in funnel mode) */}
-          {viewMode === 'funnel' && (
-            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-              <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {funnels.map(funnel => {
-                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                  return (
-                    <SelectItem key={funnel.id} value={funnel.id}>
-                      {funnel.name} ({count})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Middle area: funnel squares OR inline filter/AI */}
+          <div className="flex-1 flex items-center gap-1.5 min-w-0">
+            {!filtersOpen && !aiOpen && viewMode === 'funnel' && (
+              funnels.map((funnel, idx) => {
+                const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                const isActive = funnel.id === activeFunnelId;
+                return (
+                  <button
+                    key={funnel.id}
+                    onClick={() => handleFunnelChange(funnel.id)}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all shrink-0 text-xs font-bold ${
+                      isActive
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-card border-border text-muted-foreground'
+                    }`}
+                    title={funnel.name}
+                  >
+                    {count}
+                  </button>
+                );
+              })
+            )}
 
-          {viewMode === 'lead' && <div className="flex-1" />}
+            {!filtersOpen && !aiOpen && viewMode === 'lead' && <div className="flex-1" />}
+
+            {/* Inline Filters */}
+            {filtersOpen && (
+              <InlineFilters filters={stageFilters} onChange={setStageFilters} />
+            )}
+
+            {/* Inline AI */}
+            {aiOpen && (
+              <InlineAI deals={currentDeals} />
+            )}
+          </div>
 
           {/* Filter toggle */}
           <button
@@ -838,10 +853,10 @@ const FunisPage = () => {
         </div>
       </div>
 
-      {/* Expandable Filters */}
+      {/* Expanded filter details (below toolbar when filter selected needs more space) */}
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
 
-      {/* Expandable AI */}
+      {/* Expanded AI results */}
       <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
