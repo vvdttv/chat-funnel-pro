@@ -116,8 +116,8 @@ const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: 
           )}
         </div>
       </div>
-      <button onClick={() => setEditing(true)} className="p-1.5 text-muted-foreground active:scale-95"><Pencil size={12} /></button>
-      <button onClick={onDelete} className="p-1.5 text-destructive active:scale-95"><Trash2 size={12} /></button>
+      <button onClick={() => setEditing(true)} className="p-2.5 -m-1 text-muted-foreground active:scale-95"><Pencil size={16} /></button>
+      <button onClick={onDelete} className="p-2.5 -m-1 text-destructive active:scale-95"><Trash2 size={16} /></button>
     </div>
   );
 };
@@ -153,8 +153,8 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
 
   return (
     <div className="bg-card rounded-xl mb-2 overflow-hidden">
-      <div className="flex items-center gap-2 p-3">
-        <GripVertical size={14} className="text-muted-foreground shrink-0" />
+      <div className="flex items-center gap-3 p-4">
+        <GripVertical size={16} className="text-muted-foreground shrink-0" />
         {editingName ? (
           <input
             autoFocus
@@ -171,10 +171,10 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
         )}
         <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-medium shrink-0">{stage.probability}%</span>
         <span className="text-[10px] text-muted-foreground shrink-0">{stage.touchpoints.length} pts</span>
-        <button onClick={() => setExpanded(v => !v)} className="p-1 text-muted-foreground active:scale-95">
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        <button onClick={() => setExpanded(v => !v)} className="p-2.5 -m-1 text-muted-foreground active:scale-95">
+          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
-        <button onClick={onDelete} className="p-1 text-destructive active:scale-95"><Trash2 size={12} /></button>
+        <button onClick={onDelete} className="p-2.5 -m-1 text-destructive active:scale-95"><Trash2 size={16} /></button>
       </div>
 
       {expanded && (
