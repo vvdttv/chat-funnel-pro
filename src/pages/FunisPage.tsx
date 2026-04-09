@@ -703,6 +703,64 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
   );
 };
 
+// ========== INLINE FILTER SELECTOR (single row) ==========
+
+const InlineFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+  const activeCount = FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).length;
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <select
+        onChange={e => {
+          const key = e.target.value as FilterKey;
+          if (!key) return;
+          const opt = FILTER_OPTIONS.find(o => o.key === key)!;
+          if (opt.type === 'toggle') {
+            onChange({ ...filters, [key]: !(filters[key as keyof StageFilterState]) });
+            e.target.value = '';
+          }
+        }}
+        defaultValue=""
+        className="bg-card text-[11px] text-foreground rounded-lg px-2 py-2 outline-none border border-border flex-1 min-w-0 truncate"
+      >
+        <option value="">Filtro...</option>
+        {FILTER_OPTIONS.map(o => (
+          <option key={o.key} value={o.key}>
+            {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label.split(' ').slice(0, 5).join(' ')}
+          </option>
+        ))}
+      </select>
+      {activeCount > 0 && (
+        <button onClick={() => onChange(defaultFilters)} className="shrink-0 active:scale-95">
+          <RotateCcw size={14} className="text-muted-foreground" />
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ========== INLINE AI (single row) ==========
+
+const InlineAI = ({ deals }: { deals: Deal[] }) => {
+  const [question, setQuestion] = useState('');
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <input
+        type="text"
+        value={question}
+        onChange={e => setQuestion(e.target.value)}
+        placeholder="O que analisar?"
+        className="bg-card text-[11px] text-foreground rounded-lg px-2 py-2 outline-none border border-border flex-1 min-w-0 placeholder:text-muted-foreground"
+      />
+      <button
+        disabled={deals.length === 0}
+        className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+      >
+        <Play size={14} />
+      </button>
+    </div>
+  );
+};
+
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
