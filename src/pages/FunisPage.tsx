@@ -450,6 +450,47 @@ interface DateRange {
   to: string;
 }
 
+type FilterKey =
+  | 'responsavel'
+  | 'origem'
+  | 'atividadesAtrasadas'
+  | 'atividadesHoje'
+  | 'atividadesAmanha'
+  | 'periodoCriacao'
+  | 'periodoAtualizacaoCorretor'
+  | 'periodoMsgLidaCliente'
+  | 'periodoMsgLidaCorretor'
+  | 'periodoMsgEnviadaCliente'
+  | 'periodoMsgEnviadaCorretor'
+  | 'periodoPrimeiraMsgCliente'
+  | 'periodoPrimeiraMsgCorretor'
+  | 'periodoProximaAtividade'
+  | 'periodoUltimaAtividade';
+
+interface FilterOption {
+  key: FilterKey;
+  label: string;
+  type: 'select' | 'toggle' | 'daterange';
+}
+
+const FILTER_OPTIONS: FilterOption[] = [
+  { key: 'responsavel', label: 'Usuário atribuído como responsável pelo cliente', type: 'select' },
+  { key: 'origem', label: 'Origem de criação do cadastro do cliente', type: 'select' },
+  { key: 'atividadesAtrasadas', label: 'Leads com atividades atrasadas/vencidas', type: 'toggle' },
+  { key: 'atividadesHoje', label: 'Leads com atividades vencendo hoje', type: 'toggle' },
+  { key: 'atividadesAmanha', label: 'Leads com atividades vencendo a partir de amanhã', type: 'toggle' },
+  { key: 'periodoCriacao', label: 'Período da criação do cadastro do cliente', type: 'daterange' },
+  { key: 'periodoAtualizacaoCorretor', label: 'Período da última atualização por parte do corretor', type: 'daterange' },
+  { key: 'periodoMsgLidaCliente', label: 'Período da última mensagem lida pelo cliente', type: 'daterange' },
+  { key: 'periodoMsgLidaCorretor', label: 'Período da última mensagem lida pelo corretor', type: 'daterange' },
+  { key: 'periodoMsgEnviadaCliente', label: 'Período da última mensagem enviada pelo cliente', type: 'daterange' },
+  { key: 'periodoMsgEnviadaCorretor', label: 'Período da última mensagem enviada pelo corretor', type: 'daterange' },
+  { key: 'periodoPrimeiraMsgCliente', label: 'Período da primeira mensagem enviada pelo cliente', type: 'daterange' },
+  { key: 'periodoPrimeiraMsgCorretor', label: 'Período da primeira mensagem enviada pelo corretor', type: 'daterange' },
+  { key: 'periodoProximaAtividade', label: 'Período da próxima atividade agendada pelo corretor', type: 'daterange' },
+  { key: 'periodoUltimaAtividade', label: 'Período da última atividade realizada pelo corretor', type: 'daterange' },
+];
+
 interface StageFilterState {
   responsavel: string;
   origem: string;
@@ -490,47 +531,112 @@ const defaultFilters: StageFilterState = {
 
 const ORIGENS = [...new Set(leads.map(l => l.origin))];
 
-const DateRangeInput = ({ label, value, onChange }: { label: string; value: DateRange; onChange: (v: DateRange) => void }) => (
-  <div>
-    <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">{label}</p>
-    <div className="flex gap-2">
-      <input
-        type="date"
-        value={value.from}
-        onChange={e => onChange({ ...value, from: e.target.value })}
-        className="flex-1 bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-      />
-      <input
-        type="date"
-        value={value.to}
-        onChange={e => onChange({ ...value, to: e.target.value })}
-        className="flex-1 bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-      />
-    </div>
-  </div>
-);
+const isFilterActive = (filters: StageFilterState, key: FilterKey): boolean => {
+  const val = filters[key];
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') return val !== '';
+  return (val as DateRange).from !== '' || (val as DateRange).to !== '';
+};
 
 const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+  const [selectedFilter, setSelectedFilter] = useState<FilterKey | ''>('');
+  const [draftDateRange, setDraftDateRange] = useState<DateRange>(emptyDateRange);
+
+  const activeCount = FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).length;
+  const selectedOption = FILTER_OPTIONS.find(o => o.key === selectedFilter);
+
+  const handleSelectFilter = (key: string) => {
+    if (!key) { setSelectedFilter(''); return; }
+    const opt = FILTER_OPTIONS.find(o => o.key === key)!;
+    if (opt.type === 'toggle') {
+      onChange({ ...filters, [key]: !(filters[key as keyof StageFilterState]) });
+      setSelectedFilter('');
+    } else {
+      setSelectedFilter(key as FilterKey);
+      if (opt.type === 'daterange') {
+        setDraftDateRange(filters[key as keyof StageFilterState] as DateRange);
+      }
+    }
+  };
+
+  const handleApplyDateRange = () => {
+    if (selectedFilter && selectedOption?.type === 'daterange') {
+      onChange({ ...filters, [selectedFilter]: draftDateRange });
+      setSelectedFilter('');
+      setDraftDateRange(emptyDateRange);
+    }
+  };
+
   return (
     <div className="px-4 pb-2">
-      <div className="bg-card rounded-xl p-4 border border-border space-y-4 max-h-[50vh] overflow-y-auto scrollbar-hide">
-        {/* Reset */}
+      <div className="bg-card rounded-xl p-3 border border-border space-y-3">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <SlidersHorizontal size={14} className="text-primary" />
             <span className="text-[11px] font-semibold text-foreground">Filtros</span>
+            {activeCount > 0 && (
+              <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold leading-none">
+                {activeCount}
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => onChange(defaultFilters)}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
-          >
-            <RotateCcw size={10} /> Limpar
-          </button>
+          {activeCount > 0 && (
+            <button
+              onClick={() => { onChange(defaultFilters); setSelectedFilter(''); }}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+            >
+              <RotateCcw size={10} /> Limpar
+            </button>
+          )}
         </div>
 
-        {/* Responsável */}
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Responsável</p>
+        {/* Active filter chips */}
+        {activeCount > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).map(o => {
+              const val = filters[o.key];
+              let displayVal = '';
+              if (o.type === 'toggle') displayVal = 'Sim';
+              else if (o.type === 'select') displayVal = val as string;
+              else {
+                const dr = val as DateRange;
+                displayVal = [dr.from, dr.to].filter(Boolean).join(' → ');
+              }
+              return (
+                <button
+                  key={o.key}
+                  onClick={() => {
+                    if (o.type === 'toggle') onChange({ ...filters, [o.key]: false });
+                    else if (o.type === 'select') onChange({ ...filters, [o.key]: '' });
+                    else onChange({ ...filters, [o.key]: emptyDateRange });
+                  }}
+                  className="flex items-center gap-1 bg-primary/15 text-primary text-[10px] px-2 py-1 rounded-lg font-medium active:scale-95"
+                >
+                  <span className="truncate max-w-[140px]">{o.label.split(' ').slice(0, 4).join(' ')}: {displayVal}</span>
+                  <X size={10} className="shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Filter dropdown */}
+        <select
+          value={selectedFilter}
+          onChange={e => handleSelectFilter(e.target.value)}
+          className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2.5 outline-none border border-border"
+        >
+          <option value="">Selecione um filtro...</option>
+          {FILTER_OPTIONS.map(o => (
+            <option key={o.key} value={o.key}>
+              {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Select input: Responsável */}
+        {selectedOption?.type === 'select' && selectedFilter === 'responsavel' && (
           <select
             value={filters.responsavel}
             onChange={e => onChange({ ...filters, responsavel: e.target.value })}
@@ -541,11 +647,10 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
             <option value="Maria Oliveira">Maria Oliveira</option>
             <option value="Pedro Santos">Pedro Santos</option>
           </select>
-        </div>
+        )}
 
-        {/* Origem */}
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Origem</p>
+        {/* Select input: Origem */}
+        {selectedOption?.type === 'select' && selectedFilter === 'origem' && (
           <select
             value={filters.origem}
             onChange={e => onChange({ ...filters, origem: e.target.value })}
@@ -554,41 +659,40 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
             <option value="">Todas</option>
             {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
-        </div>
+        )}
 
-        {/* Atividades checkboxes */}
-        <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground font-medium">Atividades</p>
-          {[
-            { key: 'atividadesAtrasadas' as const, label: 'Atrasadas/vencidas' },
-            { key: 'atividadesHoje' as const, label: 'Vencendo hoje' },
-            { key: 'atividadesAmanha' as const, label: 'A partir de amanhã' },
-          ].map(item => (
-            <label key={item.key} className="flex items-center gap-2 active:scale-[0.98]">
-              <div
-                onClick={() => onChange({ ...filters, [item.key]: !filters[item.key] })}
-                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                  filters[item.key] ? 'bg-primary border-primary' : 'border-border bg-secondary'
-                }`}
-              >
-                {filters[item.key] && <span className="text-primary-foreground text-[10px]">✓</span>}
+        {/* Date range input */}
+        {selectedOption?.type === 'daterange' && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <p className="text-[10px] text-muted-foreground mb-1">De</p>
+                <input
+                  type="date"
+                  value={draftDateRange.from}
+                  onChange={e => setDraftDateRange(prev => ({ ...prev, from: e.target.value }))}
+                  className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                />
               </div>
-              <span className="text-xs text-foreground">{item.label}</span>
-            </label>
-          ))}
-        </div>
-
-        {/* Date range filters */}
-        <DateRangeInput label="Criação do cadastro" value={filters.periodoCriacao} onChange={v => onChange({ ...filters, periodoCriacao: v })} />
-        <DateRangeInput label="Atualização pelo corretor" value={filters.periodoAtualizacaoCorretor} onChange={v => onChange({ ...filters, periodoAtualizacaoCorretor: v })} />
-        <DateRangeInput label="Msg lida pelo cliente" value={filters.periodoMsgLidaCliente} onChange={v => onChange({ ...filters, periodoMsgLidaCliente: v })} />
-        <DateRangeInput label="Msg lida pelo corretor" value={filters.periodoMsgLidaCorretor} onChange={v => onChange({ ...filters, periodoMsgLidaCorretor: v })} />
-        <DateRangeInput label="Msg enviada pelo cliente" value={filters.periodoMsgEnviadaCliente} onChange={v => onChange({ ...filters, periodoMsgEnviadaCliente: v })} />
-        <DateRangeInput label="Msg enviada pelo corretor" value={filters.periodoMsgEnviadaCorretor} onChange={v => onChange({ ...filters, periodoMsgEnviadaCorretor: v })} />
-        <DateRangeInput label="1ª msg do cliente" value={filters.periodoPrimeiraMsgCliente} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCliente: v })} />
-        <DateRangeInput label="1ª msg do corretor" value={filters.periodoPrimeiraMsgCorretor} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCorretor: v })} />
-        <DateRangeInput label="Próxima atividade" value={filters.periodoProximaAtividade} onChange={v => onChange({ ...filters, periodoProximaAtividade: v })} />
-        <DateRangeInput label="Última atividade" value={filters.periodoUltimaAtividade} onChange={v => onChange({ ...filters, periodoUltimaAtividade: v })} />
+              <div className="flex-1">
+                <p className="text-[10px] text-muted-foreground mb-1">Até</p>
+                <input
+                  type="date"
+                  value={draftDateRange.to}
+                  onChange={e => setDraftDateRange(prev => ({ ...prev, to: e.target.value }))}
+                  className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleApplyDateRange}
+              disabled={!draftDateRange.from && !draftDateRange.to}
+              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] disabled:opacity-40"
+            >
+              Aplicar
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
