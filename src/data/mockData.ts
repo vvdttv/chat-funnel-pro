@@ -130,11 +130,25 @@ export const funnels: Funnel[] = [
     icon: 'Home',
     color: 'hsl(var(--primary))',
     stages: [
-      { name: 'Novo Lead', probability: 10 },
-      { name: 'Simulação Crédito', probability: 25 },
-      { name: 'Visita', probability: 50 },
-      { name: 'Proposta', probability: 75 },
-      { name: 'Contrato Assinado', probability: 95 },
+      { name: 'Novo Lead', probability: 10, touchpoints: [
+        { id: 'tp1', type: 'ai', action: 'Mensagem de boas-vindas', description: 'IA envia saudação automática e pergunta interesse', delayHours: 0, channel: 'whatsapp' },
+        { id: 'tp2', type: 'agent', action: 'Ligar para qualificar', description: 'Corretor liga para confirmar interesse e coletar dados', delayHours: 1, channel: 'ligação' },
+      ]},
+      { name: 'Simulação Crédito', probability: 25, touchpoints: [
+        { id: 'tp3', type: 'ai', action: 'Coletar dados financeiros', description: 'IA pergunta renda, entrada e FGTS', delayHours: 0, channel: 'whatsapp' },
+        { id: 'tp4', type: 'agent', action: 'Simular na Caixa', description: 'Corretor faz simulação oficial e envia resultado', delayHours: 24, channel: 'whatsapp' },
+      ]},
+      { name: 'Visita', probability: 50, touchpoints: [
+        { id: 'tp5', type: 'agent', action: 'Agendar visita', description: 'Corretor oferece horários disponíveis', delayHours: 0, channel: 'whatsapp' },
+        { id: 'tp6', type: 'ai', action: 'Lembrete de visita', description: 'IA envia lembrete 2h antes da visita', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Proposta', probability: 75, touchpoints: [
+        { id: 'tp7', type: 'agent', action: 'Enviar proposta formal', description: 'Corretor envia contrato com valores e condições', delayHours: 0, channel: 'email' },
+        { id: 'tp8', type: 'ai', action: 'Follow-up proposta', description: 'IA pergunta se houve dúvidas após 48h', delayHours: 48, channel: 'whatsapp' },
+      ]},
+      { name: 'Contrato Assinado', probability: 95, touchpoints: [
+        { id: 'tp9', type: 'agent', action: 'Colher assinaturas', description: 'Corretor agenda assinatura do contrato', delayHours: 0, channel: 'ligação' },
+      ]},
     ],
   },
   {
@@ -144,11 +158,22 @@ export const funnels: Funnel[] = [
     icon: 'Crown',
     color: '#F59E0B',
     stages: [
-      { name: 'Novo Lead', probability: 10 },
-      { name: 'Qualificação', probability: 25 },
-      { name: 'Visita', probability: 50 },
-      { name: 'Negociação', probability: 75 },
-      { name: 'Fechamento', probability: 90 },
+      { name: 'Novo Lead', probability: 10, touchpoints: [
+        { id: 'tp10', type: 'ai', action: 'Boas-vindas VIP', description: 'IA envia mensagem personalizada com portfólio', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Qualificação', probability: 25, touchpoints: [
+        { id: 'tp11', type: 'agent', action: 'Reunião de perfil', description: 'Corretor agenda call para entender necessidades', delayHours: 2, channel: 'ligação' },
+      ]},
+      { name: 'Visita', probability: 50, touchpoints: [
+        { id: 'tp12', type: 'agent', action: 'Visita exclusiva', description: 'Corretor acompanha visita presencial ao imóvel', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Negociação', probability: 75, touchpoints: [
+        { id: 'tp13', type: 'agent', action: 'Proposta personalizada', description: 'Corretor prepara proposta sob medida', delayHours: 0, channel: 'email' },
+        { id: 'tp14', type: 'ai', action: 'Análise de objeções', description: 'IA sugere argumentos para objeções comuns', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Fechamento', probability: 90, touchpoints: [
+        { id: 'tp15', type: 'agent', action: 'Contrato final', description: 'Corretor envia minuta e agenda assinatura', delayHours: 0, channel: 'email' },
+      ]},
     ],
   },
   {
@@ -158,10 +183,19 @@ export const funnels: Funnel[] = [
     icon: 'Key',
     color: '#8B5CF6',
     stages: [
-      { name: 'Novo Lead', probability: 10 },
-      { name: 'Visita', probability: 40 },
-      { name: 'Análise Documentos', probability: 70 },
-      { name: 'Contrato', probability: 90 },
+      { name: 'Novo Lead', probability: 10, touchpoints: [
+        { id: 'tp16', type: 'ai', action: 'Boas-vindas aluguel', description: 'IA envia opções de imóveis disponíveis', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Visita', probability: 40, touchpoints: [
+        { id: 'tp17', type: 'agent', action: 'Agendar visita', description: 'Corretor combina horário de visita', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Análise Documentos', probability: 70, touchpoints: [
+        { id: 'tp18', type: 'ai', action: 'Solicitar documentos', description: 'IA envia checklist de documentos necessários', delayHours: 0, channel: 'whatsapp' },
+        { id: 'tp19', type: 'agent', action: 'Análise cadastral', description: 'Corretor analisa ficha e documentos', delayHours: 24, channel: 'email' },
+      ]},
+      { name: 'Contrato', probability: 90, touchpoints: [
+        { id: 'tp20', type: 'agent', action: 'Assinatura do contrato', description: 'Corretor envia contrato para assinatura', delayHours: 0, channel: 'email' },
+      ]},
     ],
   },
   {
@@ -171,9 +205,16 @@ export const funnels: Funnel[] = [
     icon: 'Users',
     color: '#06B6D4',
     stages: [
-      { name: 'Ativo', probability: 100 },
-      { name: 'Renovação', probability: 80 },
-      { name: 'Rescisão', probability: 10 },
+      { name: 'Ativo', probability: 100, touchpoints: [
+        { id: 'tp21', type: 'ai', action: 'Pesquisa de satisfação', description: 'IA envia pesquisa mensal de satisfação', delayHours: 720, channel: 'whatsapp' },
+      ]},
+      { name: 'Renovação', probability: 80, touchpoints: [
+        { id: 'tp22', type: 'agent', action: 'Proposta de renovação', description: 'Corretor envia proposta com novo valor', delayHours: 0, channel: 'email' },
+        { id: 'tp23', type: 'ai', action: 'Lembrete de renovação', description: 'IA avisa sobre prazo de renovação', delayHours: 0, channel: 'whatsapp' },
+      ]},
+      { name: 'Rescisão', probability: 10, touchpoints: [
+        { id: 'tp24', type: 'agent', action: 'Vistoria de saída', description: 'Corretor agenda vistoria do imóvel', delayHours: 0, channel: 'ligação' },
+      ]},
     ],
   },
 ];
