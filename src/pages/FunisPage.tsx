@@ -856,7 +856,7 @@ const FunisPage = () => {
           {/* Middle area: funnel squares OR inline filter/AI */}
           <div className="flex-1 flex items-center gap-1.5 min-w-0">
             {!filtersOpen && !aiOpen && viewMode === 'funnel' && (
-              funnels.map((funnel, idx) => {
+              funnels.map((funnel) => {
                 const count = dealsList.filter(d => d.funnelId === funnel.id).length;
                 const isActive = funnel.id === activeFunnelId;
                 return (
