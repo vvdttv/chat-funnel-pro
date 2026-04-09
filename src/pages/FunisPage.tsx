@@ -253,34 +253,30 @@ const FunisPage = () => {
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-bold text-foreground">Funis</h1>
-          <button
-            onClick={() => setGroupByLead(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs font-medium active:scale-95 transition-transform"
-          >
-            {groupByLead ? <ToggleRight size={16} className="text-primary" /> : <ToggleLeft size={16} />}
-            Por Lead
-          </button>
-        </div>
-
-        {/* Funnel Selector */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-3 -mx-4 px-4">
-          {funnels.map(funnel => {
-            const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-            const isActive = activeFunnelId === funnel.id;
-            return (
-              <button
-                key={funnel.id}
-                onClick={() => handleFunnelChange(funnel.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors active:scale-95 transition-transform border ${
-                  isActive
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'bg-secondary text-muted-foreground border-transparent'
-                }`}
-              >
-                {funnel.name} <span className="ml-1 opacity-60">{count}</span>
-              </button>
-            );
-          })}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setGroupByLead(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs font-medium active:scale-95 transition-transform"
+            >
+              {groupByLead ? <ToggleRight size={16} className="text-primary" /> : <ToggleLeft size={16} />}
+              Por Lead
+            </button>
+            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+              <SelectTrigger className="w-auto gap-1.5 h-8 px-3 rounded-lg bg-primary/15 border-primary/30 text-primary text-xs font-semibold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {funnels.map(funnel => {
+                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                  return (
+                    <SelectItem key={funnel.id} value={funnel.id}>
+                      {funnel.name} ({count})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Stage Tabs */}
