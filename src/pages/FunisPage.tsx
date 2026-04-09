@@ -377,16 +377,15 @@ const CardNavigator = ({
   );
 };
 
-// ========== AI ANALYSIS PANEL ==========
+// ========== AI ANALYSIS PANEL (inline expandable) ==========
 
-const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
+const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolean; onClose: () => void }) => {
   const [period, setPeriod] = useState('7');
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = () => {
     setLoading(true);
-    // Mock AI analysis based on deals in this stage
     setTimeout(() => {
       const leadNames = deals.map(d => d.leadName).join(', ');
       setAnalysis(
@@ -402,44 +401,42 @@ const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
     }, 1200);
   };
 
+  if (!open) return null;
+
   return (
-    <div className="px-4 pb-3">
-      <div className="bg-card rounded-2xl p-4 border border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="text-primary" />
-          <span className="text-xs font-semibold text-foreground">Análise IA</span>
-        </div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center gap-1.5 bg-secondary rounded-lg px-3 py-1.5 flex-1">
-            <Calendar size={14} className="text-muted-foreground" />
-            <select
-              value={period}
-              onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
-              className="bg-transparent text-xs text-foreground outline-none flex-1"
-            >
-              <option value="1">Último dia</option>
-              <option value="3">Últimos 3 dias</option>
-              <option value="7">Últimos 7 dias</option>
-              <option value="15">Últimos 15 dias</option>
-              <option value="30">Últimos 30 dias</option>
-            </select>
+    <div className="px-4 pb-2">
+      <div className="bg-card rounded-xl p-3 border border-border">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={14} className="text-primary" />
+            <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
           </div>
+          <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={period}
+            onChange={e => { setPeriod(e.target.value); setAnalysis(null); }}
+            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1"
+          >
+            <option value="1">1 dia</option>
+            <option value="3">3 dias</option>
+            <option value="7">7 dias</option>
+            <option value="15">15 dias</option>
+            <option value="30">30 dias</option>
+          </select>
           <button
             onClick={handleAnalyze}
             disabled={loading || deals.length === 0}
-            className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 transition-transform disabled:opacity-40 flex items-center gap-1.5"
+            className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
           >
-            <Sparkles size={12} />
-            {loading ? 'Analisando...' : 'Analisar'}
+            <Play size={16} />
           </button>
         </div>
         {analysis && (
           <div className="bg-secondary rounded-xl p-3 mt-2">
             <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
           </div>
-        )}
-        {!analysis && deals.length === 0 && (
-          <p className="text-[10px] text-muted-foreground text-center">Nenhum lead nesta etapa para analisar</p>
         )}
       </div>
     </div>
