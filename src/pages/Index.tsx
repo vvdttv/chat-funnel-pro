@@ -1,16 +1,33 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import BottomNav from '@/components/BottomNav';
+import InboxPage from '@/pages/InboxPage';
+import FunisPage from '@/pages/FunisPage';
+import AtividadesPage from '@/pages/AtividadesPage';
+import IndicadoresPage from '@/pages/IndicadoresPage';
+import ConfigPage from '@/pages/ConfigPage';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [activeTab, setActiveTab] = useState('funnels');
+
+  const renderPage = () => {
+    switch (activeTab) {
+      case 'inbox': return <InboxPage />;
+      case 'funnels': return <FunisPage />;
+      case 'activities': return <AtividadesPage />;
+      case 'indicators': return <IndicadoresPage />;
+      case 'settings': return <ConfigPage />;
+      default: return <FunisPage />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+      <div className="flex-1 overflow-hidden">
+        {renderPage()}
+      </div>
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
