@@ -1,60 +1,24 @@
 
 
-# Merge Inbox + Funnels into Multi-Funnel System
+## Problem
 
-## What Changes
+The backdrop approach (fixed inset-0 at z-10) is not reliably closing the filter/AI panels when clicking empty areas. The toolbar sits at z-20 above the backdrop, so clicks within the toolbar area (including the empty spacer) bypass the backdrop entirely. The `onMouseDown` on the spacer div may also not fire reliably due to event propagation or the div having no visible content.
 
-The "Caixa de Entrada" and "Funis" tabs merge into a single **"Funis"** tab. The bottom nav goes from 5 to 4 tabs. Each funnel is a separate pipeline with its own stages and deals — not a single pipeline with shared stages.
+## Solution
 
-## New Data Model
+Replace the backdrop + spacer approach with a single global `mousedown` listener using `useEffect` + `useRef`. The ref wraps **only** the interactive toolbar buttons and the open panels. Any click outside that ref closes both panels.
 
-```text
-Funnel (e.g. "MCMV", "Alto Padrão", "Aluguel", "Inquilinos")
-  ├── name, description, color/icon
-  ├── stages[] (each funnel has its OWN stages)
-  │     └── e.g. MCMV: Novo Lead → Qualificação Crédito → Visita → Proposta → Contrato
-  │     └── e.g. Aluguel: Novo Lead → Visita → Análise Docs → Contrato
-  │     └── e.g. Inquilinos: Ativo → Renovação → Rescisão
-  └── deals[] (assigned to this funnel + one of its stages)
-```
+### Changes in `src/pages/FunisPage.tsx`
 
-**Mock funnels:**
-- **MCMV** — Leads from paid ads, Minha Casa Minha Vida program. Stages: Novo Lead → Simulação Crédito → Visita → Proposta → Contrato Assinado
-- **Alto Padrão** — High-end leads from social media/video. Stages: Novo Lead → Qualificação → Visita → Negociação → Fechamento
-- **Aluguel** — Rental leads. Stages: Novo Lead → Visita → Análise Documentos → Contrato
-- **Inquilinos** — Post-contract tenants (from Aluguel). Stages: Ativo → Renovação → Rescisão
+1. **Add a `useRef`** on a wrapper `div` that contains only the filter button, AI button, and their respective panels (NOT the toggle or funnel selector — those are unrelated).
 
-## UI Changes
+2. **Add a `useEffect`** that listens for `mousedown` on `document`. If the click target is outside the ref, call `closePanels()`. Only active when `filtersOpen || aiOpen`.
 
-### Bottom Nav (4 tabs)
-1. **Funis** (ClipboardList) — merged module
-2. **Atividades** (Clock)
-3. **Indicadores** (BarChart3)
-4. **Config** (Settings)
+3. **Remove** the fixed backdrop div (`<div className="fixed inset-0 z-10" ...>`).
 
-### Funis Page — New Layout
-1. **Funnel selector** at top — horizontal pill tabs to switch between funnels (MCMV, Alto Padrão, Aluguel, Inquilinos)
-2. Below that, **stage tabs** for the selected funnel (each funnel shows its own stages)
-3. Below that, the existing deal cards, summary bar, group-by-lead toggle, loss bottom sheet — all scoped to the selected funnel
-4. Chat threads from InboxPage get integrated: tapping a deal card opens the deal detail sheet which now includes a "Conversa" (chat) section with the WhatsApp thread and AI coach notes
+4. **Remove** the `onMouseDown={closePanels}` from the `flex-1` spacer div and the `z-10`/`z-20` classes since they're no longer needed.
 
-### Deal Detail Sheet — Enhanced
-- Existing info (value, probability, stage, contacts)
-- New "Conversa" tab: shows the WhatsApp chat thread for that lead with AI coach notes inline
-- Smart header (lead name, deal value, current stage) stays at top
+5. **Add `useRef` import** if not already present.
 
-## Files to Change
-
-1. **`src/data/mockData.ts`** — Add `Funnel` interface with `stages[]`, create 4 mock funnels, assign each deal to a funnel, remove standalone `STAGES` constant
-2. **`src/components/BottomNav.tsx`** — Remove inbox tab, rename to 4-tab nav
-3. **`src/pages/FunisPage.tsx`** — Add funnel selector at top, dynamic stage tabs per funnel, integrate chat view into deal detail sheet
-4. **`src/pages/Index.tsx`** — Remove inbox case, remove InboxPage import, default to 'funnels'
-5. **`src/pages/InboxPage.tsx`** — Delete (merged into Funis)
-6. **`mem://index.md`** — Update nav structure to 4 tabs
-
-## Technical Notes
-- Each `Deal` gets a new `funnelId` field
-- Each `Funnel` has `id`, `name`, `icon`, `color`, `stages: { name: string, probability: number }[]`
-- Chat functionality moves into the deal detail bottom sheet as a sub-view
-- The funnel selector uses the same pill-tab pattern as the current stage tabs
+This is a standard "click outside to close" pattern that works reliably regardless of layout or z-index.
 
