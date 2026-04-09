@@ -446,6 +446,189 @@ const AIAnalysisPanel = ({ deals }: { deals: Deal[] }) => {
   );
 };
 
+// ========== FILTERS ==========
+
+interface DateRange {
+  from: string;
+  to: string;
+}
+
+interface StageFilterState {
+  responsavel: string;
+  origem: string;
+  atividadesAtrasadas: boolean;
+  atividadesHoje: boolean;
+  atividadesAmanha: boolean;
+  periodoCriacao: DateRange;
+  periodoAtualizacaoCorretor: DateRange;
+  periodoMsgLidaCliente: DateRange;
+  periodoMsgLidaCorretor: DateRange;
+  periodoMsgEnviadaCliente: DateRange;
+  periodoMsgEnviadaCorretor: DateRange;
+  periodoPrimeiraMsgCliente: DateRange;
+  periodoPrimeiraMsgCorretor: DateRange;
+  periodoProximaAtividade: DateRange;
+  periodoUltimaAtividade: DateRange;
+}
+
+const emptyDateRange: DateRange = { from: '', to: '' };
+
+const defaultFilters: StageFilterState = {
+  responsavel: '',
+  origem: '',
+  atividadesAtrasadas: false,
+  atividadesHoje: false,
+  atividadesAmanha: false,
+  periodoCriacao: emptyDateRange,
+  periodoAtualizacaoCorretor: emptyDateRange,
+  periodoMsgLidaCliente: emptyDateRange,
+  periodoMsgLidaCorretor: emptyDateRange,
+  periodoMsgEnviadaCliente: emptyDateRange,
+  periodoMsgEnviadaCorretor: emptyDateRange,
+  periodoPrimeiraMsgCliente: emptyDateRange,
+  periodoPrimeiraMsgCorretor: emptyDateRange,
+  periodoProximaAtividade: emptyDateRange,
+  periodoUltimaAtividade: emptyDateRange,
+};
+
+const ORIGENS = [...new Set(leads.map(l => l.origin))];
+
+const DateRangeInput = ({ label, value, onChange }: { label: string; value: DateRange; onChange: (v: DateRange) => void }) => (
+  <div>
+    <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">{label}</p>
+    <div className="flex gap-2">
+      <input
+        type="date"
+        value={value.from}
+        onChange={e => onChange({ ...value, from: e.target.value })}
+        className="flex-1 bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+      />
+      <input
+        type="date"
+        value={value.to}
+        onChange={e => onChange({ ...value, to: e.target.value })}
+        className="flex-1 bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+      />
+    </div>
+  </div>
+);
+
+const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+  const [open, setOpen] = useState(false);
+
+  const activeCount = [
+    filters.responsavel,
+    filters.origem,
+    filters.atividadesAtrasadas,
+    filters.atividadesHoje,
+    filters.atividadesAmanha,
+    filters.periodoCriacao.from || filters.periodoCriacao.to,
+    filters.periodoAtualizacaoCorretor.from || filters.periodoAtualizacaoCorretor.to,
+    filters.periodoMsgLidaCliente.from || filters.periodoMsgLidaCliente.to,
+    filters.periodoMsgLidaCorretor.from || filters.periodoMsgLidaCorretor.to,
+    filters.periodoMsgEnviadaCliente.from || filters.periodoMsgEnviadaCliente.to,
+    filters.periodoMsgEnviadaCorretor.from || filters.periodoMsgEnviadaCorretor.to,
+    filters.periodoPrimeiraMsgCliente.from || filters.periodoPrimeiraMsgCliente.to,
+    filters.periodoPrimeiraMsgCorretor.from || filters.periodoPrimeiraMsgCorretor.to,
+    filters.periodoProximaAtividade.from || filters.periodoProximaAtividade.to,
+    filters.periodoUltimaAtividade.from || filters.periodoUltimaAtividade.to,
+  ].filter(Boolean).length;
+
+  return (
+    <div className="px-4 pb-2">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 w-full bg-card rounded-xl px-4 py-2.5 active:scale-[0.98] transition-transform border border-border"
+      >
+        <Filter size={14} className="text-muted-foreground" />
+        <span className="text-xs font-semibold text-foreground flex-1 text-left">Filtros</span>
+        {activeCount > 0 && (
+          <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">
+            {activeCount}
+          </span>
+        )}
+        {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="bg-card rounded-xl mt-2 p-4 border border-border space-y-4 max-h-[50vh] overflow-y-auto scrollbar-hide">
+          {/* Reset */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => onChange(defaultFilters)}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+            >
+              <RotateCcw size={10} /> Limpar filtros
+            </button>
+          </div>
+
+          {/* Responsável */}
+          <div>
+            <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Responsável</p>
+            <select
+              value={filters.responsavel}
+              onChange={e => onChange({ ...filters, responsavel: e.target.value })}
+              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
+            >
+              <option value="">Todos</option>
+              <option value="João Silva">João Silva</option>
+              <option value="Maria Oliveira">Maria Oliveira</option>
+              <option value="Pedro Santos">Pedro Santos</option>
+            </select>
+          </div>
+
+          {/* Origem */}
+          <div>
+            <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Origem</p>
+            <select
+              value={filters.origem}
+              onChange={e => onChange({ ...filters, origem: e.target.value })}
+              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
+            >
+              <option value="">Todas</option>
+              {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+
+          {/* Atividades checkboxes */}
+          <div className="space-y-2">
+            <p className="text-[10px] text-muted-foreground font-medium">Atividades</p>
+            {[
+              { key: 'atividadesAtrasadas' as const, label: 'Com atividades atrasadas/vencidas' },
+              { key: 'atividadesHoje' as const, label: 'Com atividades vencendo hoje' },
+              { key: 'atividadesAmanha' as const, label: 'Com atividades a partir de amanhã' },
+            ].map(item => (
+              <label key={item.key} className="flex items-center gap-2 active:scale-[0.98]">
+                <div
+                  onClick={() => onChange({ ...filters, [item.key]: !filters[item.key] })}
+                  className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                    filters[item.key] ? 'bg-primary border-primary' : 'border-border bg-secondary'
+                  }`}
+                >
+                  {filters[item.key] && <span className="text-primary-foreground text-[10px]">✓</span>}
+                </div>
+                <span className="text-xs text-foreground">{item.label}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Date range filters */}
+          <DateRangeInput label="Período da criação do cadastro" value={filters.periodoCriacao} onChange={v => onChange({ ...filters, periodoCriacao: v })} />
+          <DateRangeInput label="Última atualização pelo corretor" value={filters.periodoAtualizacaoCorretor} onChange={v => onChange({ ...filters, periodoAtualizacaoCorretor: v })} />
+          <DateRangeInput label="Última msg lida pelo cliente" value={filters.periodoMsgLidaCliente} onChange={v => onChange({ ...filters, periodoMsgLidaCliente: v })} />
+          <DateRangeInput label="Última msg lida pelo corretor" value={filters.periodoMsgLidaCorretor} onChange={v => onChange({ ...filters, periodoMsgLidaCorretor: v })} />
+          <DateRangeInput label="Última msg enviada pelo cliente" value={filters.periodoMsgEnviadaCliente} onChange={v => onChange({ ...filters, periodoMsgEnviadaCliente: v })} />
+          <DateRangeInput label="Última msg enviada pelo corretor" value={filters.periodoMsgEnviadaCorretor} onChange={v => onChange({ ...filters, periodoMsgEnviadaCorretor: v })} />
+          <DateRangeInput label="Primeira msg enviada pelo cliente" value={filters.periodoPrimeiraMsgCliente} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCliente: v })} />
+          <DateRangeInput label="Primeira msg enviada pelo corretor" value={filters.periodoPrimeiraMsgCorretor} onChange={v => onChange({ ...filters, periodoPrimeiraMsgCorretor: v })} />
+          <DateRangeInput label="Próxima atividade agendada" value={filters.periodoProximaAtividade} onChange={v => onChange({ ...filters, periodoProximaAtividade: v })} />
+          <DateRangeInput label="Última atividade realizada" value={filters.periodoUltimaAtividade} onChange={v => onChange({ ...filters, periodoUltimaAtividade: v })} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
