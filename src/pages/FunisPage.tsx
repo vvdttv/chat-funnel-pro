@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -703,6 +703,64 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
   );
 };
 
+// ========== INLINE FILTER SELECTOR (single row) ==========
+
+const InlineFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+  const activeCount = FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).length;
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <select
+        onChange={e => {
+          const key = e.target.value as FilterKey;
+          if (!key) return;
+          const opt = FILTER_OPTIONS.find(o => o.key === key)!;
+          if (opt.type === 'toggle') {
+            onChange({ ...filters, [key]: !(filters[key as keyof StageFilterState]) });
+            e.target.value = '';
+          }
+        }}
+        defaultValue=""
+        className="bg-card text-[11px] text-foreground rounded-lg px-2 py-2 outline-none border border-border flex-1 min-w-0 truncate"
+      >
+        <option value="">Filtro...</option>
+        {FILTER_OPTIONS.map(o => (
+          <option key={o.key} value={o.key}>
+            {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label.split(' ').slice(0, 5).join(' ')}
+          </option>
+        ))}
+      </select>
+      {activeCount > 0 && (
+        <button onClick={() => onChange(defaultFilters)} className="shrink-0 active:scale-95">
+          <RotateCcw size={14} className="text-muted-foreground" />
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ========== INLINE AI (single row) ==========
+
+const InlineAI = ({ deals }: { deals: Deal[] }) => {
+  const [question, setQuestion] = useState('');
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <input
+        type="text"
+        value={question}
+        onChange={e => setQuestion(e.target.value)}
+        placeholder="O que analisar?"
+        className="bg-card text-[11px] text-foreground rounded-lg px-2 py-2 outline-none border border-border flex-1 min-w-0 placeholder:text-muted-foreground"
+      />
+      <button
+        disabled={deals.length === 0}
+        className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+      >
+        <Play size={14} />
+      </button>
+    </div>
+  );
+};
+
 // ========== MAIN PAGE ==========
 
 const FunisPage = () => {
@@ -795,26 +853,41 @@ const FunisPage = () => {
             {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
           </button>
 
-          {/* Funnel selector (only in funnel mode) */}
-          {viewMode === 'funnel' && (
-            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-              <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {funnels.map(funnel => {
-                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                  return (
-                    <SelectItem key={funnel.id} value={funnel.id}>
-                      {funnel.name} ({count})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Middle area: funnel squares OR inline filter/AI */}
+          <div className="flex-1 flex items-center gap-1.5 min-w-0">
+            {!filtersOpen && !aiOpen && viewMode === 'funnel' && (
+              funnels.map((funnel) => {
+                const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                const isActive = funnel.id === activeFunnelId;
+                return (
+                  <button
+                    key={funnel.id}
+                    onClick={() => handleFunnelChange(funnel.id)}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all shrink-0 text-xs font-bold ${
+                      isActive
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-card border-border text-muted-foreground'
+                    }`}
+                    title={funnel.name}
+                  >
+                    {count}
+                  </button>
+                );
+              })
+            )}
 
-          {viewMode === 'lead' && <div className="flex-1" />}
+            {!filtersOpen && !aiOpen && viewMode === 'lead' && <div className="flex-1" />}
+
+            {/* Inline Filters */}
+            {filtersOpen && (
+              <InlineFilters filters={stageFilters} onChange={setStageFilters} />
+            )}
+
+            {/* Inline AI */}
+            {aiOpen && (
+              <InlineAI deals={currentDeals} />
+            )}
+          </div>
 
           {/* Filter toggle */}
           <button
@@ -838,10 +911,10 @@ const FunisPage = () => {
         </div>
       </div>
 
-      {/* Expandable Filters */}
+      {/* Expanded filter details (below toolbar when filter selected needs more space) */}
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
 
-      {/* Expandable AI */}
+      {/* Expanded AI results */}
       <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
