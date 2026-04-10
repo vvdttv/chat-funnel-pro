@@ -927,7 +927,7 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center pb-16">
       <div className="absolute inset-0 bg-background/80" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-card rounded-2xl p-4 mx-4 max-h-[calc(100vh-5rem)] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-card rounded-2xl p-4 mx-4 max-h-[calc(100vh-5rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -1098,7 +1098,7 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center pb-16">
       <div className="absolute inset-0 bg-background/80" onClick={() => onChange(filters)} />
-      <div className="relative w-full max-w-md bg-card rounded-2xl p-4 mx-4 max-h-[calc(100vh-5rem)] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-card rounded-2xl p-4 mx-4 max-h-[calc(100vh-5rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
         <div className="space-y-3">
           {/* Header */}
