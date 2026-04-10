@@ -1247,16 +1247,6 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!filtersOpen && !aiOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        closePanels();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [filtersOpen, aiOpen]);
 
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
