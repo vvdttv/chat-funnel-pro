@@ -122,8 +122,16 @@ const LossBottomSheet = ({ open, onClose, onConfirm }: { open: boolean; onClose:
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
   const [message, setMessage] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
   const thread = chatThreads.find(t => t.dealId === deal.id);
   const messages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
+
+  // Auto-scroll to bottom on mount and when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
 
   if (!thread) {
     return (
@@ -137,14 +145,13 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
 
   const handleSend = () => {
     if (!message.trim()) return;
-    // In a real app, send the message to the backend
     setMessage('');
     onMessageSent?.();
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide space-y-3 py-2">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.sender === 'lead' ? 'justify-start' : msg.sender === 'ai' ? 'justify-center' : 'justify-end'}`}>
             {msg.sender === 'ai' ? (
@@ -166,7 +173,7 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
           </div>
         ))}
       </div>
-      <div className="pt-2">
+      <div className="pt-2 pb-1">
         <div className="flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
           <input
             type="text"
@@ -403,41 +410,34 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={handleClose}>
-        <div className="absolute inset-0 bg-background/80" />
-        <div className="relative w-full max-w-md bg-card rounded-t-2xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-          <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4" />
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-foreground">{deal.leadName}</h3>
-              <p className="text-sm text-muted-foreground truncate">{deal.property}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-sm font-bold text-primary">{formatCurrency(deal.value)}</span>
-                {funnel && (
-                  <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-                    {funnel.name} · {deal.stage}
-                  </span>
-                )}
-              </div>
-            </div>
+      <div className="fixed inset-0 bottom-16 z-40 flex flex-col" onClick={handleClose}>
+        <div className="absolute inset-0 bg-background" />
+        <div className="relative w-full max-w-md mx-auto flex-1 bg-card flex flex-col" onClick={e => e.stopPropagation()}>
+          {/* Compact header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             <button onClick={handleClose} className="p-1 text-muted-foreground active:scale-95 transition-transform"><X size={20} /></button>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground truncate">{deal.leadName}</h3>
+              <p className="text-[11px] text-muted-foreground truncate">{deal.property}</p>
+            </div>
+            <div className="flex gap-1">
+              {(['conversa', 'info'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab === 'info' ? 'info' : 'conversa')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] ${
+                    activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                  }`}
+                >
+                  {tab === 'info' ? 'Detalhes' : 'Conversa'}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1 mb-4">
-            {(['info', 'conversa'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98] ${
-                  activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-                }`}
-              >
-                {tab === 'info' ? 'Detalhes' : 'Conversa'}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide px-4">
             {activeTab === 'info' ? (
-              <>
+              <div className="py-4">
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
@@ -468,7 +468,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
                     ))}
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               <DealChatView deal={deal} onMessageSent={handleMessageSent} />
             )}
