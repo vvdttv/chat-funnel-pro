@@ -1066,7 +1066,7 @@ const isFilterActive = (filters: StageFilterState, key: FilterKey): boolean => {
   return (val as DateRange).from !== '' || (val as DateRange).to !== '';
 };
 
-const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterState; onChange: (f: StageFilterState) => void; onClose: () => void }) => {
   const [selectedFilter, setSelectedFilter] = useState<FilterKey | ''>('');
   const [draftDateRange, setDraftDateRange] = useState<DateRange>(emptyDateRange);
 
@@ -1097,7 +1097,7 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center pb-16">
-      <div className="absolute inset-0 bg-background/80" onClick={() => onChange(filters)} />
+      <div className="absolute inset-0 bg-background/80" onClick={onClose} />
       <div className="relative w-full max-w-md bg-card rounded-2xl p-4 mx-4 max-h-[calc(100vh-5rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
         <div className="space-y-3">
@@ -1247,16 +1247,6 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!filtersOpen && !aiOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        closePanels();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [filtersOpen, aiOpen]);
 
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
@@ -1378,7 +1368,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
         </div>
       </div>
 
-      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} onClose={() => setFiltersOpen(false)} />}
       <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
