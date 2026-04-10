@@ -8,6 +8,7 @@ type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
+  { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
