@@ -881,7 +881,7 @@ const CardNavigator = ({
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
-        <div className="flex items-center justify-center gap-1.5 mt-3">
+        <div className="flex items-center justify-center gap-1.5 mt-1.5">
           {deals.map((_, i) => (
             <div
               key={i}
