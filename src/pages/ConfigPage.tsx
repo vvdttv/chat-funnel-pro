@@ -653,6 +653,7 @@ const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
   const [funnelsList, setFunnelsList] = useState<Funnel[]>(initialFunnels);
   const [selectedFunnelId, setSelectedFunnelId] = useState(funnelsList[0].id);
+  const [cardWidgets, setCardWidgets] = useState<CardWidget[]>(getDefaultWidgets());
 
   const selectedFunnel = funnelsList.find(f => f.id === selectedFunnelId);
 
