@@ -766,6 +766,10 @@ const ConfigPage = () => {
 
         {activeTab === 'campos' && <FieldsManager />}
 
+        {activeTab === 'card_layout' && (
+          <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
+        )}
+
         {activeTab === 'fluxos' && (
           <>
             <div className="flex items-center justify-between mb-3">
