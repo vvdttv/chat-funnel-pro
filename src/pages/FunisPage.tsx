@@ -122,8 +122,16 @@ const LossBottomSheet = ({ open, onClose, onConfirm }: { open: boolean; onClose:
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
   const [message, setMessage] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
   const thread = chatThreads.find(t => t.dealId === deal.id);
   const messages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
+
+  // Auto-scroll to bottom on mount and when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
 
   if (!thread) {
     return (
@@ -137,14 +145,13 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
 
   const handleSend = () => {
     if (!message.trim()) return;
-    // In a real app, send the message to the backend
     setMessage('');
     onMessageSent?.();
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide space-y-3 py-2">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.sender === 'lead' ? 'justify-start' : msg.sender === 'ai' ? 'justify-center' : 'justify-end'}`}>
             {msg.sender === 'ai' ? (
@@ -166,7 +173,7 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
           </div>
         ))}
       </div>
-      <div className="pt-2">
+      <div className="pt-2 pb-1">
         <div className="flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
           <input
             type="text"
