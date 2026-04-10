@@ -351,6 +351,300 @@ const FlowCard = ({ flow }: { flow: AIFlow }) => (
   </div>
 );
 
+// ========== FIELD TYPE ICON ==========
+
+const FIELD_TYPE_ICONS: Record<FieldType, string> = {
+  text: 'Aa', textarea: '¶', number: '#', monetary: 'R$', phone: '📱', email: '@',
+  date: '📅', datetime: '🕐', dropdown: '▾', multiselect: '☰', checkbox: '☑',
+  radio: '◉', url: '🔗', file: '📎', signature: '✍', toggle: '⊘',
+};
+
+// ========== FIELD CARD ==========
+
+const FieldCard = ({ field, onEdit, onDelete }: { field: CustomField; onEdit: () => void; onDelete: () => void }) => (
+  <div className="flex items-center gap-3 bg-card rounded-xl p-3 mb-2">
+    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold text-foreground shrink-0">
+      {FIELD_TYPE_ICONS[field.type]}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs font-semibold text-foreground truncate">{field.name}</p>
+        {field.system && <Lock size={10} className="text-muted-foreground shrink-0" />}
+        {field.required && <span className="text-[9px] text-destructive font-bold">*</span>}
+      </div>
+      <p className="text-[10px] text-muted-foreground">{FIELD_TYPE_LABELS[field.type]}{field.key ? ` · ${field.key}` : ''}</p>
+    </div>
+    {!field.system && (
+      <div className="flex items-center gap-1">
+        <button onClick={onEdit} className="p-2 text-muted-foreground active:scale-95"><Pencil size={14} /></button>
+        <button onClick={onDelete} className="p-2 text-destructive active:scale-95"><Trash2 size={14} /></button>
+      </div>
+    )}
+  </div>
+);
+
+// ========== FIELD FORM (create/edit) ==========
+
+const FieldForm = ({ field, onSave, onCancel }: { field?: CustomField; onSave: (f: CustomField) => void; onCancel: () => void }) => {
+  const [name, setName] = useState(field?.name || '');
+  const [key, setKey] = useState(field?.key || '');
+  const [type, setType] = useState<FieldType>(field?.type || 'text');
+  const [object, setObject] = useState<FieldObject>(field?.object || 'lead');
+  const [required, setRequired] = useState(field?.required || false);
+  const [options, setOptions] = useState(field?.options?.join('\n') || '');
+  const [placeholder, setPlaceholder] = useState(field?.placeholder || '');
+  const [description, setDescription] = useState(field?.description || '');
+
+  const needsOptions = ['dropdown', 'multiselect', 'radio'].includes(type);
+
+  const autoKey = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    onSave({
+      id: field?.id || `cf-${Date.now()}`,
+      name: name.trim(),
+      key: key.trim() || autoKey(name),
+      type,
+      object,
+      required,
+      system: false,
+      ...(needsOptions ? { options: options.split('\n').map(o => o.trim()).filter(Boolean) } : {}),
+      ...(placeholder ? { placeholder } : {}),
+      ...(description ? { description } : {}),
+    });
+  };
+
+  return (
+    <div className="bg-card rounded-xl p-4 mb-4 border border-border">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-semibold text-foreground">{field ? 'Editar Campo' : 'Novo Campo'}</span>
+        <button onClick={onCancel} className="p-1 text-muted-foreground active:scale-95"><X size={16} /></button>
+      </div>
+      <div className="space-y-3">
+        {/* Object */}
+        <div>
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Objeto</label>
+          <div className="flex gap-1.5">
+            {(['lead', 'deal', 'property'] as FieldObject[]).map(obj => (
+              <button
+                key={obj}
+                onClick={() => setObject(obj)}
+                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] ${
+                  object === obj ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground'
+                }`}
+              >
+                {FIELD_OBJECT_LABELS[obj]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Name + Key */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Nome</label>
+            <input
+              value={name}
+              onChange={e => { setName(e.target.value); if (!field) setKey(autoKey(e.target.value)); }}
+              placeholder="Ex: Renda Familiar"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Chave</label>
+            <input
+              value={key}
+              onChange={e => setKey(e.target.value)}
+              placeholder="renda_familiar"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground font-mono text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Tipo do Campo</label>
+          <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
+            <SelectTrigger className="w-full h-9 text-xs bg-secondary border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map(t => (
+                <SelectItem key={t} value={t}>
+                  <span className="mr-2">{FIELD_TYPE_ICONS[t]}</span> {FIELD_TYPE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Options for dropdown/multiselect/radio */}
+        {needsOptions && (
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Opções (uma por linha)</label>
+            <textarea
+              value={options}
+              onChange={e => setOptions(e.target.value)}
+              rows={4}
+              placeholder={"Opção 1\nOpção 2\nOpção 3"}
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground resize-none"
+            />
+          </div>
+        )}
+
+        {/* Placeholder + Description */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Placeholder</label>
+            <input
+              value={placeholder}
+              onChange={e => setPlaceholder(e.target.value)}
+              placeholder="Texto de exemplo..."
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-xs text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Descrição</label>
+            <input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Ajuda para o usuário"
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-xs text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Required toggle */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-foreground">Campo obrigatório</span>
+          <button onClick={() => setRequired(v => !v)} className={`p-1 ${required ? 'text-primary' : 'text-muted-foreground'}`}>
+            {required ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+          </button>
+        </div>
+
+        {/* Save */}
+        <button
+          onClick={handleSave}
+          disabled={!name.trim()}
+          className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
+        >
+          {field ? 'Salvar Alterações' : 'Criar Campo'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ========== FIELDS MANAGER ==========
+
+const FieldsManager = () => {
+  const [fields, setFields] = useState<CustomField[]>(initialFields);
+  const [activeObject, setActiveObject] = useState<FieldObject>('lead');
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const filtered = fields.filter(f => f.object === activeObject);
+  const systemFields = filtered.filter(f => f.system);
+  const customFieldsList = filtered.filter(f => !f.system);
+
+  const handleSave = (field: CustomField) => {
+    setFields(prev => {
+      const exists = prev.find(f => f.id === field.id);
+      if (exists) return prev.map(f => f.id === field.id ? field : f);
+      return [...prev, field];
+    });
+    setCreating(false);
+    setEditingId(null);
+  };
+
+  const handleDelete = (id: string) => {
+    setFields(prev => prev.filter(f => f.id !== id));
+  };
+
+  return (
+    <div>
+      {/* Object tabs */}
+      <div className="flex gap-1.5 mb-4">
+        {(['lead', 'deal', 'property'] as FieldObject[]).map(obj => (
+          <button
+            key={obj}
+            onClick={() => { setActiveObject(obj); setCreating(false); setEditingId(null); }}
+            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] ${
+              activeObject === obj ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+            }`}
+          >
+            {FIELD_OBJECT_LABELS[obj]}
+          </button>
+        ))}
+      </div>
+
+      {/* Create form */}
+      {creating && (
+        <FieldForm
+          onSave={handleSave}
+          onCancel={() => setCreating(false)}
+        />
+      )}
+
+      {/* Edit form */}
+      {editingId && (
+        <FieldForm
+          field={fields.find(f => f.id === editingId)}
+          onSave={handleSave}
+          onCancel={() => setEditingId(null)}
+        />
+      )}
+
+      {/* Header + Add button */}
+      {!creating && !editingId && (
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm text-muted-foreground">{filtered.length} campos</span>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
+          >
+            <Plus size={14} /> Novo Campo
+          </button>
+        </div>
+      )}
+
+      {/* System fields */}
+      {systemFields.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Lock size={12} className="text-muted-foreground" />
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Campos do Sistema</span>
+          </div>
+          {systemFields.map(f => (
+            <FieldCard key={f.id} field={f} onEdit={() => {}} onDelete={() => {}} />
+          ))}
+        </div>
+      )}
+
+      {/* Custom fields */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <List size={12} className="text-primary" />
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Campos Personalizados</span>
+        </div>
+        {customFieldsList.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">Nenhum campo personalizado criado</p>
+        ) : (
+          customFieldsList.map(f => (
+            <FieldCard
+              key={f.id}
+              field={f}
+              onEdit={() => setEditingId(f.id)}
+              onDelete={() => handleDelete(f.id)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ========== MAIN PAGE ==========
 
 const ConfigPage = () => {
