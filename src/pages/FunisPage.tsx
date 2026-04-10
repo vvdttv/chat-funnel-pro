@@ -410,9 +410,9 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
 
   return (
     <>
-      <div className="fixed inset-0 bottom-16 z-40 flex flex-col" onClick={handleClose}>
+      <div className="fixed top-0 left-0 right-0 z-40 flex flex-col" style={{ bottom: '4rem' }} onClick={handleClose}>
         <div className="absolute inset-0 bg-background" />
-        <div className="relative w-full max-w-md mx-auto flex-1 bg-card flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="relative w-full max-w-md mx-auto h-full bg-card flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
           {/* Compact header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             <button onClick={handleClose} className="p-1 text-muted-foreground active:scale-95 transition-transform"><X size={20} /></button>
