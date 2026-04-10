@@ -1374,12 +1374,11 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
             >
               <Sparkles size={18} />
             </button>
-          </div>
         </div>
-
-        {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
-        <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>
+
+      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
       <StageNavigator
