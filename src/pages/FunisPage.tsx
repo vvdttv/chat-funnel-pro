@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2 } from 'lucide-react';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -118,21 +119,50 @@ const LossBottomSheet = ({ open, onClose, onConfirm }: { open: boolean; onClose:
   );
 };
 
+// ========== ATTACHMENT TYPE ==========
+type Attachment = {
+  type: 'image' | 'audio' | 'file';
+  name: string;
+  dataUrl?: string;
+  file?: File;
+};
+
+// ========== LOCAL MESSAGE TYPE ==========
+type LocalMessage = {
+  id: string;
+  sender: 'agent' | 'lead' | 'ai';
+  content: string;
+  timestamp: string;
+  attachments?: Attachment[];
+};
+
 // ========== CHAT VIEW ==========
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
   const [message, setMessage] = useState('');
   const [aiMode, setAiMode] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const thread = chatThreads.find(t => t.dealId === deal.id);
-  const messages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
+  const baseMessages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
 
-  // Auto-scroll to bottom on mount and when messages change
+  const allMessages = [
+    ...baseMessages.map(m => ({ ...m, attachments: undefined as Attachment[] | undefined })),
+    ...localMessages
+  ];
+
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages.length]);
+  }, [allMessages.length, aiLoading]);
 
   if (!thread) {
     return (
@@ -144,20 +174,121 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
     );
   }
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio' | 'file') => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachments(prev => [...prev, {
+          type,
+          name: file.name,
+          dataUrl: reader.result as string,
+          file,
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    setShowAttachMenu(false);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = async () => {
+    if (!message.trim() && attachments.length === 0) return;
+    const msgText = message.trim();
+    const currentAttachments = [...attachments];
     setMessage('');
-    if (!aiMode) {
+    setAttachments([]);
+    setShowAttachMenu(false);
+
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    if (aiMode) {
+      // Add user question as agent message with AI indicator
+      const userMsgId = `local-${Date.now()}`;
+      setLocalMessages(prev => [...prev, {
+        id: userMsgId,
+        sender: 'agent',
+        content: `🤖 ${msgText}`,
+        timestamp,
+        attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
+      }]);
+
+      setAiLoading(true);
+      try {
+        const funnel = funnels.find(f => f.id === deal.funnelId);
+        const { data, error } = await supabase.functions.invoke('ai-chat-analysis', {
+          body: {
+            messages: allMessages.map(m => ({
+              sender: m.sender,
+              content: m.content,
+              timestamp: m.timestamp,
+            })),
+            userQuestion: msgText,
+            dealContext: {
+              leadName: deal.leadName,
+              property: deal.property,
+              value: formatCurrency(deal.value),
+              stage: deal.stage,
+              funnel: funnel?.name || '',
+            },
+            attachments: currentAttachments.map(a => ({
+              type: a.type,
+              name: a.name,
+              dataUrl: a.type === 'image' ? a.dataUrl : undefined,
+              description: a.type === 'audio' ? 'Áudio enviado pelo corretor' :
+                           a.type === 'file' ? `Arquivo: ${a.name}` : undefined,
+            })),
+          },
+        });
+
+        if (error) throw error;
+
+        const aiMsgId = `ai-${Date.now()}`;
+        setLocalMessages(prev => [...prev, {
+          id: aiMsgId,
+          sender: 'ai',
+          content: data.response || data.error || 'Erro ao processar',
+          timestamp,
+        }]);
+      } catch (err) {
+        console.error('AI error:', err);
+        setLocalMessages(prev => [...prev, {
+          id: `ai-err-${Date.now()}`,
+          sender: 'ai',
+          content: '❌ Erro ao consultar a IA. Tente novamente.',
+          timestamp,
+        }]);
+      } finally {
+        setAiLoading(false);
+        setAiMode(false);
+      }
+    } else {
+      // Normal message
+      setLocalMessages(prev => [...prev, {
+        id: `local-${Date.now()}`,
+        sender: 'agent',
+        content: msgText,
+        timestamp,
+        attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
+      }]);
       onMessageSent?.();
     }
-    // If aiMode is on, the message goes to AI (mock for now)
-    setAiMode(false);
   };
 
   return (
     <div className="flex flex-col h-full">
+      {/* Hidden file inputs */}
+      <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileSelect(e, 'image')} multiple />
+      <input ref={audioInputRef} type="file" accept="audio/*" className="hidden" onChange={e => handleFileSelect(e, 'audio')} />
+      <input ref={fileInputRef} type="file" className="hidden" onChange={e => handleFileSelect(e, 'file')} multiple />
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide space-y-3 py-2">
-        {messages.map(msg => (
+        {allMessages.map(msg => (
           <div key={msg.id} className={`flex ${msg.sender === 'lead' ? 'justify-start' : msg.sender === 'ai' ? 'justify-center' : 'justify-end'}`}>
             {msg.sender === 'ai' ? (
               <div className="max-w-[90%] rounded-xl p-3 border-2 border-dashed bg-[hsl(270,30%,15%)] border-[hsl(270,40%,35%)]">
@@ -165,60 +296,127 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
                   <Lock size={10} className="text-muted-foreground" />
                   <span className="text-[10px] text-muted-foreground">🔒 Apenas você vê isso</span>
                 </div>
-                <p className="text-xs text-foreground leading-relaxed">{msg.content}</p>
+                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             ) : (
               <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${
                 msg.sender === 'agent' ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground border border-border'
               }`}>
+                {/* Attachments preview */}
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <div className="mb-1.5 space-y-1">
+                    {msg.attachments.map((att, i) => (
+                      <div key={i}>
+                        {att.type === 'image' && att.dataUrl && (
+                          <img src={att.dataUrl} alt={att.name} className="rounded-lg max-w-full max-h-40 object-cover" />
+                        )}
+                        {att.type === 'audio' && (
+                          <div className="flex items-center gap-1.5 text-xs opacity-80">
+                            <Mic size={12} /> {att.name}
+                          </div>
+                        )}
+                        {att.type === 'file' && (
+                          <div className="flex items-center gap-1.5 text-xs opacity-80">
+                            <Paperclip size={12} /> {att.name}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="text-sm">{msg.content}</p>
                 <p className={`text-[10px] mt-1 text-right ${msg.sender === 'agent' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{msg.timestamp}</p>
               </div>
             )}
           </div>
         ))}
+        {aiLoading && (
+          <div className="flex justify-center">
+            <div className="rounded-xl p-3 border-2 border-dashed bg-[hsl(270,30%,15%)] border-[hsl(270,40%,35%)] flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin text-[hsl(270,60%,65%)]" />
+              <span className="text-xs text-[hsl(270,60%,65%)]">Analisando...</span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Attachments bar */}
+      {attachments.length > 0 && (
+        <div className="flex gap-2 px-1 pt-2 overflow-x-auto scrollbar-hide">
+          {attachments.map((att, i) => (
+            <div key={i} className="flex items-center gap-1 bg-secondary rounded-lg px-2 py-1 text-[10px] text-foreground shrink-0">
+              {att.type === 'image' ? <ImageIcon size={10} /> : att.type === 'audio' ? <Mic size={10} /> : <Paperclip size={10} />}
+              <span className="max-w-[80px] truncate">{att.name}</span>
+              <button onClick={() => removeAttachment(i)} className="ml-0.5 text-muted-foreground"><X size={10} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Attachment menu */}
+      {showAttachMenu && (
+        <div className="flex gap-3 px-2 pt-2 pb-1">
+          <button onClick={() => imageInputRef.current?.click()} className="flex flex-col items-center gap-1 text-muted-foreground active:scale-95">
+            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><ImageIcon size={18} /></div>
+            <span className="text-[9px]">Imagem</span>
+          </button>
+          <button onClick={() => audioInputRef.current?.click()} className="flex flex-col items-center gap-1 text-muted-foreground active:scale-95">
+            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Mic size={18} /></div>
+            <span className="text-[9px]">Áudio</span>
+          </button>
+          <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-1 text-muted-foreground active:scale-95">
+            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Paperclip size={18} /></div>
+            <span className="text-[9px]">Arquivo</span>
+          </button>
+        </div>
+      )}
+
       <div className="pt-2 pb-1">
         {aiMode && (
           <div className="flex items-center gap-1 mb-1.5 px-1">
             <Sparkles size={10} className="text-[hsl(270,60%,65%)]" />
-            <span className="text-[10px] text-[hsl(270,60%,65%)] font-medium">Modo IA ativo — sua mensagem será enviada para a IA</span>
+            <span className="text-[10px] text-[hsl(270,60%,65%)] font-medium">Modo IA ativo — a IA analisa conversa, anexos e links</span>
           </div>
         )}
-        <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
+        <div className={`flex items-center gap-2 rounded-full px-3 py-2 transition-colors ${
           aiMode ? 'bg-[hsl(270,30%,15%)] border-2 border-dashed border-[hsl(270,40%,35%)]' : 'bg-secondary'
         }`}>
+          <button
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className="p-1 text-muted-foreground active:scale-95"
+          >
+            <Plus size={18} />
+          </button>
           <input
             type="text"
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
-            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-w-0"
           />
           <button
             onClick={() => setAiMode(!aiMode)}
             className={`p-1.5 rounded-full active:scale-95 transition-all ${
-              aiMode ? 'bg-[hsl(270,40%,35%)] text-[hsl(270,80%,85%)]' : 'text-muted-foreground hover:text-foreground'
+              aiMode ? 'bg-[hsl(270,40%,35%)] text-[hsl(270,80%,85%)]' : 'text-muted-foreground'
             }`}
           >
             <Sparkles size={16} />
           </button>
           <button
             onClick={handleSend}
+            disabled={aiLoading}
             className={`p-1.5 rounded-full active:scale-95 transition-all ${
               aiMode ? 'bg-[hsl(270,40%,35%)] text-[hsl(270,80%,85%)]' : 'bg-primary text-primary-foreground'
-            }`}
+            } disabled:opacity-50`}
           >
-            <Send size={16} />
+            {aiLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-// ========== NEXT STEP POPUP (mandatory) ==========
 
 const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void }) => {
   const [summary, setSummary] = useState('');
