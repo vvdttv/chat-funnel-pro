@@ -3,6 +3,8 @@ import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, f
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { useCardWidgets } from '@/hooks/useCardWidgets';
+import type { CardWidget } from '@/components/CardWidgetConfig';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -32,48 +34,86 @@ function classifyDealLeadStage(deal: Deal): LeadStageKey {
 
 // ========== DEAL CARD (full-width single card) ==========
 
-const DealCard = ({ deal, onClick }: { deal: Deal; onClick: () => void }) => {
+const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) => {
   const funnel = funnels.find(f => f.id === deal.funnelId);
-  return (
-    <div
-      onClick={onClick}
-      className="bg-card rounded-2xl p-5 active:scale-[0.98] transition-transform"
-    >
-      <div className="flex items-center gap-3 mb-3">
+  const getValue = (): string => {
+    switch (widget.id) {
+      case 'avatar_name': return deal.leadName;
+      case 'property': return deal.property;
+      case 'value': return formatCurrency(deal.value);
+      case 'probability': return `${deal.probability}%`;
+      case 'funnel_badge': return funnel?.name || '—';
+      case 'stage_badge': return deal.stage;
+      case 'contacts': return deal.secondaryContacts?.map(c => `${c.name} (${c.role})`).join(', ') || '';
+      case 'phone': return '(11) 99999-0000';
+      case 'origin': return 'Site';
+      case 'created_at': return deal.createdAt;
+      case 'property_code': return deal.propertyCode;
+      case 'deal_id': return deal.id;
+      case 'lead_id': return deal.leadId;
+      default: return '—';
+    }
+  };
+  const val = getValue();
+  if (!val) return null;
+
+  if (widget.type === 'header') {
+    return (
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
           {deal.leadName.split(' ').map(n => n[0]).join('')}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{deal.leadName}</p>
-          <p className="text-xs text-muted-foreground truncate">{deal.property}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{val}</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-secondary rounded-xl p-3">
-          <p className="text-[10px] text-muted-foreground">Valor</p>
-          <p className="text-sm font-bold text-primary">{formatCurrency(deal.value)}</p>
-        </div>
-        <div className="bg-secondary rounded-xl p-3">
-          <p className="text-[10px] text-muted-foreground">Probabilidade</p>
-          <p className="text-sm font-bold text-foreground">{deal.probability}%</p>
-        </div>
+    );
+  }
+  if (widget.type === 'stat') {
+    return (
+      <div className="bg-secondary rounded-xl p-3">
+        <p className="text-[10px] text-muted-foreground">{widget.label}</p>
+        <p className="text-sm font-bold text-primary">{val}</p>
       </div>
-      {funnel && (
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-            {funnel.name}
-          </span>
-          <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
-            {deal.stage}
-          </span>
-        </div>
-      )}
-      {deal.secondaryContacts && deal.secondaryContacts.length > 0 && (
-        <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
-          <Users size={12} />
-          <span>{deal.secondaryContacts.map(c => `${c.name} (${c.role})`).join(', ')}</span>
-        </div>
-      )}
+    );
+  }
+  if (widget.type === 'badge') {
+    return (
+      <span className="inline-block text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium truncate">
+        {val}
+      </span>
+    );
+  }
+  if (widget.type === 'contacts') {
+    return (
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Users size={12} />
+        <span className="truncate">{val}</span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground">{widget.label}</p>
+      <p className="text-xs text-foreground truncate">{val}</p>
+    </div>
+  );
+};
+
+const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
+  const enabled = widgets.filter(w => w.enabled);
+  return (
+    <div
+      onClick={onClick}
+      className="bg-card rounded-2xl p-4 active:scale-[0.98] transition-transform"
+    >
+      <div className="grid grid-cols-2 gap-2">
+        {enabled.map(w => (
+          <div key={w.id} className={w.size === 'full' ? 'col-span-2' : 'col-span-1'}>
+            <DealCardWidget widget={w} deal={deal} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -833,12 +873,14 @@ const CardNavigator = ({
   onPrev,
   onNext,
   onCardClick,
+  widgets,
 }: {
   deals: Deal[];
   activeIndex: number;
   onPrev: () => void;
   onNext: () => void;
   onCardClick: (deal: Deal) => void;
+  widgets: CardWidget[];
 }) => {
   if (deals.length === 0) {
     return (
@@ -877,7 +919,7 @@ const CardNavigator = ({
       </div>
 
       {/* Card */}
-      <DealCard deal={deal} onClick={() => onCardClick(deal)} />
+      <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
@@ -1256,6 +1298,7 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 // ========== MAIN PAGE ==========
 
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
+  const { widgets: cardWidgets } = useCardWidgets();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -1438,6 +1481,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
           else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
         }}
         onCardClick={(deal) => setSelectedDeal(deal)}
+        widgets={cardWidgets}
       />
 
       <LossBottomSheet open={lossOpen} onClose={() => setLossOpen(false)} onConfirm={() => setLossOpen(false)} />
