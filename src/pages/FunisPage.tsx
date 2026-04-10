@@ -180,7 +180,7 @@ const DealChatView = ({ deal }: { deal: Deal }) => {
 // ========== DEAL DETAIL SHEET ==========
 
 const DealDetailSheet = ({ deal, onClose }: { deal: Deal | null; onClose: () => void }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
 
   if (!deal) return null;
 
