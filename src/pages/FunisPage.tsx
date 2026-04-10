@@ -1066,7 +1066,7 @@ const isFilterActive = (filters: StageFilterState, key: FilterKey): boolean => {
   return (val as DateRange).from !== '' || (val as DateRange).to !== '';
 };
 
-const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChange: (f: StageFilterState) => void }) => {
+const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterState; onChange: (f: StageFilterState) => void; onClose: () => void }) => {
   const [selectedFilter, setSelectedFilter] = useState<FilterKey | ''>('');
   const [draftDateRange, setDraftDateRange] = useState<DateRange>(emptyDateRange);
 
