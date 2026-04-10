@@ -828,7 +828,7 @@ const FunisPage = () => {
               </Select>
             )}
 
-            {viewMode === 'lead' && <div className="flex-1" />}
+            {viewMode === 'lead' && <div className="flex-1 min-h-[40px]" onMouseDown={(e) => { e.preventDefault(); closePanels(); }} />}
 
             <button
               onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
