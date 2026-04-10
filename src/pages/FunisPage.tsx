@@ -1374,6 +1374,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
             >
               <Sparkles size={18} />
             </button>
+          </div>
         </div>
       </div>
 
