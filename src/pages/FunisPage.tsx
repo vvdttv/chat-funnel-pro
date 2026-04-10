@@ -856,7 +856,7 @@ const CardNavigator = ({
   return (
     <div className="flex-1 flex flex-col px-4">
       {/* Card counter */}
-      <div className="flex items-center justify-center gap-2 mb-3">
+      <div className="flex items-center justify-center gap-2 mb-1.5">
         <button
           onClick={onPrev}
           disabled={activeIndex === 0}
