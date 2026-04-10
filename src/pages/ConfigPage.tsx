@@ -761,6 +761,8 @@ const ConfigPage = () => {
           </>
         )}
 
+        {activeTab === 'campos' && <FieldsManager />}
+
         {activeTab === 'fluxos' && (
           <>
             <div className="flex items-center justify-between mb-3">
