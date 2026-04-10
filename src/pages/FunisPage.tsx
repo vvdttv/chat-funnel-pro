@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads } from '@/data/mockData';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES } from '@/data/mockData';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ========== VIEW MODE ==========
@@ -120,7 +120,7 @@ const LossBottomSheet = ({ open, onClose, onConfirm }: { open: boolean; onClose:
 
 // ========== CHAT VIEW ==========
 
-const DealChatView = ({ deal }: { deal: Deal }) => {
+const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
   const [message, setMessage] = useState('');
   const thread = chatThreads.find(t => t.dealId === deal.id);
   const messages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
@@ -134,6 +134,13 @@ const DealChatView = ({ deal }: { deal: Deal }) => {
       </div>
     );
   }
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    // In a real app, send the message to the backend
+    setMessage('');
+    onMessageSent?.();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -165,10 +172,11 @@ const DealChatView = ({ deal }: { deal: Deal }) => {
             type="text"
             value={message}
             onChange={e => setMessage(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Mensagem..."
             className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <button className="p-1.5 rounded-full bg-primary text-primary-foreground active:scale-95 transition-transform">
+          <button onClick={handleSend} className="p-1.5 rounded-full bg-primary text-primary-foreground active:scale-95 transition-transform">
             <Send size={16} />
           </button>
         </div>
@@ -177,88 +185,298 @@ const DealChatView = ({ deal }: { deal: Deal }) => {
   );
 };
 
+// ========== NEXT STEP POPUP (mandatory) ==========
+
+const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void }) => {
+  const [summary, setSummary] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [activityType, setActivityType] = useState('');
+  const [activityDate, setActivityDate] = useState('');
+  const [activityTime, setActivityTime] = useState('');
+  const [activityDesc, setActivityDesc] = useState('');
+  const [temperature, setTemperature] = useState('');
+
+  const isValid = summary.trim() !== '' && activityType !== '' && activityDate !== '' && activityTime !== '' && activityDesc.trim() !== '' && temperature !== '';
+
+  const handleAIExtract = () => {
+    setAiLoading(true);
+    // Mock AI extraction — in production, call Lovable AI edge function
+    const thread = chatThreads.find(t => t.dealId === deal.id);
+    const msgs = thread ? chatMessages.filter(m => m.threadId === thread.id).filter(m => m.sender !== 'ai') : [];
+    const lastMsgs = msgs.slice(-5).map(m => `${m.sender === 'agent' ? 'Corretor' : 'Lead'}: ${m.content}`).join('\n');
+
+    setTimeout(() => {
+      const aiSummary = `Conversa com ${deal.leadName} sobre ${deal.property}.\n\nÚltimas mensagens:\n${lastMsgs || 'Sem mensagens recentes.'}\n\nO lead demonstrou interesse e aguarda próximos passos.`;
+      setSummary(prev => {
+        if (prev.trim()) {
+          return `${prev}\n\n--- Resumo IA ---\n${aiSummary}`;
+        }
+        return aiSummary;
+      });
+      setAiLoading(false);
+    }, 1500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+      <div className="absolute inset-0 bg-background/90" />
+      <div className="relative w-full max-w-md bg-card rounded-t-2xl p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[92vh] flex flex-col overflow-hidden">
+        <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4" />
+        
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <FileText size={16} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Registrar Atendimento</h3>
+            <p className="text-[11px] text-muted-foreground">{deal.leadName} · {deal.property}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4">
+          {/* Summary section */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-foreground">Resumo do atendimento *</label>
+              <button
+                onClick={handleAIExtract}
+                disabled={aiLoading}
+                className="flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-1 rounded-lg active:scale-95 transition-transform disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {aiLoading ? 'Extraindo...' : 'Extrair com IA'}
+              </button>
+            </div>
+            <textarea
+              value={summary}
+              onChange={e => setSummary(e.target.value)}
+              placeholder="Descreva o que aconteceu neste atendimento..."
+              rows={4}
+              className="w-full bg-secondary text-sm text-foreground rounded-xl px-3 py-2.5 outline-none border border-border placeholder:text-muted-foreground resize-none focus:border-primary/50"
+            />
+          </div>
+
+          {/* Temperature */}
+          <div>
+            <label className="text-xs font-semibold text-foreground mb-1.5 block">Temperatura do lead *</label>
+            <div className="flex gap-2">
+              {LEAD_TEMPERATURES.map(temp => (
+                <button
+                  key={temp}
+                  onClick={() => setTemperature(temp)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] ${
+                    temperature === temp
+                      ? temp === 'Quente' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                      : temp === 'Morno' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                      : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : 'bg-secondary text-muted-foreground'
+                  }`}
+                >
+                  {temp === 'Quente' ? '🔥' : temp === 'Morno' ? '🌤️' : '❄️'} {temp}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[10px] text-muted-foreground font-medium">PRÓXIMA ATIVIDADE</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Activity type */}
+          <div>
+            <label className="text-xs font-semibold text-foreground mb-1.5 block">Tipo de atividade *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.entries(ACTIVITY_TYPES) as [string, { label: string }][]).map(([key, val]) => (
+                <button
+                  key={key}
+                  onClick={() => setActivityType(key)}
+                  className={`py-2.5 rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] ${
+                    activityType === key ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground'
+                  }`}
+                >
+                  {val.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date and time */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                <CalendarDays size={12} /> Data *
+              </label>
+              <input
+                type="date"
+                value={activityDate}
+                onChange={e => setActivityDate(e.target.value)}
+                className="w-full bg-secondary text-sm text-foreground rounded-xl px-3 py-2.5 outline-none border border-border focus:border-primary/50"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                <Clock size={12} /> Hora *
+              </label>
+              <input
+                type="time"
+                value={activityTime}
+                onChange={e => setActivityTime(e.target.value)}
+                className="w-full bg-secondary text-sm text-foreground rounded-xl px-3 py-2.5 outline-none border border-border focus:border-primary/50"
+              />
+            </div>
+          </div>
+
+          {/* Activity description */}
+          <div>
+            <label className="text-xs font-semibold text-foreground mb-1.5 block">O que vai fazer? *</label>
+            <textarea
+              value={activityDesc}
+              onChange={e => setActivityDesc(e.target.value)}
+              placeholder="Descreva brevemente a próxima ação..."
+              rows={2}
+              className="w-full bg-secondary text-sm text-foreground rounded-xl px-3 py-2.5 outline-none border border-border placeholder:text-muted-foreground resize-none focus:border-primary/50"
+            />
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <button
+          onClick={() => {
+            if (isValid) {
+              console.log('NextStep:', { dealId: deal.id, summary, activityType, activityDate, activityTime, activityDesc, temperature });
+              onConfirm();
+            }
+          }}
+          disabled={!isValid}
+          className="w-full mt-4 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-30 active:scale-[0.98] transition-transform"
+        >
+          Registrar e Continuar
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ========== DEAL DETAIL SHEET ==========
 
-const DealDetailSheet = ({ deal, onClose }: { deal: Deal | null; onClose: () => void }) => {
+const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [showNextStep, setShowNextStep] = useState(false);
+
+  // Reset state when deal changes
+  useEffect(() => {
+    if (deal) {
+      setActiveTab('conversa');
+      setHasInteracted(false);
+      setShowNextStep(false);
+    }
+  }, [deal?.id]);
+
+  const handleMessageSent = useCallback(() => {
+    setHasInteracted(true);
+    onPendingStepChange?.(true);
+  }, [onPendingStepChange]);
+
+  const handleClose = () => {
+    if (hasInteracted) {
+      setShowNextStep(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleNextStepConfirm = () => {
+    setShowNextStep(false);
+    setHasInteracted(false);
+    onPendingStepChange?.(false);
+    onClose();
+  };
 
   if (!deal) return null;
 
   const funnel = funnels.find(f => f.id === deal.funnelId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-background/80" />
-      <div className="relative w-full max-w-md bg-card rounded-t-2xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4" />
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-foreground">{deal.leadName}</h3>
-            <p className="text-sm text-muted-foreground truncate">{deal.property}</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-sm font-bold text-primary">{formatCurrency(deal.value)}</span>
-              {funnel && (
-                <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-                  {funnel.name} · {deal.stage}
-                </span>
-              )}
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95 transition-transform"><X size={20} /></button>
-        </div>
-        <div className="flex gap-1 mb-4">
-          {(['info', 'conversa'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98] ${
-                activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-              }`}
-            >
-              {tab === 'info' ? 'Detalhes' : 'Conversa'}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {activeTab === 'info' ? (
-            <>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-secondary rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground">Valor</p>
-                  <p className="text-base font-bold text-primary">{formatCurrency(deal.value)}</p>
-                </div>
-                <div className="bg-secondary rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground">Probabilidade</p>
-                  <p className="text-base font-bold text-foreground">{deal.probability}%</p>
-                </div>
-                <div className="bg-secondary rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground">Etapa</p>
-                  <p className="text-sm font-semibold text-foreground">{deal.stage}</p>
-                </div>
-                <div className="bg-secondary rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground">Código</p>
-                  <p className="text-sm font-semibold text-foreground">{deal.propertyCode}</p>
-                </div>
+    <>
+      <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={handleClose}>
+        <div className="absolute inset-0 bg-background/80" />
+        <div className="relative w-full max-w-md bg-card rounded-t-2xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4" />
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-foreground">{deal.leadName}</h3>
+              <p className="text-sm text-muted-foreground truncate">{deal.property}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-sm font-bold text-primary">{formatCurrency(deal.value)}</span>
+                {funnel && (
+                  <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
+                    {funnel.name} · {deal.stage}
+                  </span>
+                )}
               </div>
-              {deal.secondaryContacts && deal.secondaryContacts.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <Users size={14} /> Envolvidos
-                  </h4>
-                  {deal.secondaryContacts.map((c, i) => (
-                    <div key={i} className="bg-secondary rounded-lg p-3 mb-1 text-sm text-foreground">
-                      {c.name} <span className="text-muted-foreground">· {c.role}</span>
-                    </div>
-                  ))}
+            </div>
+            <button onClick={handleClose} className="p-1 text-muted-foreground active:scale-95 transition-transform"><X size={20} /></button>
+          </div>
+          <div className="flex gap-1 mb-4">
+            {(['info', 'conversa'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98] ${
+                  activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                }`}
+              >
+                {tab === 'info' ? 'Detalhes' : 'Conversa'}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
+            {activeTab === 'info' ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">Valor</p>
+                    <p className="text-base font-bold text-primary">{formatCurrency(deal.value)}</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">Probabilidade</p>
+                    <p className="text-base font-bold text-foreground">{deal.probability}%</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">Etapa</p>
+                    <p className="text-sm font-semibold text-foreground">{deal.stage}</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">Código</p>
+                    <p className="text-sm font-semibold text-foreground">{deal.propertyCode}</p>
+                  </div>
                 </div>
-              )}
-            </>
-          ) : (
-            <DealChatView deal={deal} />
-          )}
+                {deal.secondaryContacts && deal.secondaryContacts.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                      <Users size={14} /> Envolvidos
+                    </h4>
+                    {deal.secondaryContacts.map((c, i) => (
+                      <div key={i} className="bg-secondary rounded-lg p-3 mb-1 text-sm text-foreground">
+                        {c.name} <span className="text-muted-foreground">· {c.role}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <DealChatView deal={deal} onMessageSent={handleMessageSent} />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      {showNextStep && <NextStepPopup deal={deal} onConfirm={handleNextStepConfirm} />}
+    </>
   );
 };
 
@@ -705,7 +923,7 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
 
 // ========== MAIN PAGE ==========
 
-const FunisPage = () => {
+const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -880,7 +1098,7 @@ const FunisPage = () => {
       />
 
       <LossBottomSheet open={lossOpen} onClose={() => setLossOpen(false)} onConfirm={() => setLossOpen(false)} />
-      <DealDetailSheet deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
+      <DealDetailSheet deal={selectedDeal} onClose={() => setSelectedDeal(null)} onPendingStepChange={onPendingStepChange} />
     </div>
   );
 };

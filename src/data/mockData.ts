@@ -219,6 +219,19 @@ export const ACTIVITY_TYPES = {
   followup: { label: 'Follow-up', icon: 'MessageCircle' },
 } as const;
 
+export const LEAD_TEMPERATURES = ['Quente', 'Morno', 'Frio'] as const;
+
+export interface NextStepRecord {
+  dealId: string;
+  summary: string;
+  nextActivityType: keyof typeof ACTIVITY_TYPES;
+  nextActivityDate: string;
+  nextActivityTime: string;
+  nextActivityDescription: string;
+  temperature: typeof LEAD_TEMPERATURES[number];
+  createdAt: string;
+}
+
 // ========== FUNNELS ==========
 
 export const funnels: Funnel[] = [
