@@ -1,20 +1,35 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import BottomNav from '@/components/BottomNav';
 import FunisPage from '@/pages/FunisPage';
 import AtividadesPage from '@/pages/AtividadesPage';
 import IndicadoresPage from '@/pages/IndicadoresPage';
 import ConfigPage from '@/pages/ConfigPage';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
+  const [hasPendingStep, setHasPendingStep] = useState(false);
+  const { toast } = useToast();
+
+  const handleTabChange = useCallback((tab: string) => {
+    if (hasPendingStep) {
+      toast({
+        title: 'Registro obrigatório',
+        description: 'Registre o próximo passo antes de sair.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setActiveTab(tab);
+  }, [hasPendingStep, toast]);
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'leads': return <FunisPage />;
+      case 'leads': return <FunisPage onPendingStepChange={setHasPendingStep} />;
       case 'activities': return <AtividadesPage />;
       case 'indicators': return <IndicadoresPage />;
       case 'settings': return <ConfigPage />;
-      default: return <FunisPage />;
+      default: return <FunisPage onPendingStepChange={setHasPendingStep} />;
     }
   };
 
@@ -23,7 +38,7 @@ const Index = () => {
       <div className="flex-1 overflow-hidden">
         {renderPage()}
       </div>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 };
