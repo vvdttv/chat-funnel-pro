@@ -444,14 +444,32 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
           >
             <Plus size={18} />
           </button>
-          <input
-            type="text"
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
-            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-w-0"
-          />
+
+          {isRecording ? (
+            <div className="flex-1 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-sm text-destructive font-medium">{formatRecTime(recordingTime)}</span>
+              <span className="text-xs text-muted-foreground">Gravando...</span>
+            </div>
+          ) : (
+            <input
+              type="text"
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
+              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-w-0"
+            />
+          )}
+
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-1.5 rounded-full active:scale-95 transition-all ${
+              isRecording ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground'
+            }`}
+          >
+            <Mic size={16} />
+          </button>
           <button
             onClick={() => setAiMode(!aiMode)}
             className={`p-1.5 rounded-full active:scale-95 transition-all ${
