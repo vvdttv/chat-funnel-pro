@@ -925,43 +925,47 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
   if (!open) return null;
 
   return (
-    <div className="px-4 pb-2">
-      <div className="bg-card rounded-xl p-3 border border-border space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+      <div className="absolute inset-0 bg-background/80" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-card rounded-t-2xl p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto">
+        <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sparkles size={14} className="text-primary" />
+              <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
+            </div>
+            <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
           </div>
-          <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 flex-1">
-            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
-            <span className="text-[10px] text-muted-foreground">até</span>
-            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-1">
+              <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+              <span className="text-[10px] text-muted-foreground">até</span>
+              <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={question}
-            onChange={e => { setQuestion(e.target.value); setAnalysis(null); }}
-            placeholder="O que você gostaria de analisar?"
-            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1 placeholder:text-muted-foreground"
-          />
-          <button
-            onClick={handleAnalyze}
-            disabled={loading || deals.length === 0}
-            className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
-          >
-            <Play size={14} />
-          </button>
-        </div>
-        {analysis && (
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={question}
+              onChange={e => { setQuestion(e.target.value); setAnalysis(null); }}
+              placeholder="O que você gostaria de analisar?"
+              className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1 placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={handleAnalyze}
+              disabled={loading || deals.length === 0}
+              className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+            >
+              <Play size={14} />
+            </button>
           </div>
-        )}
+          {analysis && (
+            <div className="bg-secondary rounded-xl p-3">
+              <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
