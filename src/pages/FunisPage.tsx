@@ -1079,6 +1079,11 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
     if (opt.type === 'toggle') {
       onChange({ ...filters, [key]: !(filters[key as keyof StageFilterState]) });
       setSelectedFilter('');
+    } else if (selectedFilter === key) {
+      // Clicking again on the same filter: deselect/clear it
+      const defaultVal = (defaultFilters as any)[key];
+      onChange({ ...filters, [key]: defaultVal });
+      setSelectedFilter('');
     } else {
       setSelectedFilter(key as FilterKey);
       if (opt.type === 'daterange') {
