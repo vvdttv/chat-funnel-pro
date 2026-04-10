@@ -1152,44 +1152,56 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
             </div>
           )}
 
-          {/* Filter dropdown */}
-          <select
-            value={selectedFilter}
-            onChange={e => handleSelectFilter(e.target.value)}
-            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2.5 outline-none border border-border"
-          >
-            <option value="">Selecione um filtro...</option>
+          {/* Filter list */}
+          <div className="space-y-1">
             {FILTER_OPTIONS.map(o => (
-              <option key={o.key} value={o.key}>
-                {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label}
-              </option>
+              <button
+                key={o.key}
+                onClick={() => handleSelectFilter(o.key)}
+                className={`w-full flex items-center justify-between text-xs rounded-lg px-3 py-2.5 active:scale-[0.98] transition-colors ${
+                  selectedFilter === o.key 
+                    ? 'bg-primary/15 text-primary border border-primary/30' 
+                    : 'bg-secondary text-foreground border border-border'
+                }`}
+              >
+                <span>{o.label}</span>
+                {isFilterActive(filters, o.key) && <span className="text-primary font-bold">✓</span>}
+              </button>
             ))}
-          </select>
+          </div>
 
           {/* Select input: Responsável */}
           {selectedOption?.type === 'select' && selectedFilter === 'responsavel' && (
-            <select
-              value={filters.responsavel}
-              onChange={e => onChange({ ...filters, responsavel: e.target.value })}
-              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-            >
-              <option value="">Todos</option>
-              <option value="João Silva">João Silva</option>
-              <option value="Maria Oliveira">Maria Oliveira</option>
-              <option value="Pedro Santos">Pedro Santos</option>
-            </select>
+            <div className="space-y-1 pl-2 border-l-2 border-primary/30">
+              {['', 'João Silva', 'Maria Oliveira', 'Pedro Santos'].map(name => (
+                <button
+                  key={name || 'all'}
+                  onClick={() => onChange({ ...filters, responsavel: name })}
+                  className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
+                    filters.responsavel === name ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
+                  }`}
+                >
+                  {name || 'Todos'}
+                </button>
+              ))}
+            </div>
           )}
 
           {/* Select input: Origem */}
           {selectedOption?.type === 'select' && selectedFilter === 'origem' && (
-            <select
-              value={filters.origem}
-              onChange={e => onChange({ ...filters, origem: e.target.value })}
-              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-            >
-              <option value="">Todas</option>
-              {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
+            <div className="space-y-1 pl-2 border-l-2 border-primary/30">
+              {['', ...ORIGENS].map(o => (
+                <button
+                  key={o || 'all'}
+                  onClick={() => onChange({ ...filters, origem: o })}
+                  className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
+                    filters.origem === o ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
+                  }`}
+                >
+                  {o || 'Todas'}
+                </button>
+              ))}
+            </div>
           )}
 
           {/* Date range input */}
