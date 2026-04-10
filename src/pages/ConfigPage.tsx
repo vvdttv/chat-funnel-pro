@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS } from '@/data/mockData';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, Check, List, LayoutGrid } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import CardWidgetConfig, { getDefaultWidgets, CardWidget } from '@/components/CardWidgetConfig';
+import CardWidgetConfig from '@/components/CardWidgetConfig';
+import { useCardWidgets } from '@/hooks/useCardWidgets';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
 
@@ -653,7 +654,7 @@ const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
   const [funnelsList, setFunnelsList] = useState<Funnel[]>(initialFunnels);
   const [selectedFunnelId, setSelectedFunnelId] = useState(funnelsList[0].id);
-  const [cardWidgets, setCardWidgets] = useState<CardWidget[]>(getDefaultWidgets());
+  const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
 
   const selectedFunnel = funnelsList.find(f => f.id === selectedFunnelId);
 
