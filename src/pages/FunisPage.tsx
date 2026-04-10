@@ -1152,90 +1152,91 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
             </div>
           )}
 
-          {/* Filter list */}
+          {/* Filter list with inline sub-options */}
           <div className="space-y-1">
             {FILTER_OPTIONS.map(o => (
-              <button
-                key={o.key}
-                onClick={() => handleSelectFilter(o.key)}
-                className={`w-full flex items-center justify-between text-xs rounded-lg px-3 py-2.5 active:scale-[0.98] transition-colors ${
-                  selectedFilter === o.key 
-                    ? 'bg-primary/15 text-primary border border-primary/30' 
-                    : 'bg-secondary text-foreground border border-border'
-                }`}
-              >
-                <span>{o.label}</span>
-                {isFilterActive(filters, o.key) && <span className="text-primary font-bold">✓</span>}
-              </button>
+              <div key={o.key}>
+                <button
+                  onClick={() => handleSelectFilter(o.key)}
+                  className={`w-full flex items-center justify-between text-xs rounded-lg px-3 py-2.5 active:scale-[0.98] transition-colors ${
+                    selectedFilter === o.key 
+                      ? 'bg-primary/15 text-primary border border-primary/30' 
+                      : 'bg-secondary text-foreground border border-border'
+                  }`}
+                >
+                  <span>{o.label}</span>
+                  {isFilterActive(filters, o.key) && <span className="text-primary font-bold">✓</span>}
+                </button>
+
+                {/* Inline: Responsável select */}
+                {selectedFilter === o.key && o.type === 'select' && o.key === 'responsavel' && (
+                  <div className="space-y-1 pl-2 border-l-2 border-primary/30 mt-1 ml-2">
+                    {['', 'João Silva', 'Maria Oliveira', 'Pedro Santos'].map(name => (
+                      <button
+                        key={name || 'all'}
+                        onClick={() => onChange({ ...filters, responsavel: name })}
+                        className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
+                          filters.responsavel === name ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
+                        }`}
+                      >
+                        {name || 'Todos'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline: Origem select */}
+                {selectedFilter === o.key && o.type === 'select' && o.key === 'origem' && (
+                  <div className="space-y-1 pl-2 border-l-2 border-primary/30 mt-1 ml-2">
+                    {['', ...ORIGENS].map(orig => (
+                      <button
+                        key={orig || 'all'}
+                        onClick={() => onChange({ ...filters, origem: orig })}
+                        className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
+                          filters.origem === orig ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
+                        }`}
+                      >
+                        {orig || 'Todas'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline: Date range */}
+                {selectedFilter === o.key && o.type === 'daterange' && (
+                  <div className="space-y-2 pl-2 border-l-2 border-primary/30 mt-1 ml-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <p className="text-[10px] text-muted-foreground mb-1">De</p>
+                        <input
+                          type="date"
+                          value={draftDateRange.from}
+                          onChange={e => setDraftDateRange(prev => ({ ...prev, from: e.target.value }))}
+                          className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] text-muted-foreground mb-1">Até</p>
+                        <input
+                          type="date"
+                          value={draftDateRange.to}
+                          onChange={e => setDraftDateRange(prev => ({ ...prev, to: e.target.value }))}
+                          className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleApplyDateRange}
+                      disabled={!draftDateRange.from && !draftDateRange.to}
+                      className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] disabled:opacity-40"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
-
-          {/* Select input: Responsável */}
-          {selectedOption?.type === 'select' && selectedFilter === 'responsavel' && (
-            <div className="space-y-1 pl-2 border-l-2 border-primary/30">
-              {['', 'João Silva', 'Maria Oliveira', 'Pedro Santos'].map(name => (
-                <button
-                  key={name || 'all'}
-                  onClick={() => onChange({ ...filters, responsavel: name })}
-                  className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
-                    filters.responsavel === name ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
-                  }`}
-                >
-                  {name || 'Todos'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Select input: Origem */}
-          {selectedOption?.type === 'select' && selectedFilter === 'origem' && (
-            <div className="space-y-1 pl-2 border-l-2 border-primary/30">
-              {['', ...ORIGENS].map(o => (
-                <button
-                  key={o || 'all'}
-                  onClick={() => onChange({ ...filters, origem: o })}
-                  className={`w-full text-left text-xs rounded-lg px-3 py-2 active:scale-[0.98] ${
-                    filters.origem === o ? 'bg-primary/15 text-primary' : 'bg-secondary/50 text-foreground'
-                  }`}
-                >
-                  {o || 'Todas'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Date range input */}
-          {selectedOption?.type === 'daterange' && (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
-                  <input
-                    type="date"
-                    value={draftDateRange.from}
-                    onChange={e => setDraftDateRange(prev => ({ ...prev, from: e.target.value }))}
-                    className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-                  />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
-                  <input
-                    type="date"
-                    value={draftDateRange.to}
-                    onChange={e => setDraftDateRange(prev => ({ ...prev, to: e.target.value }))}
-                    className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleApplyDateRange}
-                disabled={!draftDateRange.from && !draftDateRange.to}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] disabled:opacity-40"
-              >
-                Aplicar
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
