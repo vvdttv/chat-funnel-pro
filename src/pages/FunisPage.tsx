@@ -873,12 +873,14 @@ const CardNavigator = ({
   onPrev,
   onNext,
   onCardClick,
+  widgets,
 }: {
   deals: Deal[];
   activeIndex: number;
   onPrev: () => void;
   onNext: () => void;
   onCardClick: (deal: Deal) => void;
+  widgets: CardWidget[];
 }) => {
   if (deals.length === 0) {
     return (
@@ -917,7 +919,7 @@ const CardNavigator = ({
       </div>
 
       {/* Card */}
-      <DealCard deal={deal} onClick={() => onCardClick(deal)} />
+      <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
@@ -1296,6 +1298,7 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 // ========== MAIN PAGE ==========
 
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
+  const { widgets: cardWidgets } = useCardWidgets();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
