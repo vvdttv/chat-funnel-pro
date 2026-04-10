@@ -1481,6 +1481,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
           else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
         }}
         onCardClick={(deal) => setSelectedDeal(deal)}
+        widgets={cardWidgets}
       />
 
       <LossBottomSheet open={lossOpen} onClose={() => setLossOpen(false)} onConfirm={() => setLossOpen(false)} />
