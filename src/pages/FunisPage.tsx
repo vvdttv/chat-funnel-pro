@@ -925,43 +925,47 @@ const AIAnalysisPanel = ({ deals, open, onClose }: { deals: Deal[]; open: boolea
   if (!open) return null;
 
   return (
-    <div className="px-4 pb-2">
-      <div className="bg-card rounded-xl p-3 border border-border space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+      <div className="absolute inset-0 bg-background/80" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-card rounded-t-2xl p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto">
+        <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sparkles size={14} className="text-primary" />
+              <span className="text-[11px] font-semibold text-foreground">Análise IA</span>
+            </div>
+            <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
           </div>
-          <button onClick={onClose} className="p-1 text-muted-foreground active:scale-95"><X size={14} /></button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 flex-1">
-            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
-            <span className="text-[10px] text-muted-foreground">até</span>
-            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-1">
+              <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+              <span className="text-[10px] text-muted-foreground">até</span>
+              <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setAnalysis(null); }} className="bg-secondary text-[11px] text-foreground rounded-lg px-2 py-1.5 outline-none border border-border w-full" />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={question}
-            onChange={e => { setQuestion(e.target.value); setAnalysis(null); }}
-            placeholder="O que você gostaria de analisar?"
-            className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1 placeholder:text-muted-foreground"
-          />
-          <button
-            onClick={handleAnalyze}
-            disabled={loading || deals.length === 0}
-            className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
-          >
-            <Play size={14} />
-          </button>
-        </div>
-        {analysis && (
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={question}
+              onChange={e => { setQuestion(e.target.value); setAnalysis(null); }}
+              placeholder="O que você gostaria de analisar?"
+              className="bg-secondary text-xs text-foreground rounded-lg px-2 py-1.5 outline-none border border-border flex-1 placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={handleAnalyze}
+              disabled={loading || deals.length === 0}
+              className="w-8 h-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+            >
+              <Play size={14} />
+            </button>
           </div>
-        )}
+          {analysis && (
+            <div className="bg-secondary rounded-xl p-3">
+              <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{analysis}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1092,131 +1096,135 @@ const StageFilters = ({ filters, onChange }: { filters: StageFilterState; onChan
   };
 
   return (
-    <div className="px-4 pb-2">
-      <div className="bg-card rounded-xl p-3 border border-border space-y-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <SlidersHorizontal size={14} className="text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">Filtros</span>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+      <div className="absolute inset-0 bg-background/80" onClick={() => onChange(filters)} />
+      <div className="relative w-full max-w-md bg-card rounded-t-2xl p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto">
+        <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-3" />
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <SlidersHorizontal size={14} className="text-primary" />
+              <span className="text-[11px] font-semibold text-foreground">Filtros</span>
+              {activeCount > 0 && (
+                <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold leading-none">
+                  {activeCount}
+                </span>
+              )}
+            </div>
             {activeCount > 0 && (
-              <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold leading-none">
-                {activeCount}
-              </span>
+              <button
+                onClick={() => { onChange(defaultFilters); setSelectedFilter(''); }}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+              >
+                <RotateCcw size={10} /> Limpar
+              </button>
             )}
           </div>
+
+          {/* Active filter chips */}
           {activeCount > 0 && (
-            <button
-              onClick={() => { onChange(defaultFilters); setSelectedFilter(''); }}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+            <div className="flex flex-wrap gap-1.5">
+              {FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).map(o => {
+                const val = filters[o.key];
+                let displayVal = '';
+                if (o.type === 'toggle') displayVal = 'Sim';
+                else if (o.type === 'select') displayVal = val as string;
+                else {
+                  const dr = val as DateRange;
+                  displayVal = [dr.from, dr.to].filter(Boolean).join(' → ');
+                }
+                return (
+                  <button
+                    key={o.key}
+                    onClick={() => {
+                      if (o.type === 'toggle') onChange({ ...filters, [o.key]: false });
+                      else if (o.type === 'select') onChange({ ...filters, [o.key]: '' });
+                      else onChange({ ...filters, [o.key]: emptyDateRange });
+                    }}
+                    className="flex items-center gap-1 bg-primary/15 text-primary text-[10px] px-2 py-1 rounded-lg font-medium active:scale-95"
+                  >
+                    <span className="truncate max-w-[140px]">{o.label.split(' ').slice(0, 4).join(' ')}: {displayVal}</span>
+                    <X size={10} className="shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Filter dropdown */}
+          <select
+            value={selectedFilter}
+            onChange={e => handleSelectFilter(e.target.value)}
+            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2.5 outline-none border border-border"
+          >
+            <option value="">Selecione um filtro...</option>
+            {FILTER_OPTIONS.map(o => (
+              <option key={o.key} value={o.key}>
+                {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Select input: Responsável */}
+          {selectedOption?.type === 'select' && selectedFilter === 'responsavel' && (
+            <select
+              value={filters.responsavel}
+              onChange={e => onChange({ ...filters, responsavel: e.target.value })}
+              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
             >
-              <RotateCcw size={10} /> Limpar
-            </button>
+              <option value="">Todos</option>
+              <option value="João Silva">João Silva</option>
+              <option value="Maria Oliveira">Maria Oliveira</option>
+              <option value="Pedro Santos">Pedro Santos</option>
+            </select>
+          )}
+
+          {/* Select input: Origem */}
+          {selectedOption?.type === 'select' && selectedFilter === 'origem' && (
+            <select
+              value={filters.origem}
+              onChange={e => onChange({ ...filters, origem: e.target.value })}
+              className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
+            >
+              <option value="">Todas</option>
+              {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          )}
+
+          {/* Date range input */}
+          {selectedOption?.type === 'daterange' && (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground mb-1">De</p>
+                  <input
+                    type="date"
+                    value={draftDateRange.from}
+                    onChange={e => setDraftDateRange(prev => ({ ...prev, from: e.target.value }))}
+                    className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground mb-1">Até</p>
+                  <input
+                    type="date"
+                    value={draftDateRange.to}
+                    onChange={e => setDraftDateRange(prev => ({ ...prev, to: e.target.value }))}
+                    className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleApplyDateRange}
+                disabled={!draftDateRange.from && !draftDateRange.to}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] disabled:opacity-40"
+              >
+                Aplicar
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Active filter chips */}
-        {activeCount > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {FILTER_OPTIONS.filter(o => isFilterActive(filters, o.key)).map(o => {
-              const val = filters[o.key];
-              let displayVal = '';
-              if (o.type === 'toggle') displayVal = 'Sim';
-              else if (o.type === 'select') displayVal = val as string;
-              else {
-                const dr = val as DateRange;
-                displayVal = [dr.from, dr.to].filter(Boolean).join(' → ');
-              }
-              return (
-                <button
-                  key={o.key}
-                  onClick={() => {
-                    if (o.type === 'toggle') onChange({ ...filters, [o.key]: false });
-                    else if (o.type === 'select') onChange({ ...filters, [o.key]: '' });
-                    else onChange({ ...filters, [o.key]: emptyDateRange });
-                  }}
-                  className="flex items-center gap-1 bg-primary/15 text-primary text-[10px] px-2 py-1 rounded-lg font-medium active:scale-95"
-                >
-                  <span className="truncate max-w-[140px]">{o.label.split(' ').slice(0, 4).join(' ')}: {displayVal}</span>
-                  <X size={10} className="shrink-0" />
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Filter dropdown */}
-        <select
-          value={selectedFilter}
-          onChange={e => handleSelectFilter(e.target.value)}
-          className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2.5 outline-none border border-border"
-        >
-          <option value="">Selecione um filtro...</option>
-          {FILTER_OPTIONS.map(o => (
-            <option key={o.key} value={o.key}>
-              {isFilterActive(filters, o.key) ? '✓ ' : ''}{o.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Select input: Responsável */}
-        {selectedOption?.type === 'select' && selectedFilter === 'responsavel' && (
-          <select
-            value={filters.responsavel}
-            onChange={e => onChange({ ...filters, responsavel: e.target.value })}
-            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-          >
-            <option value="">Todos</option>
-            <option value="João Silva">João Silva</option>
-            <option value="Maria Oliveira">Maria Oliveira</option>
-            <option value="Pedro Santos">Pedro Santos</option>
-          </select>
-        )}
-
-        {/* Select input: Origem */}
-        {selectedOption?.type === 'select' && selectedFilter === 'origem' && (
-          <select
-            value={filters.origem}
-            onChange={e => onChange({ ...filters, origem: e.target.value })}
-            className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border"
-          >
-            <option value="">Todas</option>
-            {ORIGENS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-        )}
-
-        {/* Date range input */}
-        {selectedOption?.type === 'daterange' && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <p className="text-[10px] text-muted-foreground mb-1">De</p>
-                <input
-                  type="date"
-                  value={draftDateRange.from}
-                  onChange={e => setDraftDateRange(prev => ({ ...prev, from: e.target.value }))}
-                  className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-                />
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] text-muted-foreground mb-1">Até</p>
-                <input
-                  type="date"
-                  value={draftDateRange.to}
-                  onChange={e => setDraftDateRange(prev => ({ ...prev, to: e.target.value }))}
-                  className="w-full bg-secondary text-foreground text-xs rounded-lg px-2.5 py-2 outline-none border border-border focus:border-primary/50"
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleApplyDateRange}
-              disabled={!draftDateRange.from && !draftDateRange.to}
-              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] disabled:opacity-40"
-            >
-              Aplicar
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1368,10 +1376,10 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
             </button>
           </div>
         </div>
-
-        {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
-        <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>
+
+      {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} />}
+      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Stage Navigator */}
       <StageNavigator
