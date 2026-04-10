@@ -410,9 +410,9 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
 
   return (
     <>
-      <div className="fixed inset-0 bottom-16 z-40 flex flex-col" onClick={handleClose}>
+      <div className="fixed top-0 left-0 right-0 z-40 flex flex-col" style={{ bottom: '4rem' }} onClick={handleClose}>
         <div className="absolute inset-0 bg-background" />
-        <div className="relative w-full max-w-md mx-auto flex-1 bg-card flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="relative w-full max-w-md mx-auto h-full bg-card flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
           {/* Compact header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
             <button onClick={handleClose} className="p-1 text-muted-foreground active:scale-95 transition-transform"><X size={20} /></button>
@@ -435,9 +435,9 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
             </div>
           </div>
           {/* Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide px-4">
+          <div className="flex-1 min-h-0 flex flex-col">
             {activeTab === 'info' ? (
-              <div className="py-4">
+              <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
@@ -470,7 +470,9 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
                 )}
               </div>
             ) : (
-              <DealChatView deal={deal} onMessageSent={handleMessageSent} />
+              <div className="flex-1 min-h-0 flex flex-col px-4">
+                <DealChatView deal={deal} onMessageSent={handleMessageSent} />
+              </div>
             )}
           </div>
         </div>
