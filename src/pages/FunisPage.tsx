@@ -800,7 +800,7 @@ const StageNavigator = ({
 }) => {
   const stage = stages[activeIndex];
   return (
-    <div className="flex items-center gap-2 px-4 py-3">
+    <div className="flex items-center gap-2 px-4 py-1.5">
       <button
         onClick={onPrev}
         disabled={activeIndex === 0}
