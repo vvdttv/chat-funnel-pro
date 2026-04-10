@@ -122,6 +122,7 @@ const LossBottomSheet = ({ open, onClose, onConfirm }: { open: boolean; onClose:
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
   const [message, setMessage] = useState('');
+  const [aiMode, setAiMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const thread = chatThreads.find(t => t.dealId === deal.id);
   const messages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
@@ -146,7 +147,11 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
   const handleSend = () => {
     if (!message.trim()) return;
     setMessage('');
-    onMessageSent?.();
+    if (!aiMode) {
+      onMessageSent?.();
+    }
+    // If aiMode is on, the message goes to AI (mock for now)
+    setAiMode(false);
   };
 
   return (
@@ -174,16 +179,37 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
         ))}
       </div>
       <div className="pt-2 pb-1">
-        <div className="flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
+        {aiMode && (
+          <div className="flex items-center gap-1 mb-1.5 px-1">
+            <Sparkles size={10} className="text-[hsl(270,60%,65%)]" />
+            <span className="text-[10px] text-[hsl(270,60%,65%)] font-medium">Modo IA ativo — sua mensagem será enviada para a IA</span>
+          </div>
+        )}
+        <div className={`flex items-center gap-2 rounded-full px-4 py-2 transition-colors ${
+          aiMode ? 'bg-[hsl(270,30%,15%)] border-2 border-dashed border-[hsl(270,40%,35%)]' : 'bg-secondary'
+        }`}>
           <input
             type="text"
             value={message}
             onChange={e => setMessage(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Mensagem..."
+            placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
             className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <button onClick={handleSend} className="p-1.5 rounded-full bg-primary text-primary-foreground active:scale-95 transition-transform">
+          <button
+            onClick={() => setAiMode(!aiMode)}
+            className={`p-1.5 rounded-full active:scale-95 transition-all ${
+              aiMode ? 'bg-[hsl(270,40%,35%)] text-[hsl(270,80%,85%)]' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
+            onClick={handleSend}
+            className={`p-1.5 rounded-full active:scale-95 transition-all ${
+              aiMode ? 'bg-[hsl(270,40%,35%)] text-[hsl(270,80%,85%)]' : 'bg-primary text-primary-foreground'
+            }`}
+          >
             <Send size={16} />
           </button>
         </div>
