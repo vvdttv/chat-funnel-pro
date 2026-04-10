@@ -1361,7 +1361,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
     <div className="flex flex-col h-full relative">
       {/* Toolbar + panels */}
       <div ref={toolbarRef}>
-        <div className="px-4 pt-3 pb-1">
+        <div className="px-4 pt-2 pb-0.5">
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
