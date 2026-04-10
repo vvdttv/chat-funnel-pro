@@ -145,10 +145,67 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = () => {
+          const now = new Date();
+          const name = `audio_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.webm`;
+          setAttachments(prev => [...prev, {
+            type: 'audio',
+            name,
+            dataUrl: reader.result as string,
+            file: new File([audioBlob], name, { type: 'audio/webm' }),
+          }]);
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Mic error:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    }
+  };
+
+  const formatRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
   const thread = chatThreads.find(t => t.dealId === deal.id);
   const baseMessages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
 
@@ -387,14 +444,32 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
           >
             <Plus size={18} />
           </button>
-          <input
-            type="text"
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
-            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-w-0"
-          />
+
+          {isRecording ? (
+            <div className="flex-1 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-sm text-destructive font-medium">{formatRecTime(recordingTime)}</span>
+              <span className="text-xs text-muted-foreground">Gravando...</span>
+            </div>
+          ) : (
+            <input
+              type="text"
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              placeholder={aiMode ? "Pergunte algo à IA..." : "Mensagem..."}
+              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground min-w-0"
+            />
+          )}
+
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-1.5 rounded-full active:scale-95 transition-all ${
+              isRecording ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground'
+            }`}
+          >
+            <Mic size={16} />
+          </button>
           <button
             onClick={() => setAiMode(!aiMode)}
             className={`p-1.5 rounded-full active:scale-95 transition-all ${
