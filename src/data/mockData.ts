@@ -104,6 +104,105 @@ export interface AIFlow {
   blocks: number;
 }
 
+// ========== CUSTOM FIELDS (GoHighLevel model) ==========
+
+export type FieldType =
+  | 'text' | 'textarea' | 'number' | 'monetary' | 'phone' | 'email'
+  | 'date' | 'datetime' | 'dropdown' | 'multiselect' | 'checkbox'
+  | 'radio' | 'url' | 'file' | 'signature' | 'toggle';
+
+export type FieldObject = 'lead' | 'deal' | 'property';
+
+export interface CustomField {
+  id: string;
+  name: string;
+  key: string;
+  type: FieldType;
+  object: FieldObject;
+  required: boolean;
+  system: boolean; // true = built-in, cannot delete
+  options?: string[]; // for dropdown, multiselect, radio
+  placeholder?: string;
+  description?: string;
+}
+
+export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  text: 'Texto',
+  textarea: 'Texto Longo',
+  number: 'Número',
+  monetary: 'Monetário',
+  phone: 'Telefone',
+  email: 'E-mail',
+  date: 'Data',
+  datetime: 'Data e Hora',
+  dropdown: 'Lista Suspensa',
+  multiselect: 'Seleção Múltipla',
+  checkbox: 'Caixa de Seleção',
+  radio: 'Opção Única',
+  url: 'URL',
+  file: 'Arquivo',
+  signature: 'Assinatura',
+  toggle: 'Liga/Desliga',
+};
+
+export const FIELD_OBJECT_LABELS: Record<FieldObject, string> = {
+  lead: 'Lead / Contato',
+  deal: 'Negócio',
+  property: 'Imóvel',
+};
+
+export const customFields: CustomField[] = [
+  // Lead system fields
+  { id: 'cf-l1', name: 'Nome', key: 'name', type: 'text', object: 'lead', required: true, system: true },
+  { id: 'cf-l2', name: 'Telefone', key: 'phone', type: 'phone', object: 'lead', required: true, system: true },
+  { id: 'cf-l3', name: 'E-mail', key: 'email', type: 'email', object: 'lead', required: false, system: true },
+  { id: 'cf-l4', name: 'Origem', key: 'origin', type: 'dropdown', object: 'lead', required: false, system: true, options: ['Facebook Ads', 'Instagram Ads', 'Instagram Reels', 'Google Ads', 'Portal ZAP', 'Indicação', 'YouTube', 'Site', 'Outro'] },
+  { id: 'cf-l5', name: 'CPF', key: 'cpf', type: 'text', object: 'lead', required: false, system: false, placeholder: '000.000.000-00' },
+  { id: 'cf-l6', name: 'Data de Nascimento', key: 'birth_date', type: 'date', object: 'lead', required: false, system: false },
+  { id: 'cf-l7', name: 'Renda Mensal', key: 'monthly_income', type: 'monetary', object: 'lead', required: false, system: false },
+  { id: 'cf-l8', name: 'Estado Civil', key: 'marital_status', type: 'dropdown', object: 'lead', required: false, system: false, options: ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'] },
+  { id: 'cf-l9', name: 'Profissão', key: 'profession', type: 'text', object: 'lead', required: false, system: false },
+  { id: 'cf-l10', name: 'Endereço', key: 'address', type: 'textarea', object: 'lead', required: false, system: false },
+  { id: 'cf-l11', name: 'Tags', key: 'tags', type: 'multiselect', object: 'lead', required: false, system: false, options: ['VIP', 'Investidor', 'Primeiro Imóvel', 'MCMV', 'Alto Padrão', 'Aluguel'] },
+  { id: 'cf-l12', name: 'Aceita Comunicação', key: 'opt_in', type: 'toggle', object: 'lead', required: false, system: false },
+  { id: 'cf-l13', name: 'Observações', key: 'notes', type: 'textarea', object: 'lead', required: false, system: false },
+  { id: 'cf-l14', name: 'Documentos', key: 'documents', type: 'file', object: 'lead', required: false, system: false },
+  // Deal system fields
+  { id: 'cf-d1', name: 'Nome do Lead', key: 'leadName', type: 'text', object: 'deal', required: true, system: true },
+  { id: 'cf-d2', name: 'Imóvel', key: 'property', type: 'text', object: 'deal', required: true, system: true },
+  { id: 'cf-d3', name: 'Código do Imóvel', key: 'propertyCode', type: 'text', object: 'deal', required: false, system: true },
+  { id: 'cf-d4', name: 'Valor', key: 'value', type: 'monetary', object: 'deal', required: true, system: true },
+  { id: 'cf-d5', name: 'Etapa', key: 'stage', type: 'text', object: 'deal', required: true, system: true },
+  { id: 'cf-d6', name: 'Probabilidade', key: 'probability', type: 'number', object: 'deal', required: false, system: true },
+  { id: 'cf-d7', name: 'Data de Criação', key: 'createdAt', type: 'date', object: 'deal', required: false, system: true },
+  { id: 'cf-d8', name: 'Fonte do Lead', key: 'lead_source', type: 'dropdown', object: 'deal', required: false, system: false, options: ['Tráfego Pago', 'Orgânico', 'Indicação', 'Portal', 'Evento'] },
+  { id: 'cf-d9', name: 'Tipo de Financiamento', key: 'financing_type', type: 'dropdown', object: 'deal', required: false, system: false, options: ['MCMV', 'SFH', 'SFI', 'À Vista', 'Permuta', 'Consórcio'] },
+  { id: 'cf-d10', name: 'Valor da Entrada', key: 'down_payment', type: 'monetary', object: 'deal', required: false, system: false },
+  { id: 'cf-d11', name: 'FGTS Disponível', key: 'fgts', type: 'monetary', object: 'deal', required: false, system: false },
+  { id: 'cf-d12', name: 'Data Prevista Fechamento', key: 'expected_close', type: 'date', object: 'deal', required: false, system: false },
+  { id: 'cf-d13', name: 'Motivo da Perda', key: 'loss_reason', type: 'dropdown', object: 'deal', required: false, system: false, options: ['Preço', 'Concorrência', 'Crédito Reprovado', 'Desistência', 'Localização', 'Outro'] },
+  { id: 'cf-d14', name: 'Contrato Assinado', key: 'contract_signed', type: 'toggle', object: 'deal', required: false, system: false },
+  { id: 'cf-d15', name: 'Anexos do Negócio', key: 'deal_attachments', type: 'file', object: 'deal', required: false, system: false },
+  // Property system fields
+  { id: 'cf-p1', name: 'Código', key: 'code', type: 'text', object: 'property', required: true, system: true },
+  { id: 'cf-p2', name: 'Título', key: 'title', type: 'text', object: 'property', required: true, system: true },
+  { id: 'cf-p3', name: 'Valor', key: 'value', type: 'monetary', object: 'property', required: true, system: true },
+  { id: 'cf-p4', name: 'Endereço', key: 'address', type: 'text', object: 'property', required: true, system: true },
+  { id: 'cf-p5', name: 'Link Tour Virtual', key: 'tourLink', type: 'url', object: 'property', required: false, system: true },
+  { id: 'cf-p6', name: 'Tipo', key: 'property_type', type: 'dropdown', object: 'property', required: false, system: false, options: ['Apartamento', 'Casa', 'Cobertura', 'Loft', 'Studio', 'Sala Comercial', 'Terreno', 'Loja', 'Galpão'] },
+  { id: 'cf-p7', name: 'Quartos', key: 'bedrooms', type: 'number', object: 'property', required: false, system: false },
+  { id: 'cf-p8', name: 'Banheiros', key: 'bathrooms', type: 'number', object: 'property', required: false, system: false },
+  { id: 'cf-p9', name: 'Área (m²)', key: 'area', type: 'number', object: 'property', required: false, system: false },
+  { id: 'cf-p10', name: 'Vagas', key: 'parking', type: 'number', object: 'property', required: false, system: false },
+  { id: 'cf-p11', name: 'Condomínio', key: 'condo_fee', type: 'monetary', object: 'property', required: false, system: false },
+  { id: 'cf-p12', name: 'IPTU', key: 'iptu', type: 'monetary', object: 'property', required: false, system: false },
+  { id: 'cf-p13', name: 'Características', key: 'features', type: 'multiselect', object: 'property', required: false, system: false, options: ['Piscina', 'Academia', 'Churrasqueira', 'Varanda', 'Elevador', 'Portaria 24h', 'Pet Friendly', 'Mobiliado'] },
+  { id: 'cf-p14', name: 'Status', key: 'status', type: 'dropdown', object: 'property', required: false, system: false, options: ['Disponível', 'Reservado', 'Vendido', 'Alugado', 'Indisponível'] },
+  { id: 'cf-p15', name: 'Fotos', key: 'photos', type: 'file', object: 'property', required: false, system: false },
+  { id: 'cf-p16', name: 'Descrição', key: 'description', type: 'textarea', object: 'property', required: false, system: false },
+  { id: 'cf-p17', name: 'Aceita Permuta', key: 'accepts_trade', type: 'toggle', object: 'property', required: false, system: false },
+];
+
 export const LOSS_REASONS = [
   'Preço acima do orçamento',
   'Concorrência',
