@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint } from '@/data/mockData';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock } from 'lucide-react';
+import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS } from '@/data/mockData';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, Check, List } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
+  { id: 'campos', label: 'Campos', icon: Database },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
   { id: 'fluxos', label: 'Fluxos IA', icon: Bot },
