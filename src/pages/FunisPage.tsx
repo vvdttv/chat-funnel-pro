@@ -800,7 +800,7 @@ const StageNavigator = ({
 }) => {
   const stage = stages[activeIndex];
   return (
-    <div className="flex items-center gap-2 px-4 py-3">
+    <div className="flex items-center gap-2 px-4 py-1.5">
       <button
         onClick={onPrev}
         disabled={activeIndex === 0}
@@ -856,7 +856,7 @@ const CardNavigator = ({
   return (
     <div className="flex-1 flex flex-col px-4">
       {/* Card counter */}
-      <div className="flex items-center justify-center gap-2 mb-3">
+      <div className="flex items-center justify-center gap-2 mb-1.5">
         <button
           onClick={onPrev}
           disabled={activeIndex === 0}
@@ -881,7 +881,7 @@ const CardNavigator = ({
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
-        <div className="flex items-center justify-center gap-1.5 mt-3">
+        <div className="flex items-center justify-center gap-1.5 mt-1.5">
           {deals.map((_, i) => (
             <div
               key={i}
@@ -1361,7 +1361,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
     <div className="flex flex-col h-full relative">
       {/* Toolbar + panels */}
       <div ref={toolbarRef}>
-        <div className="px-4 pt-3 pb-1">
+        <div className="px-4 pt-2 pb-0.5">
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
