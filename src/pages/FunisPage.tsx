@@ -1272,9 +1272,30 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   // ===== POR FUNIL =====
   const funnelStages = activeFunnel.stages;
   const currentStageName = funnelStages[stageIndex]?.name || '';
+  // ===== APPLY FILTERS =====
+  const applyFilters = useCallback((list: Deal[]): Deal[] => {
+    return list.filter(d => {
+      // Responsável - sem campo no mock, ignorar por enquanto
+      // Origem - via lead
+      if (stageFilters.origem) {
+        const lead = leads.find(l => l.id === d.leadId);
+        if (!lead || lead.origin !== stageFilters.origem) return false;
+      }
+      // Atividades hoje / amanhã - sem dados reais, ignorar por enquanto
+      // periodoCriacao - usa createdAt do deal
+      if (stageFilters.periodoCriacao.from || stageFilters.periodoCriacao.to) {
+        const created = d.createdAt?.slice(0, 10) || '';
+        if (stageFilters.periodoCriacao.from && created < stageFilters.periodoCriacao.from) return false;
+        if (stageFilters.periodoCriacao.to && created > stageFilters.periodoCriacao.to) return false;
+      }
+      // Demais filtros de período - prontos para dados reais
+      return true;
+    });
+  }, [stageFilters]);
+
   const funnelStageDeals = useMemo(
-    () => dealsList.filter(d => d.funnelId === activeFunnelId && d.stage === currentStageName),
-    [dealsList, activeFunnelId, currentStageName]
+    () => applyFilters(dealsList.filter(d => d.funnelId === activeFunnelId && d.stage === currentStageName)),
+    [dealsList, activeFunnelId, currentStageName, applyFilters]
   );
 
   // ===== POR LEAD =====
@@ -1285,12 +1306,12 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       no_reply_client: [],
       no_reply_agent: [],
     };
-    dealsList.forEach(d => {
+    applyFilters(dealsList).forEach(d => {
       const key = classifyDealLeadStage(d);
       grouped[key].push(d);
     });
     return grouped;
-  }, [dealsList]);
+  }, [dealsList, applyFilters]);
 
   const [leadStageIndex, setLeadStageIndex] = useState(0);
   const [leadCardIndex, setLeadCardIndex] = useState(0);
