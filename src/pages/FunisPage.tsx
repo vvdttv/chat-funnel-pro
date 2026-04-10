@@ -1117,14 +1117,19 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
                 </span>
               )}
             </div>
-            {activeCount > 0 && (
-              <button
-                onClick={() => { onChange(defaultFilters); setSelectedFilter(''); }}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
-              >
-                <RotateCcw size={10} /> Limpar
+            <div className="flex items-center gap-2">
+              {activeCount > 0 && (
+                <button
+                  onClick={() => { onChange(defaultFilters); setSelectedFilter(''); }}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground active:scale-95"
+                >
+                  <RotateCcw size={10} /> Limpar
+                </button>
+              )}
+              <button onClick={onClose} className="p-1 rounded-lg bg-secondary text-muted-foreground active:scale-95">
+                <X size={14} />
               </button>
-            )}
+            </div>
           </div>
 
           {/* Active filter chips */}
