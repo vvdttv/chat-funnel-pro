@@ -51,6 +51,15 @@ const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) =>
       case 'property_code': return deal.propertyCode;
       case 'deal_id': return deal.id;
       case 'lead_id': return deal.leadId;
+      case 'last_msg_lead': return '10/04 14:32';
+      case 'last_msg_broker': return '10/04 15:10';
+      case 'last_chat_msg': return 'Olá, gostaria de agendar uma visita';
+      case 'last_stage_update': return '09/04/2026';
+      case 'current_stage': return deal.stage;
+      case 'opportunity_status': return deal.status === 'won' ? 'Ganho' : deal.status === 'lost' ? 'Perdido' : 'Em andamento';
+      case 'assigned_user': return deal.assignedTo || 'Não atribuído';
+      case 'first_msg_lead': return '01/03 09:15';
+      case 'first_msg_broker': return '01/03 10:00';
       default: return '—';
     }
   };
