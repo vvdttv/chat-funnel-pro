@@ -26,6 +26,15 @@ const ALL_WIDGETS: CardWidget[] = [
   { id: 'property_code', label: 'Código Imóvel', type: 'badge', size: 'half', enabled: false },
   { id: 'deal_id', label: 'ID Negócio', type: 'text', size: 'half', enabled: false },
   { id: 'lead_id', label: 'ID Lead', type: 'text', size: 'half', enabled: false },
+  { id: 'last_msg_lead', label: 'Última msg lead', type: 'text', size: 'half', enabled: false },
+  { id: 'last_msg_broker', label: 'Última msg corretor', type: 'text', size: 'half', enabled: false },
+  { id: 'last_chat_msg', label: 'Última mensagem', type: 'text', size: 'full', enabled: false },
+  { id: 'last_stage_update', label: 'Últ. atualiz. etapa', type: 'text', size: 'half', enabled: false },
+  { id: 'current_stage', label: 'Etapa atual', type: 'badge', size: 'half', enabled: false },
+  { id: 'opportunity_status', label: 'Status oportunidade', type: 'badge', size: 'half', enabled: false },
+  { id: 'assigned_user', label: 'Usuário atribuído', type: 'text', size: 'half', enabled: false },
+  { id: 'first_msg_lead', label: '1ª msg lead', type: 'text', size: 'half', enabled: false },
+  { id: 'first_msg_broker', label: '1ª msg corretor', type: 'text', size: 'half', enabled: false },
 ];
 
 export const getDefaultWidgets = (): CardWidget[] =>
@@ -46,6 +55,15 @@ const PREVIEW_DATA: Record<string, string> = {
   property_code: 'AP-302',
   deal_id: 'D-001',
   lead_id: 'L-001',
+  last_msg_lead: '10/04 14:32',
+  last_msg_broker: '10/04 15:10',
+  last_chat_msg: 'Olá, gostaria de agendar uma visita',
+  last_stage_update: '09/04/2026',
+  current_stage: 'Proposta',
+  opportunity_status: 'Em andamento',
+  assigned_user: 'Carlos Souza',
+  first_msg_lead: '01/03 09:15',
+  first_msg_broker: '01/03 10:00',
 };
 
 // ========== WIDGET PREVIEW RENDERER ==========
