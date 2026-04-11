@@ -34,7 +34,7 @@ function classifyDealLeadStage(deal: Deal): LeadStageKey {
 
 // ========== DEAL CARD (full-width single card) ==========
 
-const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) => {
+const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: Deal; compact?: boolean }) => {
   const funnel = funnels.find(f => f.id === deal.funnelId);
   const getValue = (): string => {
     switch (widget.id) {
@@ -68,58 +68,59 @@ const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) =>
 
   if (widget.type === 'header') {
     return (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+      <div className="flex items-center gap-1.5">
+        <div className={`${compact ? 'w-6 h-6 text-[8px]' : 'w-8 h-8 text-xs'} rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary shrink-0`}>
           {deal.leadName.split(' ').map(n => n[0]).join('')}
         </div>
-        <p className="text-sm font-semibold text-foreground truncate">{val}</p>
+        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-foreground truncate`}>{val}</p>
       </div>
     );
   }
   if (widget.type === 'stat') {
     return (
-      <div className="bg-secondary rounded-lg px-2.5 py-1.5">
-        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{widget.label}</p>
-        <p className="text-xs font-bold text-primary mt-0.5 truncate">{val}</p>
+      <div className={`bg-secondary rounded-lg ${compact ? 'px-1.5 py-1' : 'px-2.5 py-1.5'}`}>
+        <p className={`${compact ? 'text-[7px]' : 'text-[9px]'} text-muted-foreground uppercase tracking-wider`}>{widget.label}</p>
+        <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-bold text-primary mt-0.5 truncate`}>{val}</p>
       </div>
     );
   }
   if (widget.type === 'badge') {
     return (
       <div className="flex items-center gap-1 min-w-0">
-        <span className="text-[9px] text-muted-foreground shrink-0">{widget.label}:</span>
-        <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium truncate">{val}</span>
+        <span className={`${compact ? 'text-[7px]' : 'text-[9px]'} text-muted-foreground shrink-0`}>{widget.label}:</span>
+        <span className={`${compact ? 'text-[8px] px-1.5' : 'text-[10px] px-2'} bg-primary/15 text-primary py-0.5 rounded-full font-medium truncate`}>{val}</span>
       </div>
     );
   }
   if (widget.type === 'contacts') {
     return (
       <div className="flex items-center gap-1 min-w-0">
-        <Users size={11} className="text-muted-foreground shrink-0" />
-        <span className="text-[9px] text-muted-foreground shrink-0">{widget.label}:</span>
-        <span className="text-xs text-foreground truncate">{val}</span>
+        <Users size={compact ? 9 : 11} className="text-muted-foreground shrink-0" />
+        <span className={`${compact ? 'text-[7px]' : 'text-[9px]'} text-muted-foreground shrink-0`}>{widget.label}:</span>
+        <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-foreground truncate`}>{val}</span>
       </div>
     );
   }
   return (
     <div className="min-w-0">
-      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{widget.label}</p>
-      <p className="text-xs text-foreground mt-0.5 truncate">{val}</p>
+      <p className={`${compact ? 'text-[7px]' : 'text-[9px]'} text-muted-foreground uppercase tracking-wider`}>{widget.label}</p>
+      <p className={`${compact ? 'text-[10px]' : 'text-xs'} text-foreground mt-0.5 truncate`}>{val}</p>
     </div>
   );
 };
 
 const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
   const enabled = widgets.filter(w => w.enabled);
+  const compact = enabled.length > 7;
   return (
     <div
       onClick={onClick}
-      className="bg-card rounded-2xl p-4 active:scale-[0.98] transition-transform"
+      className={`bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform`}
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'}`}>
         {enabled.map(w => (
           <div key={w.id} className={w.size === 'full' ? 'col-span-2' : 'col-span-1'}>
-            <DealCardWidget widget={w} deal={deal} />
+            <DealCardWidget widget={w} deal={deal} compact={compact} />
           </div>
         ))}
       </div>
