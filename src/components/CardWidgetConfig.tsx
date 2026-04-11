@@ -74,47 +74,46 @@ const WidgetPreview = ({ widget }: { widget: CardWidget }) => {
   if (widget.type === 'header') {
     return (
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
           JS
         </div>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-foreground truncate">{val}</p>
-        </div>
+        <p className="text-[11px] font-semibold text-foreground truncate">{val}</p>
       </div>
     );
   }
 
   if (widget.type === 'stat') {
     return (
-      <div className="bg-secondary/60 rounded-lg p-2">
-        <p className="text-[9px] text-muted-foreground leading-none">{widget.label}</p>
-        <p className="text-xs font-bold text-primary mt-0.5">{val}</p>
+      <div className="bg-secondary/60 rounded-md px-2 py-1.5">
+        <p className="text-[8px] text-muted-foreground leading-none uppercase tracking-wider">{widget.label}</p>
+        <p className="text-[11px] font-bold text-primary mt-0.5 truncate">{val}</p>
       </div>
     );
   }
 
   if (widget.type === 'badge') {
     return (
-      <span className="inline-block text-[9px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium truncate">
-        {val}
-      </span>
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-[8px] text-muted-foreground shrink-0">{widget.label}:</span>
+        <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-px rounded-full font-medium truncate">{val}</span>
+      </div>
     );
   }
 
   if (widget.type === 'contacts') {
     return (
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-        <span>👥</span>
-        <span className="truncate">{val}</span>
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-[8px] text-muted-foreground shrink-0">👥 {widget.label}:</span>
+        <span className="text-[10px] text-foreground truncate">{val}</span>
       </div>
     );
   }
 
   // text
   return (
-    <div>
-      <p className="text-[9px] text-muted-foreground leading-none">{widget.label}</p>
-      <p className="text-[11px] text-foreground mt-0.5 truncate">{val}</p>
+    <div className="min-w-0">
+      <p className="text-[8px] text-muted-foreground leading-none uppercase tracking-wider">{widget.label}</p>
+      <p className="text-[10px] text-foreground mt-0.5 truncate">{val}</p>
     </div>
   );
 };
