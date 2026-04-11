@@ -68,43 +68,43 @@ const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) =>
 
   if (widget.type === 'header') {
     return (
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
           {deal.leadName.split(' ').map(n => n[0]).join('')}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{val}</p>
-        </div>
+        <p className="text-sm font-semibold text-foreground truncate">{val}</p>
       </div>
     );
   }
   if (widget.type === 'stat') {
     return (
-      <div className="bg-secondary rounded-xl p-3">
-        <p className="text-[10px] text-muted-foreground">{widget.label}</p>
-        <p className="text-sm font-bold text-primary">{val}</p>
+      <div className="bg-secondary rounded-lg px-2.5 py-1.5">
+        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{widget.label}</p>
+        <p className="text-xs font-bold text-primary mt-0.5 truncate">{val}</p>
       </div>
     );
   }
   if (widget.type === 'badge') {
     return (
-      <span className="inline-block text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium truncate">
-        {val}
-      </span>
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="text-[9px] text-muted-foreground shrink-0">{widget.label}:</span>
+        <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium truncate">{val}</span>
+      </div>
     );
   }
   if (widget.type === 'contacts') {
     return (
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Users size={12} />
-        <span className="truncate">{val}</span>
+      <div className="flex items-center gap-1 min-w-0">
+        <Users size={11} className="text-muted-foreground shrink-0" />
+        <span className="text-[9px] text-muted-foreground shrink-0">{widget.label}:</span>
+        <span className="text-xs text-foreground truncate">{val}</span>
       </div>
     );
   }
   return (
-    <div>
-      <p className="text-[10px] text-muted-foreground">{widget.label}</p>
-      <p className="text-xs text-foreground truncate">{val}</p>
+    <div className="min-w-0">
+      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{widget.label}</p>
+      <p className="text-xs text-foreground mt-0.5 truncate">{val}</p>
     </div>
   );
 };
