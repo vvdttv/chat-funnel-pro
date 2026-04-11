@@ -676,7 +676,7 @@ const ConfigPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pb-16">
       <div className="px-4 pt-4 pb-2">
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4">
