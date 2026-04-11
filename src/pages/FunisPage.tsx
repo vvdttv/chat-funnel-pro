@@ -56,8 +56,8 @@ const DealCardWidget = ({ widget, deal }: { widget: CardWidget; deal: Deal }) =>
       case 'last_chat_msg': return 'Olá, gostaria de agendar uma visita';
       case 'last_stage_update': return '09/04/2026';
       case 'current_stage': return deal.stage;
-      case 'opportunity_status': return deal.status === 'won' ? 'Ganho' : deal.status === 'lost' ? 'Perdido' : 'Em andamento';
-      case 'assigned_user': return deal.assignedTo || 'Não atribuído';
+      case 'opportunity_status': return 'Em andamento';
+      case 'assigned_user': return 'Não atribuído';
       case 'first_msg_lead': return '01/03 09:15';
       case 'first_msg_broker': return '01/03 10:00';
       default: return '—';
