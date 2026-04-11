@@ -552,7 +552,7 @@ const FieldForm = ({ field, onSave, onCancel }: { field?: CustomField; onSave: (
 
 // ========== FIELDS MANAGER ==========
 
-const FieldsManager = () => {
+const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; onWidgetsChange: (w: CardWidget[]) => void }) => {
   const [fields, setFields] = useState<CustomField[]>(initialFields);
   const [activeObject, setActiveObject] = useState<FieldObject>('lead');
   const [creating, setCreating] = useState(false);
@@ -575,6 +575,37 @@ const FieldsManager = () => {
   const handleDelete = (id: string) => {
     setFields(prev => prev.filter(f => f.id !== id));
   };
+
+  const fieldWidgetId = (field: CustomField) => `field_${field.key || field.id}`;
+
+  const isFieldWidget = (field: CustomField) => widgets.some(w => w.id === fieldWidgetId(field));
+
+  const toggleFieldWidget = (field: CustomField) => {
+    const wId = fieldWidgetId(field);
+    if (isFieldWidget(field)) {
+      onWidgetsChange(widgets.filter(w => w.id !== wId));
+    } else {
+      const newWidget: CardWidget = {
+        id: wId,
+        label: field.name,
+        type: ['number', 'monetary'].includes(field.type) ? 'stat' : ['dropdown', 'radio', 'toggle'].includes(field.type) ? 'badge' : 'text',
+        size: 'half',
+        enabled: true,
+      };
+      onWidgetsChange([...widgets, newWidget]);
+    }
+  };
+
+  const renderFieldCard = (f: CustomField) => (
+    <FieldCard
+      key={f.id}
+      field={f}
+      onEdit={() => setEditingId(f.id)}
+      onDelete={() => handleDelete(f.id)}
+      isWidget={isFieldWidget(f)}
+      onToggleWidget={() => toggleFieldWidget(f)}
+    />
+  );
 
   return (
     <div>
@@ -630,9 +661,7 @@ const FieldsManager = () => {
             <Lock size={12} className="text-muted-foreground" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Campos do Sistema</span>
           </div>
-          {systemFields.map(f => (
-            <FieldCard key={f.id} field={f} onEdit={() => {}} onDelete={() => {}} />
-          ))}
+          {systemFields.map(renderFieldCard)}
         </div>
       )}
 
@@ -645,14 +674,7 @@ const FieldsManager = () => {
         {customFieldsList.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">Nenhum campo personalizado criado</p>
         ) : (
-          customFieldsList.map(f => (
-            <FieldCard
-              key={f.id}
-              field={f}
-              onEdit={() => setEditingId(f.id)}
-              onDelete={() => handleDelete(f.id)}
-            />
-          ))
+          customFieldsList.map(renderFieldCard)
         )}
       </div>
     </div>
