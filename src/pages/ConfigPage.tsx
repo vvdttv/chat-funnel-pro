@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS } from '@/data/mockData';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, Check, List, LayoutGrid } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import CardWidgetConfig from '@/components/CardWidgetConfig';
+import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
@@ -798,7 +798,7 @@ const ConfigPage = () => {
           </>
         )}
 
-        {activeTab === 'campos' && <FieldsManager />}
+        {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 
         {activeTab === 'card_layout' && (
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
