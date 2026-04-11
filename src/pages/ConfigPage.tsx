@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS } from '@/data/mockData';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, Check, List, LayoutGrid } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import CardWidgetConfig from '@/components/CardWidgetConfig';
+import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
@@ -364,7 +364,7 @@ const FIELD_TYPE_ICONS: Record<FieldType, string> = {
 
 // ========== FIELD CARD ==========
 
-const FieldCard = ({ field, onEdit, onDelete }: { field: CustomField; onEdit: () => void; onDelete: () => void }) => (
+const FieldCard = ({ field, onEdit, onDelete, isWidget, onToggleWidget }: { field: CustomField; onEdit: () => void; onDelete: () => void; isWidget?: boolean; onToggleWidget?: () => void }) => (
   <div className="flex items-center gap-3 bg-card rounded-xl p-3 mb-2">
     <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold text-foreground shrink-0">
       {FIELD_TYPE_ICONS[field.type]}
@@ -377,12 +377,23 @@ const FieldCard = ({ field, onEdit, onDelete }: { field: CustomField; onEdit: ()
       </div>
       <p className="text-[10px] text-muted-foreground">{FIELD_TYPE_LABELS[field.type]}{field.key ? ` · ${field.key}` : ''}</p>
     </div>
-    {!field.system && (
-      <div className="flex items-center gap-1">
-        <button onClick={onEdit} className="p-2 text-muted-foreground active:scale-95"><Pencil size={14} /></button>
-        <button onClick={onDelete} className="p-2 text-destructive active:scale-95"><Trash2 size={14} /></button>
-      </div>
-    )}
+    <div className="flex items-center gap-1">
+      {onToggleWidget && (
+        <button
+          onClick={onToggleWidget}
+          className={`p-2 active:scale-95 transition-transform ${isWidget ? 'text-primary' : 'text-muted-foreground'}`}
+          title={isWidget ? 'Remover do card' : 'Adicionar ao card'}
+        >
+          <LayoutGrid size={14} />
+        </button>
+      )}
+      {!field.system && (
+        <>
+          <button onClick={onEdit} className="p-2 text-muted-foreground active:scale-95"><Pencil size={14} /></button>
+          <button onClick={onDelete} className="p-2 text-destructive active:scale-95"><Trash2 size={14} /></button>
+        </>
+      )}
+    </div>
   </div>
 );
 
@@ -541,7 +552,7 @@ const FieldForm = ({ field, onSave, onCancel }: { field?: CustomField; onSave: (
 
 // ========== FIELDS MANAGER ==========
 
-const FieldsManager = () => {
+const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; onWidgetsChange: (w: CardWidget[]) => void }) => {
   const [fields, setFields] = useState<CustomField[]>(initialFields);
   const [activeObject, setActiveObject] = useState<FieldObject>('lead');
   const [creating, setCreating] = useState(false);
@@ -564,6 +575,37 @@ const FieldsManager = () => {
   const handleDelete = (id: string) => {
     setFields(prev => prev.filter(f => f.id !== id));
   };
+
+  const fieldWidgetId = (field: CustomField) => `field_${field.key || field.id}`;
+
+  const isFieldWidget = (field: CustomField) => widgets.some(w => w.id === fieldWidgetId(field));
+
+  const toggleFieldWidget = (field: CustomField) => {
+    const wId = fieldWidgetId(field);
+    if (isFieldWidget(field)) {
+      onWidgetsChange(widgets.filter(w => w.id !== wId));
+    } else {
+      const newWidget: CardWidget = {
+        id: wId,
+        label: field.name,
+        type: ['number', 'monetary'].includes(field.type) ? 'stat' : ['dropdown', 'radio', 'toggle'].includes(field.type) ? 'badge' : 'text',
+        size: 'half',
+        enabled: true,
+      };
+      onWidgetsChange([...widgets, newWidget]);
+    }
+  };
+
+  const renderFieldCard = (f: CustomField) => (
+    <FieldCard
+      key={f.id}
+      field={f}
+      onEdit={() => setEditingId(f.id)}
+      onDelete={() => handleDelete(f.id)}
+      isWidget={isFieldWidget(f)}
+      onToggleWidget={() => toggleFieldWidget(f)}
+    />
+  );
 
   return (
     <div>
@@ -619,9 +661,7 @@ const FieldsManager = () => {
             <Lock size={12} className="text-muted-foreground" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Campos do Sistema</span>
           </div>
-          {systemFields.map(f => (
-            <FieldCard key={f.id} field={f} onEdit={() => {}} onDelete={() => {}} />
-          ))}
+          {systemFields.map(renderFieldCard)}
         </div>
       )}
 
@@ -634,14 +674,7 @@ const FieldsManager = () => {
         {customFieldsList.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">Nenhum campo personalizado criado</p>
         ) : (
-          customFieldsList.map(f => (
-            <FieldCard
-              key={f.id}
-              field={f}
-              onEdit={() => setEditingId(f.id)}
-              onDelete={() => handleDelete(f.id)}
-            />
-          ))
+          customFieldsList.map(renderFieldCard)
         )}
       </div>
     </div>
@@ -765,7 +798,7 @@ const ConfigPage = () => {
           </>
         )}
 
-        {activeTab === 'campos' && <FieldsManager />}
+        {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 
         {activeTab === 'card_layout' && (
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
