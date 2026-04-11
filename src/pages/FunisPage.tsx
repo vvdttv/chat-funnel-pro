@@ -1410,7 +1410,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const stageTotal = currentDeals.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative pb-16">
       {/* Toolbar + panels */}
       <div ref={toolbarRef}>
         <div className="px-4 pt-2 pb-0.5">
