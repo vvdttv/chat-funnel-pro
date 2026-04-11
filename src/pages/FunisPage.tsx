@@ -905,7 +905,7 @@ const CardNavigator = ({
   const deal = deals[activeIndex];
 
   return (
-    <div className="flex-1 flex flex-col px-4 min-h-0 overflow-y-auto">
+    <div className="flex-1 flex flex-col px-4">
       {/* Card counter */}
       <div className="flex items-center justify-center gap-2 mb-1.5 shrink-0">
         <button
