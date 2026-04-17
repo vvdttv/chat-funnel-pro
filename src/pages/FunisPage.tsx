@@ -115,11 +115,11 @@ const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void;
   return (
     <div
       onClick={onClick}
-      className={`bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform`}
+      className={`bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform flex-1 min-h-0 flex flex-col`}
     >
-      <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'}`}>
+      <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'} flex-1 min-h-0 auto-rows-fr`}>
         {enabled.map(w => (
-          <div key={w.id} className={w.size === 'full' ? 'col-span-2' : 'col-span-1'}>
+          <div key={w.id} className={`${w.size === 'full' ? 'col-span-2' : 'col-span-1'} min-h-0 flex flex-col justify-center`}>
             <DealCardWidget widget={w} deal={deal} compact={compact} />
           </div>
         ))}
@@ -906,7 +906,7 @@ const CardNavigator = ({
   const deal = deals[activeIndex];
 
   return (
-    <div className="flex-1 flex flex-col px-4">
+    <div className="flex-1 flex flex-col px-4 pb-3 min-h-0">
       {/* Card counter */}
       <div className="flex items-center justify-center gap-2 mb-1.5 shrink-0">
         <button
@@ -933,7 +933,7 @@ const CardNavigator = ({
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
-        <div className="flex items-center justify-center gap-1.5 mt-1.5">
+        <div className="flex items-center justify-center gap-1.5 mt-1.5 shrink-0">
           {deals.map((_, i) => (
             <div
               key={i}
