@@ -36,6 +36,7 @@ function classifyDealLeadStage(deal: Deal): LeadStageKey {
 // ========== DEAL CARD (full-width single card) ==========
 
 const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: Deal; compact?: boolean }) => {
+  const { funnels } = useFunnelsContext();
   const funnel = funnels.find(f => f.id === deal.funnelId);
   const getValue = (): string => {
     switch (widget.id) {
@@ -111,6 +112,7 @@ const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: D
 };
 
 const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
+  const { funnels } = useFunnelsContext();
   const enabled = widgets.filter(w => w.enabled);
   const compact = enabled.length > 7;
   const funnel = funnels.find(f => f.id === deal.funnelId);
@@ -199,6 +201,7 @@ type LocalMessage = {
 // ========== CHAT VIEW ==========
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
+  const { funnels } = useFunnelsContext();
   const [message, setMessage] = useState('');
   const [aiMode, setAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
