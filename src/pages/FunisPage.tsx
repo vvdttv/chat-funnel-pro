@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES } from '@/data/mockData';
+import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -112,11 +112,20 @@ const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: D
 const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
   const enabled = widgets.filter(w => w.enabled);
   const compact = enabled.length > 7;
+  const funnel = funnels.find(f => f.id === deal.funnelId);
+  const stage = funnel?.stages.find(s => s.name === deal.stage);
+  const daysInStage = getDealDaysInStage(deal);
+  const overdue = stage ? daysInStage > stage.maxDaysInStage : false;
   return (
     <div
       onClick={onClick}
-      className={`bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform flex-1 min-h-0 flex flex-col`}
+      className={`relative bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform flex-1 min-h-0 flex flex-col ${overdue ? 'ring-1 ring-destructive/50' : ''}`}
     >
+      {overdue && (
+        <div className="absolute top-2 right-2 flex items-center gap-1 bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full text-[9px] font-semibold z-10">
+          <AlertTriangle size={9} /> atrasado
+        </div>
+      )}
       <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'} flex-1 min-h-0 auto-rows-fr`}>
         {enabled.map(w => (
           <div key={w.id} className={`${w.size === 'full' ? 'col-span-2' : 'col-span-1'} min-h-0 flex flex-col justify-center`}>
