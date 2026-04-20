@@ -1320,10 +1320,11 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
   const { widgets: cardWidgets } = useCardWidgets();
+  const { funnels } = useFunnelsContext();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [activeFunnelId, setActiveFunnelId] = useState(funnels[0].id);
+  const [activeFunnelId, setActiveFunnelId] = useState<string>('');
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [lossOpen, setLossOpen] = useState(false);
@@ -1334,12 +1335,19 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
   const toolbarRef = useRef<HTMLDivElement>(null);
 
+  // Sincroniza funil ativo com lista carregada
+  useEffect(() => {
+    if (!activeFunnelId && funnels.length > 0) {
+      setActiveFunnelId(funnels[0].id);
+    } else if (activeFunnelId && funnels.length > 0 && !funnels.find(f => f.id === activeFunnelId)) {
+      setActiveFunnelId(funnels[0].id);
+    }
+  }, [funnels, activeFunnelId]);
 
-
-  const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
+  const activeFunnel = funnels.find(f => f.id === activeFunnelId);
 
   // ===== POR FUNIL =====
-  const funnelStages = activeFunnel.stages;
+  const funnelStages = activeFunnel?.stages || [];
   const currentStageName = funnelStages[stageIndex]?.name || '';
   // ===== APPLY FILTERS =====
   const applyFilters = useCallback((list: Deal[]): Deal[] => {
