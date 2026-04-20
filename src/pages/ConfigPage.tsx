@@ -910,26 +910,35 @@ const ConfigPage = () => {
       <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-24">
         {activeTab === 'funis' && (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
-                <SelectTrigger className="w-auto gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {funnelsList.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                onClick={addFunnel}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
-              >
-                <Plus size={14} /> Novo Funil
-              </button>
-            </div>
-            {selectedFunnel && (
-              <FunnelEditor funnel={selectedFunnel} onUpdate={updateFunnel} />
+            {funnelsLoading ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 size={20} className="animate-spin" />
+                <span className="text-xs ml-2">Carregando funis…</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
+                    <SelectTrigger className="w-auto gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold">
+                      <SelectValue placeholder="Selecione um funil" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {funnelsList.map(f => (
+                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    onClick={handleAddFunnel}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
+                  >
+                    <Plus size={14} /> Novo Funil
+                  </button>
+                </div>
+                {selectedFunnel && (
+                  <FunnelEditor funnel={selectedFunnel} onUpdate={updateFunnel} />
+                )}
+              </>
             )}
           </>
         )}
