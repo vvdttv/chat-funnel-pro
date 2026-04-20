@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
 import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
-import { useFunnels } from '@/hooks/useFunnels';
+import { useFunnelsContext } from '@/hooks/useFunnels';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
 
@@ -856,7 +856,7 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 
 const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
-  const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnels();
+  const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
 
