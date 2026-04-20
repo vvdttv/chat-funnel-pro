@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS } from '@/data/mockData';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, Check, List, LayoutGrid } from 'lucide-react';
+import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, getStageMetrics, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
 import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 
@@ -25,98 +27,211 @@ const CHANNEL_OPTIONS: { value: Touchpoint['channel']; label: string; icon: type
 
 // ========== TOUCHPOINT EDITOR ==========
 
+const MESSAGE_TYPE_OPTIONS: { value: MessageType; label: string; icon: typeof TypeIcon }[] = [
+  { value: 'text', label: 'Texto', icon: TypeIcon },
+  { value: 'image', label: 'Imagem', icon: ImageIcon },
+  { value: 'audio', label: 'Áudio', icon: Volume2 },
+  { value: 'video', label: 'Vídeo', icon: Video },
+];
+
+const EXECUTOR_OPTIONS: { value: TouchpointExecutor; label: string; icon: typeof User; classes: string }[] = [
+  { value: 'agent', label: 'Corretor', icon: User, classes: 'bg-primary/15 text-primary border-primary/30' },
+  { value: 'ai', label: 'IA', icon: Bot, classes: 'bg-[hsl(270,40%,25%)]/50 text-[hsl(270,60%,70%)] border-[hsl(270,40%,35%)]' },
+  { value: 'both', label: 'Ambos', icon: Sparkles, classes: 'bg-warning/15 text-warning border-warning/30' },
+];
+
+const getExecutor = (tp: Touchpoint): TouchpointExecutor =>
+  tp.executor || (tp.type === 'ai' ? 'ai' : 'agent');
+
 const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: (tp: Touchpoint) => void; onDelete: () => void }) => {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tp);
+  const [draft, setDraft] = useState<Touchpoint>({ ...tp, executor: getExecutor(tp), messageTypes: tp.messageTypes?.length ? tp.messageTypes : ['text'] });
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   const ChannelIcon = CHANNEL_OPTIONS.find(c => c.value === tp.channel)?.icon || MessageSquare;
+  const executor = getExecutor(tp);
+  const ExecMeta = EXECUTOR_OPTIONS.find(e => e.value === executor)!;
+  const ExecIcon = ExecMeta.icon;
+  const showAIButton = draft.executor === 'ai' || draft.executor === 'both';
+
+  const toggleMsgType = (mt: MessageType) => {
+    const has = draft.messageTypes.includes(mt);
+    const next = has ? draft.messageTypes.filter(t => t !== mt) : [...draft.messageTypes, mt];
+    setDraft(d => ({ ...d, messageTypes: next.length ? next : ['text'] }));
+  };
+
+  const openAIBuilder = () => {
+    if (!draft.aiWorkflow) {
+      setDraft(d => ({ ...d, aiWorkflow: { id: `wf-${Date.now()}`, blocks: [], showTypingIndicator: true, maxResponseSeconds: 30 } }));
+    }
+    setAiSheetOpen(true);
+  };
 
   if (editing) {
     return (
-      <div className="bg-secondary rounded-xl p-3 mb-2 border border-border">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-foreground">Editar Ponto de Contato</span>
-          <button onClick={() => setEditing(false)} className="text-muted-foreground active:scale-95"><X size={14} /></button>
-        </div>
-        <div className="space-y-2.5">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDraft(d => ({ ...d, type: 'agent' }))}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] ${
-                draft.type === 'agent' ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-card text-muted-foreground'
-              }`}
-            >
-              <User size={12} className="inline mr-1" /> Corretor
-            </button>
-            <button
-              onClick={() => setDraft(d => ({ ...d, type: 'ai' }))}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] ${
-                draft.type === 'ai' ? 'bg-[hsl(270,40%,25%)]/50 text-[hsl(270,60%,70%)] border border-[hsl(270,40%,35%)]' : 'bg-card text-muted-foreground'
-              }`}
-            >
-              <Bot size={12} className="inline mr-1" /> IA
-            </button>
+      <>
+        <div className="bg-secondary rounded-xl p-3 mb-2 border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-foreground">Editar Ponto de Contato</span>
+            <button onClick={() => setEditing(false)} className="text-muted-foreground active:scale-95"><X size={14} /></button>
           </div>
-          <input
-            value={draft.action}
-            onChange={e => setDraft(d => ({ ...d, action: e.target.value }))}
-            placeholder="Ação (ex: Enviar proposta)"
-            className="w-full bg-card rounded-lg px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground border border-border focus:border-primary/50"
-          />
-          <input
-            value={draft.description}
-            onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-            placeholder="Descrição da ação"
-            className="w-full bg-card rounded-lg px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground border border-border focus:border-primary/50"
-          />
-          <div className="flex gap-2">
-            <Select value={draft.channel} onValueChange={(v) => setDraft(d => ({ ...d, channel: v as Touchpoint['channel'] }))}>
-              <SelectTrigger className="flex-1 h-8 text-xs bg-card border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CHANNEL_OPTIONS.map(ch => (
-                  <SelectItem key={ch.value} value={ch.value}>{ch.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-1 bg-card border border-border rounded-lg px-2">
-              <Clock size={12} className="text-muted-foreground" />
-              <input
-                type="number"
-                min={0}
-                value={draft.delayHours}
-                onChange={e => setDraft(d => ({ ...d, delayHours: Number(e.target.value) }))}
-                className="w-12 bg-transparent text-sm text-foreground outline-none text-center"
-              />
-              <span className="text-[10px] text-muted-foreground">h</span>
+          <div className="space-y-2.5">
+            {/* Executor */}
+            <div>
+              <label className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 block">Executor</label>
+              <div className="flex gap-1.5">
+                {EXECUTOR_OPTIONS.map(opt => {
+                  const Icon = opt.icon;
+                  const active = draft.executor === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDraft(d => ({ ...d, executor: opt.value }))}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors active:scale-[0.98] border ${
+                        active ? opt.classes : 'bg-card text-muted-foreground border-border'
+                      }`}
+                    >
+                      <Icon size={12} className="inline mr-1" /> {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Message types */}
+            <div>
+              <label className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 block">Tipos de mensagem</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {MESSAGE_TYPE_OPTIONS.map(opt => {
+                  const Icon = opt.icon;
+                  const active = draft.messageTypes.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleMsgType(opt.value)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors active:scale-[0.98] border ${
+                        active ? 'bg-primary/15 text-primary border-primary/30' : 'bg-card text-muted-foreground border-border'
+                      }`}
+                    >
+                      <Icon size={10} /> {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <input
+              value={draft.action}
+              onChange={e => setDraft(d => ({ ...d, action: e.target.value }))}
+              placeholder="Ação (ex: Enviar proposta)"
+              className="w-full bg-card rounded-lg px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground border border-border focus:border-primary/50"
+            />
+            <input
+              value={draft.description}
+              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
+              placeholder="Descrição da ação"
+              className="w-full bg-card rounded-lg px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground border border-border focus:border-primary/50"
+            />
+            <div className="flex gap-2">
+              <Select value={draft.channel} onValueChange={(v) => setDraft(d => ({ ...d, channel: v as Touchpoint['channel'] }))}>
+                <SelectTrigger className="flex-1 h-8 text-xs bg-card border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_OPTIONS.map(ch => (
+                    <SelectItem key={ch.value} value={ch.value}>{ch.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-1 bg-card border border-border rounded-lg px-2">
+                <Clock size={12} className="text-muted-foreground" />
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.delayHours}
+                  onChange={e => setDraft(d => ({ ...d, delayHours: Number(e.target.value) }))}
+                  className="w-12 bg-transparent text-sm text-foreground outline-none text-center"
+                />
+                <span className="text-[10px] text-muted-foreground">h</span>
+              </div>
+            </div>
+
+            {showAIButton && (
+              <button
+                onClick={openAIBuilder}
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[hsl(270,40%,25%)]/50 text-[hsl(270,60%,70%)] border border-[hsl(270,40%,35%)] text-xs font-semibold active:scale-[0.98]"
+              >
+                <Bot size={13} /> Configurar comportamento da IA
+                <ChevronRight size={13} />
+                {draft.aiWorkflow && draft.aiWorkflow.blocks.length > 0 && (
+                  <span className="ml-1 text-[9px] bg-[hsl(270,40%,35%)] text-[hsl(270,60%,80%)] px-1.5 py-0.5 rounded-full">
+                    {draft.aiWorkflow.blocks.length} blocos
+                  </span>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={() => { onUpdate(draft); setEditing(false); }}
+              className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] transition-transform"
+            >
+              Salvar
+            </button>
           </div>
-          <button
-            onClick={() => { onUpdate(draft); setEditing(false); }}
-            className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-[0.98] transition-transform"
-          >
-            Salvar
-          </button>
         </div>
-      </div>
+
+        {/* AI workflow sheet */}
+        <Sheet open={aiSheetOpen} onOpenChange={setAiSheetOpen}>
+          <SheetContent side="bottom" className="h-[92vh] flex flex-col p-0 max-w-md mx-auto">
+            <SheetHeader className="p-4 border-b border-border">
+              <SheetTitle className="text-base flex items-center gap-2">
+                <Bot size={16} className="text-[hsl(270,60%,70%)]" />
+                Comportamento da IA · {draft.action || 'Ponto de contato'}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-4">
+              {draft.aiWorkflow && (
+                <AIWorkflowBuilder
+                  workflow={draft.aiWorkflow}
+                  onChange={wf => setDraft(d => ({ ...d, aiWorkflow: wf }))}
+                />
+              )}
+            </div>
+            <div className="p-4 border-t border-border">
+              <button
+                onClick={() => setAiSheetOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98]"
+              >
+                Concluir
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
     );
   }
 
   return (
     <div className="flex items-center gap-2 bg-secondary rounded-xl p-3 mb-2 active:scale-[0.98] transition-transform">
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-        tp.type === 'ai' ? 'bg-[hsl(270,40%,25%)]/50 text-[hsl(270,60%,70%)]' : 'bg-primary/15 text-primary'
-      }`}>
-        {tp.type === 'ai' ? <Bot size={14} /> : <User size={14} />}
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${ExecMeta.classes}`}>
+        <ExecIcon size={14} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground truncate">{tp.action}</p>
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <p className="text-xs font-semibold text-foreground truncate">{tp.action || '(sem ação)'}</p>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <ChannelIcon size={10} className="text-muted-foreground" />
           <span className="text-[10px] text-muted-foreground">{tp.channel}</span>
           {tp.delayHours > 0 && (
             <span className="text-[10px] text-muted-foreground">· após {tp.delayHours}h</span>
+          )}
+          {(tp.messageTypes || ['text']).map(mt => {
+            const Icon = MESSAGE_TYPE_OPTIONS.find(o => o.value === mt)!.icon;
+            return <Icon key={mt} size={9} className="text-muted-foreground" />;
+          })}
+          {tp.aiWorkflow && tp.aiWorkflow.blocks.length > 0 && (
+            <span className="text-[9px] bg-[hsl(270,40%,25%)]/50 text-[hsl(270,60%,70%)] px-1.5 py-0.5 rounded-full font-medium">
+              {tp.aiWorkflow.blocks.length} blocos IA
+            </span>
           )}
         </div>
       </div>
@@ -126,9 +241,35 @@ const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: 
   );
 };
 
+// ========== STAGE METRICS PANEL ==========
+
+const MetricCard = ({ icon: Icon, label, value, accent }: { icon: typeof DollarSign; label: string; value: string; accent?: string }) => (
+  <div className="bg-secondary rounded-lg p-2.5 flex flex-col gap-1">
+    <div className="flex items-center gap-1.5">
+      <Icon size={11} className={accent || 'text-muted-foreground'} />
+      <span className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{label}</span>
+    </div>
+    <span className={`text-sm font-bold ${accent || 'text-foreground'}`}>{value}</span>
+  </div>
+);
+
+const StageMetricsPanel = ({ funnelId, stageId }: { funnelId: string; stageId: string }) => {
+  const m = getStageMetrics(funnelId, stageId);
+  return (
+    <div className="grid grid-cols-2 gap-1.5 mb-3">
+      <MetricCard icon={DollarSign} label="Valor total" value={formatCurrency(m.totalValue)} accent="text-primary" />
+      <MetricCard icon={Users} label="Oportunidades" value={String(m.dealCount)} />
+      <MetricCard icon={Target} label="Prob. fechamento" value={`${m.closeProbability}%`} accent="text-primary" />
+      <MetricCard icon={TrendingUp} label="Prob. avanço" value={`${m.advanceProbability}%`} />
+      <MetricCard icon={ArrowRight} label="Tempo médio avanço" value={`${m.avgDaysToAdvance}d`} />
+      <MetricCard icon={Timer} label="Tempo médio fechamento" value={`${m.avgDaysToClose}d`} />
+    </div>
+  );
+};
+
 // ========== STAGE EDITOR ==========
 
-const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
+const StageEditor = ({ funnelId, stage, onUpdate, onDelete }: { funnelId: string; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
@@ -136,11 +277,12 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
   const addTouchpoint = () => {
     const newTp: Touchpoint = {
       id: `tp-${Date.now()}`,
-      type: 'agent',
+      executor: 'agent',
       action: '',
       description: '',
       delayHours: 0,
       channel: 'whatsapp',
+      messageTypes: ['text'],
     };
     onUpdate({ ...stage, touchpoints: [...stage.touchpoints, newTp] });
   };
@@ -183,9 +325,30 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
 
       {expanded && (
         <div className="px-3 pb-3">
+          {/* Métricas */}
+          <StageMetricsPanel funnelId={funnelId} stageId={stage.id} />
+
+          {/* Tempo máximo na etapa */}
+          <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={12} className="text-muted-foreground" />
+              <span className="text-xs text-foreground">Tempo máx. na etapa</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                value={stage.maxDaysInStage}
+                onChange={e => onUpdate({ ...stage, maxDaysInStage: Math.max(1, Number(e.target.value) || 1) })}
+                className="w-14 bg-card border border-border rounded px-2 py-1 text-xs text-foreground text-center outline-none focus:border-primary/50"
+              />
+              <span className="text-[10px] text-muted-foreground">dias</span>
+            </div>
+          </div>
+
           {/* Probability slider */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] text-muted-foreground">Probabilidade:</span>
+            <span className="text-[10px] text-muted-foreground">Probabilidade base:</span>
             <input
               type="range" min={0} max={100} step={5}
               value={stage.probability}
@@ -232,7 +395,13 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
   const [draftDesc, setDraftDesc] = useState(funnel.description);
 
   const addStage = () => {
-    const newStage: FunnelStage = { name: 'Nova Etapa', probability: 50, touchpoints: [] };
+    const newStage: FunnelStage = {
+      id: `stage-${Date.now()}`,
+      name: 'Nova Etapa',
+      probability: 50,
+      maxDaysInStage: 7,
+      touchpoints: [],
+    };
     onUpdate({ ...funnel, stages: [...funnel.stages, newStage] });
   };
 
@@ -297,7 +466,8 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
       {/* Stages List */}
       {funnel.stages.map((stage, idx) => (
         <StageEditor
-          key={`${funnel.id}-${idx}`}
+          key={stage.id}
+          funnelId={funnel.id}
           stage={stage}
           onUpdate={(s) => updateStage(idx, s)}
           onDelete={() => deleteStage(idx)}
@@ -702,7 +872,7 @@ const ConfigPage = () => {
       description: 'Descrição do funil',
       icon: 'Zap',
       color: 'hsl(var(--primary))',
-      stages: [{ name: 'Novo Lead', probability: 10, touchpoints: [] }],
+      stages: [{ id: `stage-${Date.now()}`, name: 'Novo Lead', probability: 10, maxDaysInStage: 2, touchpoints: [] }],
     };
     setFunnelsList(prev => [...prev, newFunnel]);
     setSelectedFunnelId(newFunnel.id);

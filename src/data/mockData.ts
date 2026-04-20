@@ -6,18 +6,49 @@ export interface Lead {
   origin: string;
 }
 
+export type TouchpointExecutor = 'agent' | 'ai' | 'both';
+export type MessageType = 'text' | 'image' | 'audio' | 'video';
+
+export type AIWorkflowBlockType =
+  | 'send_message'
+  | 'wait'
+  | 'typing'
+  | 'recording'
+  | 'condition'
+  | 'wait_reply';
+
+export interface AIWorkflowBlock {
+  id: string;
+  type: AIWorkflowBlockType;
+  config: Record<string, any>;
+}
+
+export interface AIWorkflow {
+  id: string;
+  showTypingIndicator?: boolean;
+  maxResponseSeconds?: number;
+  blocks: AIWorkflowBlock[];
+}
+
 export interface Touchpoint {
   id: string;
-  type: 'agent' | 'ai';
+  /** @deprecated mantido para compatibilidade; usar `executor` */
+  type?: 'agent' | 'ai';
+  executor: TouchpointExecutor;
   action: string;
   description: string;
   delayHours: number;
   channel: 'whatsapp' | 'email' | 'sms' | 'ligação';
+  messageTypes: MessageType[];
+  aiWorkflow?: AIWorkflow;
 }
 
 export interface FunnelStage {
+  id: string;
   name: string;
   probability: number;
+  /** Tempo máximo (em dias) que uma oportunidade pode ficar na etapa */
+  maxDaysInStage: number;
   touchpoints: Touchpoint[];
 }
 
@@ -234,100 +265,102 @@ export interface NextStepRecord {
 
 // ========== FUNNELS ==========
 
+const STANDARD_STAGES: FunnelStage[] = [
+  {
+    id: 'stage-novo-lead',
+    name: 'Novo Lead',
+    probability: 10,
+    maxDaysInStage: 2,
+    touchpoints: [
+      {
+        id: 'tp-std-1',
+        executor: 'ai',
+        action: 'Mensagem de boas-vindas',
+        description: 'IA envia saudação automática e confirma interesse',
+        delayHours: 0,
+        channel: 'whatsapp',
+        messageTypes: ['text'],
+      },
+    ],
+  },
+  {
+    id: 'stage-qualificacao',
+    name: 'Qualificação',
+    probability: 25,
+    maxDaysInStage: 5,
+    touchpoints: [
+      {
+        id: 'tp-std-2',
+        executor: 'ai',
+        action: 'Coletar dados do lead',
+        description: 'IA pergunta perfil, orçamento e localização desejada',
+        delayHours: 1,
+        channel: 'whatsapp',
+        messageTypes: ['text'],
+      },
+    ],
+  },
+  {
+    id: 'stage-visita',
+    name: 'Visita',
+    probability: 50,
+    maxDaysInStage: 7,
+    touchpoints: [
+      {
+        id: 'tp-std-3',
+        executor: 'agent',
+        action: 'Agendar visita',
+        description: 'Corretor combina horário disponível com o lead',
+        delayHours: 0,
+        channel: 'whatsapp',
+        messageTypes: ['text'],
+      },
+    ],
+  },
+  {
+    id: 'stage-proposta',
+    name: 'Proposta',
+    probability: 75,
+    maxDaysInStage: 10,
+    touchpoints: [
+      {
+        id: 'tp-std-4',
+        executor: 'agent',
+        action: 'Enviar proposta',
+        description: 'Corretor envia proposta formal com valores e condições',
+        delayHours: 0,
+        channel: 'email',
+        messageTypes: ['text'],
+      },
+    ],
+  },
+  {
+    id: 'stage-fechamento',
+    name: 'Fechamento',
+    probability: 95,
+    maxDaysInStage: 14,
+    touchpoints: [
+      {
+        id: 'tp-std-5',
+        executor: 'agent',
+        action: 'Assinatura do contrato',
+        description: 'Corretor agenda e conduz a assinatura',
+        delayHours: 0,
+        channel: 'ligação',
+        messageTypes: ['text'],
+      },
+    ],
+  },
+];
+
 export const funnels: Funnel[] = [
   {
-    id: 'fun-mcmv',
-    name: 'MCMV',
-    description: 'Minha Casa Minha Vida — Leads de tráfego pago',
-    icon: 'Home',
+    id: 'fun-padrao',
+    name: 'Funil Padrão',
+    description: 'Funil padrão do sistema — totalmente customizável',
+    icon: 'Zap',
     color: 'hsl(var(--primary))',
-    stages: [
-      { name: 'Novo Lead', probability: 10, touchpoints: [
-        { id: 'tp1', type: 'ai', action: 'Mensagem de boas-vindas', description: 'IA envia saudação automática e pergunta interesse', delayHours: 0, channel: 'whatsapp' },
-        { id: 'tp2', type: 'agent', action: 'Ligar para qualificar', description: 'Corretor liga para confirmar interesse e coletar dados', delayHours: 1, channel: 'ligação' },
-      ]},
-      { name: 'Simulação Crédito', probability: 25, touchpoints: [
-        { id: 'tp3', type: 'ai', action: 'Coletar dados financeiros', description: 'IA pergunta renda, entrada e FGTS', delayHours: 0, channel: 'whatsapp' },
-        { id: 'tp4', type: 'agent', action: 'Simular na Caixa', description: 'Corretor faz simulação oficial e envia resultado', delayHours: 24, channel: 'whatsapp' },
-      ]},
-      { name: 'Visita', probability: 50, touchpoints: [
-        { id: 'tp5', type: 'agent', action: 'Agendar visita', description: 'Corretor oferece horários disponíveis', delayHours: 0, channel: 'whatsapp' },
-        { id: 'tp6', type: 'ai', action: 'Lembrete de visita', description: 'IA envia lembrete 2h antes da visita', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Proposta', probability: 75, touchpoints: [
-        { id: 'tp7', type: 'agent', action: 'Enviar proposta formal', description: 'Corretor envia contrato com valores e condições', delayHours: 0, channel: 'email' },
-        { id: 'tp8', type: 'ai', action: 'Follow-up proposta', description: 'IA pergunta se houve dúvidas após 48h', delayHours: 48, channel: 'whatsapp' },
-      ]},
-      { name: 'Contrato Assinado', probability: 95, touchpoints: [
-        { id: 'tp9', type: 'agent', action: 'Colher assinaturas', description: 'Corretor agenda assinatura do contrato', delayHours: 0, channel: 'ligação' },
-      ]},
-    ],
-  },
-  {
-    id: 'fun-alto',
-    name: 'Alto Padrão',
-    description: 'Imóveis de alto padrão — Leads de redes sociais',
-    icon: 'Crown',
-    color: '#F59E0B',
-    stages: [
-      { name: 'Novo Lead', probability: 10, touchpoints: [
-        { id: 'tp10', type: 'ai', action: 'Boas-vindas VIP', description: 'IA envia mensagem personalizada com portfólio', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Qualificação', probability: 25, touchpoints: [
-        { id: 'tp11', type: 'agent', action: 'Reunião de perfil', description: 'Corretor agenda call para entender necessidades', delayHours: 2, channel: 'ligação' },
-      ]},
-      { name: 'Visita', probability: 50, touchpoints: [
-        { id: 'tp12', type: 'agent', action: 'Visita exclusiva', description: 'Corretor acompanha visita presencial ao imóvel', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Negociação', probability: 75, touchpoints: [
-        { id: 'tp13', type: 'agent', action: 'Proposta personalizada', description: 'Corretor prepara proposta sob medida', delayHours: 0, channel: 'email' },
-        { id: 'tp14', type: 'ai', action: 'Análise de objeções', description: 'IA sugere argumentos para objeções comuns', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Fechamento', probability: 90, touchpoints: [
-        { id: 'tp15', type: 'agent', action: 'Contrato final', description: 'Corretor envia minuta e agenda assinatura', delayHours: 0, channel: 'email' },
-      ]},
-    ],
-  },
-  {
-    id: 'fun-aluguel',
-    name: 'Aluguel',
-    description: 'Leads interessados em alugar imóveis',
-    icon: 'Key',
-    color: '#8B5CF6',
-    stages: [
-      { name: 'Novo Lead', probability: 10, touchpoints: [
-        { id: 'tp16', type: 'ai', action: 'Boas-vindas aluguel', description: 'IA envia opções de imóveis disponíveis', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Visita', probability: 40, touchpoints: [
-        { id: 'tp17', type: 'agent', action: 'Agendar visita', description: 'Corretor combina horário de visita', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Análise Documentos', probability: 70, touchpoints: [
-        { id: 'tp18', type: 'ai', action: 'Solicitar documentos', description: 'IA envia checklist de documentos necessários', delayHours: 0, channel: 'whatsapp' },
-        { id: 'tp19', type: 'agent', action: 'Análise cadastral', description: 'Corretor analisa ficha e documentos', delayHours: 24, channel: 'email' },
-      ]},
-      { name: 'Contrato', probability: 90, touchpoints: [
-        { id: 'tp20', type: 'agent', action: 'Assinatura do contrato', description: 'Corretor envia contrato para assinatura', delayHours: 0, channel: 'email' },
-      ]},
-    ],
-  },
-  {
-    id: 'fun-inquilinos',
-    name: 'Inquilinos',
-    description: 'Inquilinos ativos — pós-contrato de aluguel',
-    icon: 'Users',
-    color: '#06B6D4',
-    stages: [
-      { name: 'Ativo', probability: 100, touchpoints: [
-        { id: 'tp21', type: 'ai', action: 'Pesquisa de satisfação', description: 'IA envia pesquisa mensal de satisfação', delayHours: 720, channel: 'whatsapp' },
-      ]},
-      { name: 'Renovação', probability: 80, touchpoints: [
-        { id: 'tp22', type: 'agent', action: 'Proposta de renovação', description: 'Corretor envia proposta com novo valor', delayHours: 0, channel: 'email' },
-        { id: 'tp23', type: 'ai', action: 'Lembrete de renovação', description: 'IA avisa sobre prazo de renovação', delayHours: 0, channel: 'whatsapp' },
-      ]},
-      { name: 'Rescisão', probability: 10, touchpoints: [
-        { id: 'tp24', type: 'agent', action: 'Vistoria de saída', description: 'Corretor agenda vistoria do imóvel', delayHours: 0, channel: 'ligação' },
-      ]},
-    ],
+    stages: STANDARD_STAGES,
   },
 ];
 
@@ -347,23 +380,19 @@ export const leads: Lead[] = [
 // ========== DEALS ==========
 
 export const deals: Deal[] = [
-  // MCMV
-  { id: 'd1', funnelId: 'fun-mcmv', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Apt 2Q - Res. Jardins, Guarulhos', propertyCode: 'MCM-101', value: 230000, stage: 'Proposta', probability: 75, createdAt: '2024-01-15', secondaryContacts: [{ name: 'Maria Mendes', role: 'Cônjuge' }] },
-  { id: 'd2', funnelId: 'fun-mcmv', leadId: 'l7', leadName: 'Thiago Nascimento', property: 'Apt 2Q - Cond. Vida Nova, Osasco', propertyCode: 'MCM-205', value: 198000, stage: 'Simulação Crédito', probability: 25, createdAt: '2024-02-01' },
-  { id: 'd3', funnelId: 'fun-mcmv', leadId: 'l5', leadName: 'Fernando Oliveira', property: 'Apt 3Q - Res. Esperança, Campinas', propertyCode: 'MCM-310', value: 265000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-08' },
-  { id: 'd4', funnelId: 'fun-mcmv', leadId: 'l6', leadName: 'Mariana Santos', property: 'Apt 2Q - Cond. Sol Nascente, SP', propertyCode: 'MCM-112', value: 245000, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
-  // Alto Padrão
-  { id: 'd5', funnelId: 'fun-alto', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Cobertura Duplex - Ipanema', propertyCode: 'COB-101', value: 2400000, stage: 'Visita', probability: 50, createdAt: '2024-01-20' },
-  { id: 'd6', funnelId: 'fun-alto', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Casa 4 suítes - Alphaville', propertyCode: 'CAS-045', value: 1200000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
-  { id: 'd7', funnelId: 'fun-alto', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Penthouse 280m² - Leblon', propertyCode: 'PNT-050', value: 3800000, stage: 'Negociação', probability: 75, createdAt: '2024-01-25', secondaryContacts: [{ name: 'Ricardo Silva', role: 'Cônjuge' }] },
-  { id: 'd8', funnelId: 'fun-alto', leadId: 'l8', leadName: 'Patrícia Ferreira', property: 'Mansão Condomínio Fechado - Barra', propertyCode: 'MAN-008', value: 4500000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-12' },
-  // Aluguel
-  { id: 'd9', funnelId: 'fun-aluguel', leadId: 'l4', leadName: 'Juliana Costa', property: 'Studio 35m² - Botafogo', propertyCode: 'STU-018', value: 2800, stage: 'Contrato', probability: 90, createdAt: '2024-01-10' },
-  { id: 'd10', funnelId: 'fun-aluguel', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Sala Comercial 80m² - Faria Lima', propertyCode: 'COM-220', value: 8500, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-05', secondaryContacts: [{ name: 'Paulo Mendes', role: 'Sócio' }] },
-  { id: 'd11', funnelId: 'fun-aluguel', leadId: 'l6', leadName: 'Mariana Santos', property: 'Loft 60m² - Pinheiros', propertyCode: 'LFT-033', value: 4200, stage: 'Visita', probability: 40, createdAt: '2024-02-10' },
-  // Inquilinos
-  { id: 'd12', funnelId: 'fun-inquilinos', leadId: 'l4', leadName: 'Juliana Costa', property: 'Apt 1Q - Tijuca (aluguel ativo)', propertyCode: 'ALG-044', value: 1800, stage: 'Ativo', probability: 100, createdAt: '2023-06-01' },
-  { id: 'd13', funnelId: 'fun-inquilinos', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Sala Comercial - Centro, SP', propertyCode: 'ALG-078', value: 3500, stage: 'Renovação', probability: 80, createdAt: '2023-03-15' },
+  { id: 'd1', funnelId: 'fun-padrao', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Apt 2Q - Res. Jardins, Guarulhos', propertyCode: 'MCM-101', value: 230000, stage: 'Proposta', probability: 75, createdAt: '2024-01-15', secondaryContacts: [{ name: 'Maria Mendes', role: 'Cônjuge' }] },
+  { id: 'd2', funnelId: 'fun-padrao', leadId: 'l7', leadName: 'Thiago Nascimento', property: 'Apt 2Q - Cond. Vida Nova, Osasco', propertyCode: 'MCM-205', value: 198000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
+  { id: 'd3', funnelId: 'fun-padrao', leadId: 'l5', leadName: 'Fernando Oliveira', property: 'Apt 3Q - Res. Esperança, Campinas', propertyCode: 'MCM-310', value: 265000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-08' },
+  { id: 'd4', funnelId: 'fun-padrao', leadId: 'l6', leadName: 'Mariana Santos', property: 'Apt 2Q - Cond. Sol Nascente, SP', propertyCode: 'MCM-112', value: 245000, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
+  { id: 'd5', funnelId: 'fun-padrao', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Cobertura Duplex - Ipanema', propertyCode: 'COB-101', value: 2400000, stage: 'Visita', probability: 50, createdAt: '2024-01-20' },
+  { id: 'd6', funnelId: 'fun-padrao', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Casa 4 suítes - Alphaville', propertyCode: 'CAS-045', value: 1200000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
+  { id: 'd7', funnelId: 'fun-padrao', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Penthouse 280m² - Leblon', propertyCode: 'PNT-050', value: 3800000, stage: 'Proposta', probability: 75, createdAt: '2024-01-25', secondaryContacts: [{ name: 'Ricardo Silva', role: 'Cônjuge' }] },
+  { id: 'd8', funnelId: 'fun-padrao', leadId: 'l8', leadName: 'Patrícia Ferreira', property: 'Mansão Condomínio Fechado - Barra', propertyCode: 'MAN-008', value: 4500000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-12' },
+  { id: 'd9', funnelId: 'fun-padrao', leadId: 'l4', leadName: 'Juliana Costa', property: 'Studio 35m² - Botafogo', propertyCode: 'STU-018', value: 2800, stage: 'Fechamento', probability: 95, createdAt: '2024-01-10' },
+  { id: 'd10', funnelId: 'fun-padrao', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Sala Comercial 80m² - Faria Lima', propertyCode: 'COM-220', value: 8500, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-05', secondaryContacts: [{ name: 'Paulo Mendes', role: 'Sócio' }] },
+  { id: 'd11', funnelId: 'fun-padrao', leadId: 'l6', leadName: 'Mariana Santos', property: 'Loft 60m² - Pinheiros', propertyCode: 'LFT-033', value: 4200, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
+  { id: 'd12', funnelId: 'fun-padrao', leadId: 'l4', leadName: 'Juliana Costa', property: 'Apt 1Q - Tijuca (aluguel ativo)', propertyCode: 'ALG-044', value: 1800, stage: 'Fechamento', probability: 95, createdAt: '2023-06-01' },
+  { id: 'd13', funnelId: 'fun-padrao', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Sala Comercial - Centro, SP', propertyCode: 'ALG-078', value: 3500, stage: 'Proposta', probability: 75, createdAt: '2023-03-15' },
 ];
 
 // ========== ACTIVITIES ==========
@@ -427,3 +456,42 @@ export const aiFlows: AIFlow[] = [
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
 };
+
+// ========== STAGE METRICS (mock) ==========
+
+export interface StageMetrics {
+  totalValue: number;
+  dealCount: number;
+  /** % chance de virar venda — mock derivado de probability */
+  closeProbability: number;
+  /** % chance de avançar para a próxima etapa — mock */
+  advanceProbability: number;
+  /** Dias médios para avançar para próxima etapa — mock */
+  avgDaysToAdvance: number;
+  /** Dias médios para fechar (virar venda) — mock */
+  avgDaysToClose: number;
+}
+
+export const getStageMetrics = (funnelId: string, stageId: string): StageMetrics => {
+  const funnel = funnels.find(f => f.id === funnelId);
+  const stage = funnel?.stages.find(s => s.id === stageId);
+  if (!funnel || !stage) {
+    return { totalValue: 0, dealCount: 0, closeProbability: 0, advanceProbability: 0, avgDaysToAdvance: 0, avgDaysToClose: 0 };
+  }
+  const stageDeals = deals.filter(d => d.funnelId === funnelId && d.stage === stage.name);
+  const totalValue = stageDeals.reduce((sum, d) => sum + d.value, 0);
+  const dealCount = stageDeals.length;
+  const stageIdx = funnel.stages.findIndex(s => s.id === stageId);
+  const stagesLeft = Math.max(1, funnel.stages.length - stageIdx);
+  const closeProbability = stage.probability;
+  const advanceProbability = Math.min(100, Math.round(stage.probability + 15));
+  const avgDaysToAdvance = Math.max(1, Math.round(stage.maxDaysInStage * 0.7));
+  const avgDaysToClose = avgDaysToAdvance * stagesLeft;
+  return { totalValue, dealCount, closeProbability, advanceProbability, avgDaysToAdvance, avgDaysToClose };
+};
+
+export const getDealDaysInStage = (deal: Deal): number => {
+  const created = new Date(deal.createdAt).getTime();
+  return Math.max(0, Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)));
+};
+
