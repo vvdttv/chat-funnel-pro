@@ -6,18 +6,49 @@ export interface Lead {
   origin: string;
 }
 
+export type TouchpointExecutor = 'agent' | 'ai' | 'both';
+export type MessageType = 'text' | 'image' | 'audio' | 'video';
+
+export type AIWorkflowBlockType =
+  | 'send_message'
+  | 'wait'
+  | 'typing'
+  | 'recording'
+  | 'condition'
+  | 'wait_reply';
+
+export interface AIWorkflowBlock {
+  id: string;
+  type: AIWorkflowBlockType;
+  config: Record<string, any>;
+}
+
+export interface AIWorkflow {
+  id: string;
+  showTypingIndicator?: boolean;
+  maxResponseSeconds?: number;
+  blocks: AIWorkflowBlock[];
+}
+
 export interface Touchpoint {
   id: string;
-  type: 'agent' | 'ai';
+  /** @deprecated mantido para compatibilidade; usar `executor` */
+  type?: 'agent' | 'ai';
+  executor: TouchpointExecutor;
   action: string;
   description: string;
   delayHours: number;
   channel: 'whatsapp' | 'email' | 'sms' | 'ligação';
+  messageTypes: MessageType[];
+  aiWorkflow?: AIWorkflow;
 }
 
 export interface FunnelStage {
+  id: string;
   name: string;
   probability: number;
+  /** Tempo máximo (em dias) que uma oportunidade pode ficar na etapa */
+  maxDaysInStage: number;
   touchpoints: Touchpoint[];
 }
 
