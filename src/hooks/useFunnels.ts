@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Funnel, FunnelStage } from '@/data/mockData';
 
@@ -11,7 +11,6 @@ export function useFunnels() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const isInitialLoad = useRef(true);
 
   // Load inicial
   useEffect(() => {
@@ -37,13 +36,10 @@ export function useFunnels() {
       }));
       setFunnels(mapped);
       setLoading(false);
-      // Aguarda 1 tick para evitar salvar logo após o load
-      setTimeout(() => { isInitialLoad.current = false; }, 50);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // Persiste 1 funil (debounced)
   const persistFunnel = useCallback((funnel: Funnel, position: number) => {
     const existingTimer = saveTimers.current.get(funnel.id);
     if (existingTimer) clearTimeout(existingTimer);
@@ -73,19 +69,23 @@ export function useFunnels() {
   }, [persistFunnel]);
 
   const addFunnel = useCallback(async (funnel: Funnel) => {
-    const position = funnels.length;
-    setFunnels((prev) => [...prev, funnel]);
-    const { error } = await supabase.from('funnels').insert({
-      id: funnel.id,
-      name: funnel.name,
-      description: funnel.description,
-      icon: funnel.icon,
-      color: funnel.color,
-      stages: funnel.stages as unknown as any,
-      position,
+    setFunnels((prev) => {
+      const position = prev.length;
+      // dispara insert de forma assíncrona
+      supabase.from('funnels').insert({
+        id: funnel.id,
+        name: funnel.name,
+        description: funnel.description,
+        icon: funnel.icon,
+        color: funnel.color,
+        stages: funnel.stages as unknown as any,
+        position,
+      }).then(({ error }) => {
+        if (error) console.error('[useFunnels] erro ao criar funil', error);
+      });
+      return [...prev, funnel];
     });
-    if (error) console.error('[useFunnels] erro ao criar funil', error);
-  }, [funnels.length]);
+  }, []);
 
   const deleteFunnel = useCallback(async (id: string) => {
     setFunnels((prev) => prev.filter((f) => f.id !== id));
@@ -94,4 +94,20 @@ export function useFunnels() {
   }, []);
 
   return { funnels, loading, error, updateFunnel, addFunnel, deleteFunnel };
+}
+
+// ========== Contexto global (leitura compartilhada) ==========
+
+interface FunnelsContextValue {
+  funnels: Funnel[];
+  loading: boolean;
+}
+
+const FunnelsContext = createContext<FunnelsContextValue>({ funnels: [], loading: true });
+
+export const FunnelsProvider = FunnelsContext.Provider;
+
+/** Lê funis do contexto. Use dentro de <FunnelsProvider value={...}>. */
+export function useFunnelsContext() {
+  return useContext(FunnelsContext);
 }
