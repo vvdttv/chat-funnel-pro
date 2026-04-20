@@ -11,7 +11,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
   const [hasPendingStep, setHasPendingStep] = useState(false);
   const { toast } = useToast();
-  const { funnels, loading } = useFunnels();
+  const funnelsState = useFunnels();
 
   const handleTabChange = useCallback((tab: string) => {
     if (hasPendingStep) {
@@ -36,7 +36,7 @@ const Index = () => {
   };
 
   return (
-    <FunnelsProvider value={{ funnels, loading }}>
+    <FunnelsProvider value={funnelsState}>
       <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
         <div className="flex-1 overflow-hidden">
           {renderPage()}

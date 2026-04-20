@@ -96,18 +96,29 @@ export function useFunnels() {
   return { funnels, loading, error, updateFunnel, addFunnel, deleteFunnel };
 }
 
-// ========== Contexto global (leitura compartilhada) ==========
+// ========== Contexto global (estado compartilhado) ==========
 
 interface FunnelsContextValue {
   funnels: Funnel[];
   loading: boolean;
+  updateFunnel: (f: Funnel) => void;
+  addFunnel: (f: Funnel) => void;
+  deleteFunnel: (id: string) => void;
 }
 
-const FunnelsContext = createContext<FunnelsContextValue>({ funnels: [], loading: true });
+const noop = () => {};
+const FunnelsContext = createContext<FunnelsContextValue>({
+  funnels: [],
+  loading: true,
+  updateFunnel: noop,
+  addFunnel: noop,
+  deleteFunnel: noop,
+});
 
 export const FunnelsProvider = FunnelsContext.Provider;
 
-/** Lê funis do contexto. Use dentro de <FunnelsProvider value={...}>. */
+/** Lê funis (e mutadores) do contexto. Use dentro de <FunnelsProvider value={...}>. */
 export function useFunnelsContext() {
   return useContext(FunnelsContext);
 }
+
