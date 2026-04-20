@@ -709,7 +709,7 @@ const ConfigPage = () => {
       description: 'Descrição do funil',
       icon: 'Zap',
       color: 'hsl(var(--primary))',
-      stages: [{ name: 'Novo Lead', probability: 10, touchpoints: [] }],
+      stages: [{ id: `stage-${Date.now()}`, name: 'Novo Lead', probability: 10, maxDaysInStage: 2, touchpoints: [] }],
     };
     setFunnelsList(prev => [...prev, newFunnel]);
     setSelectedFunnelId(newFunnel.id);
