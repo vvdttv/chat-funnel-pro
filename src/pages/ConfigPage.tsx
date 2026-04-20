@@ -351,7 +351,8 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
       {/* Stages List */}
       {funnel.stages.map((stage, idx) => (
         <StageEditor
-          key={`${funnel.id}-${idx}`}
+          key={stage.id}
+          funnelId={funnel.id}
           stage={stage}
           onUpdate={(s) => updateStage(idx, s)}
           onDelete={() => deleteStage(idx)}
