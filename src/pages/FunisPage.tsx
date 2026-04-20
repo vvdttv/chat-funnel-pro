@@ -768,8 +768,6 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
 
   if (!deal) return null;
 
-  const funnel = funnels.find(f => f.id === deal.funnelId);
-
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col" style={{ bottom: '4rem' }} onClick={handleClose}>
