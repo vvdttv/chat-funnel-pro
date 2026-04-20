@@ -456,3 +456,42 @@ export const aiFlows: AIFlow[] = [
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value);
 };
+
+// ========== STAGE METRICS (mock) ==========
+
+export interface StageMetrics {
+  totalValue: number;
+  dealCount: number;
+  /** % chance de virar venda — mock derivado de probability */
+  closeProbability: number;
+  /** % chance de avançar para a próxima etapa — mock */
+  advanceProbability: number;
+  /** Dias médios para avançar para próxima etapa — mock */
+  avgDaysToAdvance: number;
+  /** Dias médios para fechar (virar venda) — mock */
+  avgDaysToClose: number;
+}
+
+export const getStageMetrics = (funnelId: string, stageId: string): StageMetrics => {
+  const funnel = funnels.find(f => f.id === funnelId);
+  const stage = funnel?.stages.find(s => s.id === stageId);
+  if (!funnel || !stage) {
+    return { totalValue: 0, dealCount: 0, closeProbability: 0, advanceProbability: 0, avgDaysToAdvance: 0, avgDaysToClose: 0 };
+  }
+  const stageDeals = deals.filter(d => d.funnelId === funnelId && d.stage === stage.name);
+  const totalValue = stageDeals.reduce((sum, d) => sum + d.value, 0);
+  const dealCount = stageDeals.length;
+  const stageIdx = funnel.stages.findIndex(s => s.id === stageId);
+  const stagesLeft = Math.max(1, funnel.stages.length - stageIdx);
+  const closeProbability = stage.probability;
+  const advanceProbability = Math.min(100, Math.round(stage.probability + 15));
+  const avgDaysToAdvance = Math.max(1, Math.round(stage.maxDaysInStage * 0.7));
+  const avgDaysToClose = avgDaysToAdvance * stagesLeft;
+  return { totalValue, dealCount, closeProbability, advanceProbability, avgDaysToAdvance, avgDaysToClose };
+};
+
+export const getDealDaysInStage = (deal: Deal): number => {
+  const created = new Date(deal.createdAt).getTime();
+  return Math.max(0, Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)));
+};
+
