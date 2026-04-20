@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { deals as mockDeals, funnels, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { deals as mockDeals, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
+import { useFunnelsContext } from '@/hooks/useFunnels';
 import type { CardWidget } from '@/components/CardWidgetConfig';
 
 // ========== VIEW MODE ==========
@@ -35,6 +36,7 @@ function classifyDealLeadStage(deal: Deal): LeadStageKey {
 // ========== DEAL CARD (full-width single card) ==========
 
 const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: Deal; compact?: boolean }) => {
+  const { funnels } = useFunnelsContext();
   const funnel = funnels.find(f => f.id === deal.funnelId);
   const getValue = (): string => {
     switch (widget.id) {
@@ -110,6 +112,7 @@ const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: D
 };
 
 const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
+  const { funnels } = useFunnelsContext();
   const enabled = widgets.filter(w => w.enabled);
   const compact = enabled.length > 7;
   const funnel = funnels.find(f => f.id === deal.funnelId);
@@ -198,6 +201,7 @@ type LocalMessage = {
 // ========== CHAT VIEW ==========
 
 const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
+  const { funnels } = useFunnelsContext();
   const [message, setMessage] = useState('');
   const [aiMode, setAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -764,8 +768,6 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
 
   if (!deal) return null;
 
-  const funnel = funnels.find(f => f.id === deal.funnelId);
-
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col" style={{ bottom: '4rem' }} onClick={handleClose}>
@@ -1318,10 +1320,11 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
   const { widgets: cardWidgets } = useCardWidgets();
+  const { funnels } = useFunnelsContext();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [activeFunnelId, setActiveFunnelId] = useState(funnels[0].id);
+  const [activeFunnelId, setActiveFunnelId] = useState<string>('');
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [lossOpen, setLossOpen] = useState(false);
@@ -1332,12 +1335,19 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
   const toolbarRef = useRef<HTMLDivElement>(null);
 
+  // Sincroniza funil ativo com lista carregada
+  useEffect(() => {
+    if (!activeFunnelId && funnels.length > 0) {
+      setActiveFunnelId(funnels[0].id);
+    } else if (activeFunnelId && funnels.length > 0 && !funnels.find(f => f.id === activeFunnelId)) {
+      setActiveFunnelId(funnels[0].id);
+    }
+  }, [funnels, activeFunnelId]);
 
-
-  const activeFunnel = funnels.find(f => f.id === activeFunnelId)!;
+  const activeFunnel = funnels.find(f => f.id === activeFunnelId);
 
   // ===== POR FUNIL =====
-  const funnelStages = activeFunnel.stages;
+  const funnelStages = activeFunnel?.stages || [];
   const currentStageName = funnelStages[stageIndex]?.name || '';
   // ===== APPLY FILTERS =====
   const applyFilters = useCallback((list: Deal[]): Deal[] => {

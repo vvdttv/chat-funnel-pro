@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { properties, funnels as initialFunnels, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, getStageMetrics, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, getStageMetrics, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
 import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
+import { useFunnelsContext } from '@/hooks/useFunnels';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
 
@@ -253,8 +254,8 @@ const MetricCard = ({ icon: Icon, label, value, accent }: { icon: typeof DollarS
   </div>
 );
 
-const StageMetricsPanel = ({ funnelId, stageId }: { funnelId: string; stageId: string }) => {
-  const m = getStageMetrics(funnelId, stageId);
+const StageMetricsPanel = ({ funnel, stageId }: { funnel: Funnel; stageId: string }) => {
+  const m = getStageMetrics(funnel, stageId);
   return (
     <div className="grid grid-cols-2 gap-1.5 mb-3">
       <MetricCard icon={DollarSign} label="Valor total" value={formatCurrency(m.totalValue)} accent="text-primary" />
@@ -269,7 +270,7 @@ const StageMetricsPanel = ({ funnelId, stageId }: { funnelId: string; stageId: s
 
 // ========== STAGE EDITOR ==========
 
-const StageEditor = ({ funnelId, stage, onUpdate, onDelete }: { funnelId: string; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
+const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
@@ -326,7 +327,7 @@ const StageEditor = ({ funnelId, stage, onUpdate, onDelete }: { funnelId: string
       {expanded && (
         <div className="px-3 pb-3">
           {/* Métricas */}
-          <StageMetricsPanel funnelId={funnelId} stageId={stage.id} />
+          <StageMetricsPanel funnel={funnel} stageId={stage.id} />
 
           {/* Tempo máximo na etapa */}
           <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
@@ -467,7 +468,7 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
       {funnel.stages.map((stage, idx) => (
         <StageEditor
           key={stage.id}
-          funnelId={funnel.id}
+          funnel={funnel}
           stage={stage}
           onUpdate={(s) => updateStage(idx, s)}
           onDelete={() => deleteStage(idx)}
@@ -855,17 +856,22 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 
 const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
-  const [funnelsList, setFunnelsList] = useState<Funnel[]>(initialFunnels);
-  const [selectedFunnelId, setSelectedFunnelId] = useState(funnelsList[0].id);
+  const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
+
+  // Sincroniza seleção quando funis carregam
+  useEffect(() => {
+    if (!selectedFunnelId && funnelsList.length > 0) {
+      setSelectedFunnelId(funnelsList[0].id);
+    } else if (selectedFunnelId && !funnelsList.find(f => f.id === selectedFunnelId) && funnelsList.length > 0) {
+      setSelectedFunnelId(funnelsList[0].id);
+    }
+  }, [funnelsList, selectedFunnelId]);
 
   const selectedFunnel = funnelsList.find(f => f.id === selectedFunnelId);
 
-  const updateFunnel = (updated: Funnel) => {
-    setFunnelsList(prev => prev.map(f => f.id === updated.id ? updated : f));
-  };
-
-  const addFunnel = () => {
+  const handleAddFunnel = () => {
     const newFunnel: Funnel = {
       id: `fun-${Date.now()}`,
       name: 'Novo Funil',
@@ -874,7 +880,7 @@ const ConfigPage = () => {
       color: 'hsl(var(--primary))',
       stages: [{ id: `stage-${Date.now()}`, name: 'Novo Lead', probability: 10, maxDaysInStage: 2, touchpoints: [] }],
     };
-    setFunnelsList(prev => [...prev, newFunnel]);
+    addFunnel(newFunnel);
     setSelectedFunnelId(newFunnel.id);
   };
 
@@ -904,26 +910,35 @@ const ConfigPage = () => {
       <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-24">
         {activeTab === 'funis' && (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
-                <SelectTrigger className="w-auto gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {funnelsList.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                onClick={addFunnel}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
-              >
-                <Plus size={14} /> Novo Funil
-              </button>
-            </div>
-            {selectedFunnel && (
-              <FunnelEditor funnel={selectedFunnel} onUpdate={updateFunnel} />
+            {funnelsLoading ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 size={20} className="animate-spin" />
+                <span className="text-xs ml-2">Carregando funis…</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
+                    <SelectTrigger className="w-auto gap-1.5 h-9 px-3 rounded-lg bg-card border-border text-sm font-semibold">
+                      <SelectValue placeholder="Selecione um funil" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {funnelsList.map(f => (
+                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    onClick={handleAddFunnel}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
+                  >
+                    <Plus size={14} /> Novo Funil
+                  </button>
+                </div>
+                {selectedFunnel && (
+                  <FunnelEditor funnel={selectedFunnel} onUpdate={updateFunnel} />
+                )}
+              </>
             )}
           </>
         )}

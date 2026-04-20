@@ -1,6 +1,7 @@
-import { deals, funnels, formatCurrency } from '@/data/mockData';
+import { deals, formatCurrency } from '@/data/mockData';
 import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { useFunnelsContext } from '@/hooks/useFunnels';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const lossData = [
@@ -12,6 +13,7 @@ const lossData = [
 
 const IndicadoresPage = () => {
   const [openSection, setOpenSection] = useState<string | null>('funnel');
+  const { funnels } = useFunnelsContext();
 
   const totalDeals = deals.length;
   const receitaPrevista = deals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
