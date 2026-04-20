@@ -126,9 +126,35 @@ const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: 
   );
 };
 
+// ========== STAGE METRICS PANEL ==========
+
+const MetricCard = ({ icon: Icon, label, value, accent }: { icon: typeof DollarSign; label: string; value: string; accent?: string }) => (
+  <div className="bg-secondary rounded-lg p-2.5 flex flex-col gap-1">
+    <div className="flex items-center gap-1.5">
+      <Icon size={11} className={accent || 'text-muted-foreground'} />
+      <span className="text-[9px] text-muted-foreground uppercase tracking-wide leading-tight">{label}</span>
+    </div>
+    <span className={`text-sm font-bold ${accent || 'text-foreground'}`}>{value}</span>
+  </div>
+);
+
+const StageMetricsPanel = ({ funnelId, stageId }: { funnelId: string; stageId: string }) => {
+  const m = getStageMetrics(funnelId, stageId);
+  return (
+    <div className="grid grid-cols-2 gap-1.5 mb-3">
+      <MetricCard icon={DollarSign} label="Valor total" value={formatCurrency(m.totalValue)} accent="text-primary" />
+      <MetricCard icon={Users} label="Oportunidades" value={String(m.dealCount)} />
+      <MetricCard icon={Target} label="Prob. fechamento" value={`${m.closeProbability}%`} accent="text-primary" />
+      <MetricCard icon={TrendingUp} label="Prob. avanço" value={`${m.advanceProbability}%`} />
+      <MetricCard icon={ArrowRight} label="Tempo médio avanço" value={`${m.avgDaysToAdvance}d`} />
+      <MetricCard icon={Timer} label="Tempo médio fechamento" value={`${m.avgDaysToClose}d`} />
+    </div>
+  );
+};
+
 // ========== STAGE EDITOR ==========
 
-const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
+const StageEditor = ({ funnelId, stage, onUpdate, onDelete }: { funnelId: string; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
@@ -184,9 +210,30 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
 
       {expanded && (
         <div className="px-3 pb-3">
+          {/* Métricas */}
+          <StageMetricsPanel funnelId={funnelId} stageId={stage.id} />
+
+          {/* Tempo máximo na etapa */}
+          <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={12} className="text-muted-foreground" />
+              <span className="text-xs text-foreground">Tempo máx. na etapa</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                value={stage.maxDaysInStage}
+                onChange={e => onUpdate({ ...stage, maxDaysInStage: Math.max(1, Number(e.target.value) || 1) })}
+                className="w-14 bg-card border border-border rounded px-2 py-1 text-xs text-foreground text-center outline-none focus:border-primary/50"
+              />
+              <span className="text-[10px] text-muted-foreground">dias</span>
+            </div>
+          </div>
+
           {/* Probability slider */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] text-muted-foreground">Probabilidade:</span>
+            <span className="text-[10px] text-muted-foreground">Probabilidade base:</span>
             <input
               type="range" min={0} max={100} step={5}
               value={stage.probability}
