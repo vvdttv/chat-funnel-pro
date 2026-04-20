@@ -136,11 +136,12 @@ const StageEditor = ({ stage, onUpdate, onDelete }: { stage: FunnelStage; onUpda
   const addTouchpoint = () => {
     const newTp: Touchpoint = {
       id: `tp-${Date.now()}`,
-      type: 'agent',
+      executor: 'agent',
       action: '',
       description: '',
       delayHours: 0,
       channel: 'whatsapp',
+      messageTypes: ['text'],
     };
     onUpdate({ ...stage, touchpoints: [...stage.touchpoints, newTp] });
   };
@@ -232,7 +233,13 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
   const [draftDesc, setDraftDesc] = useState(funnel.description);
 
   const addStage = () => {
-    const newStage: FunnelStage = { name: 'Nova Etapa', probability: 50, touchpoints: [] };
+    const newStage: FunnelStage = {
+      id: `stage-${Date.now()}`,
+      name: 'Nova Etapa',
+      probability: 50,
+      maxDaysInStage: 7,
+      touchpoints: [],
+    };
     onUpdate({ ...funnel, stages: [...funnel.stages, newStage] });
   };
 

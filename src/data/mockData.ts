@@ -380,23 +380,19 @@ export const leads: Lead[] = [
 // ========== DEALS ==========
 
 export const deals: Deal[] = [
-  // MCMV
-  { id: 'd1', funnelId: 'fun-mcmv', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Apt 2Q - Res. Jardins, Guarulhos', propertyCode: 'MCM-101', value: 230000, stage: 'Proposta', probability: 75, createdAt: '2024-01-15', secondaryContacts: [{ name: 'Maria Mendes', role: 'Cônjuge' }] },
-  { id: 'd2', funnelId: 'fun-mcmv', leadId: 'l7', leadName: 'Thiago Nascimento', property: 'Apt 2Q - Cond. Vida Nova, Osasco', propertyCode: 'MCM-205', value: 198000, stage: 'Simulação Crédito', probability: 25, createdAt: '2024-02-01' },
-  { id: 'd3', funnelId: 'fun-mcmv', leadId: 'l5', leadName: 'Fernando Oliveira', property: 'Apt 3Q - Res. Esperança, Campinas', propertyCode: 'MCM-310', value: 265000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-08' },
-  { id: 'd4', funnelId: 'fun-mcmv', leadId: 'l6', leadName: 'Mariana Santos', property: 'Apt 2Q - Cond. Sol Nascente, SP', propertyCode: 'MCM-112', value: 245000, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
-  // Alto Padrão
-  { id: 'd5', funnelId: 'fun-alto', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Cobertura Duplex - Ipanema', propertyCode: 'COB-101', value: 2400000, stage: 'Visita', probability: 50, createdAt: '2024-01-20' },
-  { id: 'd6', funnelId: 'fun-alto', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Casa 4 suítes - Alphaville', propertyCode: 'CAS-045', value: 1200000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
-  { id: 'd7', funnelId: 'fun-alto', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Penthouse 280m² - Leblon', propertyCode: 'PNT-050', value: 3800000, stage: 'Negociação', probability: 75, createdAt: '2024-01-25', secondaryContacts: [{ name: 'Ricardo Silva', role: 'Cônjuge' }] },
-  { id: 'd8', funnelId: 'fun-alto', leadId: 'l8', leadName: 'Patrícia Ferreira', property: 'Mansão Condomínio Fechado - Barra', propertyCode: 'MAN-008', value: 4500000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-12' },
-  // Aluguel
-  { id: 'd9', funnelId: 'fun-aluguel', leadId: 'l4', leadName: 'Juliana Costa', property: 'Studio 35m² - Botafogo', propertyCode: 'STU-018', value: 2800, stage: 'Contrato', probability: 90, createdAt: '2024-01-10' },
-  { id: 'd10', funnelId: 'fun-aluguel', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Sala Comercial 80m² - Faria Lima', propertyCode: 'COM-220', value: 8500, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-05', secondaryContacts: [{ name: 'Paulo Mendes', role: 'Sócio' }] },
-  { id: 'd11', funnelId: 'fun-aluguel', leadId: 'l6', leadName: 'Mariana Santos', property: 'Loft 60m² - Pinheiros', propertyCode: 'LFT-033', value: 4200, stage: 'Visita', probability: 40, createdAt: '2024-02-10' },
-  // Inquilinos
-  { id: 'd12', funnelId: 'fun-inquilinos', leadId: 'l4', leadName: 'Juliana Costa', property: 'Apt 1Q - Tijuca (aluguel ativo)', propertyCode: 'ALG-044', value: 1800, stage: 'Ativo', probability: 100, createdAt: '2023-06-01' },
-  { id: 'd13', funnelId: 'fun-inquilinos', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Sala Comercial - Centro, SP', propertyCode: 'ALG-078', value: 3500, stage: 'Renovação', probability: 80, createdAt: '2023-03-15' },
+  { id: 'd1', funnelId: 'fun-padrao', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Apt 2Q - Res. Jardins, Guarulhos', propertyCode: 'MCM-101', value: 230000, stage: 'Proposta', probability: 75, createdAt: '2024-01-15', secondaryContacts: [{ name: 'Maria Mendes', role: 'Cônjuge' }] },
+  { id: 'd2', funnelId: 'fun-padrao', leadId: 'l7', leadName: 'Thiago Nascimento', property: 'Apt 2Q - Cond. Vida Nova, Osasco', propertyCode: 'MCM-205', value: 198000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
+  { id: 'd3', funnelId: 'fun-padrao', leadId: 'l5', leadName: 'Fernando Oliveira', property: 'Apt 3Q - Res. Esperança, Campinas', propertyCode: 'MCM-310', value: 265000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-08' },
+  { id: 'd4', funnelId: 'fun-padrao', leadId: 'l6', leadName: 'Mariana Santos', property: 'Apt 2Q - Cond. Sol Nascente, SP', propertyCode: 'MCM-112', value: 245000, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
+  { id: 'd5', funnelId: 'fun-padrao', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Cobertura Duplex - Ipanema', propertyCode: 'COB-101', value: 2400000, stage: 'Visita', probability: 50, createdAt: '2024-01-20' },
+  { id: 'd6', funnelId: 'fun-padrao', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Casa 4 suítes - Alphaville', propertyCode: 'CAS-045', value: 1200000, stage: 'Qualificação', probability: 25, createdAt: '2024-02-01' },
+  { id: 'd7', funnelId: 'fun-padrao', leadId: 'l2', leadName: 'Ana Beatriz Silva', property: 'Penthouse 280m² - Leblon', propertyCode: 'PNT-050', value: 3800000, stage: 'Proposta', probability: 75, createdAt: '2024-01-25', secondaryContacts: [{ name: 'Ricardo Silva', role: 'Cônjuge' }] },
+  { id: 'd8', funnelId: 'fun-padrao', leadId: 'l8', leadName: 'Patrícia Ferreira', property: 'Mansão Condomínio Fechado - Barra', propertyCode: 'MAN-008', value: 4500000, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-12' },
+  { id: 'd9', funnelId: 'fun-padrao', leadId: 'l4', leadName: 'Juliana Costa', property: 'Studio 35m² - Botafogo', propertyCode: 'STU-018', value: 2800, stage: 'Fechamento', probability: 95, createdAt: '2024-01-10' },
+  { id: 'd10', funnelId: 'fun-padrao', leadId: 'l1', leadName: 'Carlos Mendes', property: 'Sala Comercial 80m² - Faria Lima', propertyCode: 'COM-220', value: 8500, stage: 'Novo Lead', probability: 10, createdAt: '2024-02-05', secondaryContacts: [{ name: 'Paulo Mendes', role: 'Sócio' }] },
+  { id: 'd11', funnelId: 'fun-padrao', leadId: 'l6', leadName: 'Mariana Santos', property: 'Loft 60m² - Pinheiros', propertyCode: 'LFT-033', value: 4200, stage: 'Visita', probability: 50, createdAt: '2024-02-10' },
+  { id: 'd12', funnelId: 'fun-padrao', leadId: 'l4', leadName: 'Juliana Costa', property: 'Apt 1Q - Tijuca (aluguel ativo)', propertyCode: 'ALG-044', value: 1800, stage: 'Fechamento', probability: 95, createdAt: '2023-06-01' },
+  { id: 'd13', funnelId: 'fun-padrao', leadId: 'l3', leadName: 'Roberto Almeida', property: 'Sala Comercial - Centro, SP', propertyCode: 'ALG-078', value: 3500, stage: 'Proposta', probability: 75, createdAt: '2023-03-15' },
 ];
 
 // ========== ACTIVITIES ==========
