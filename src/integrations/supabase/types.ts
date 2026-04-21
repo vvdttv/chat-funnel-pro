@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      deal_stage_events: {
+        Row: {
+          deal_id: string
+          entered_at: string
+          from_stage_id: string | null
+          funnel_id: string
+          id: string
+          to_stage_id: string
+        }
+        Insert: {
+          deal_id: string
+          entered_at?: string
+          from_stage_id?: string | null
+          funnel_id: string
+          id?: string
+          to_stage_id: string
+        }
+        Update: {
+          deal_id?: string
+          entered_at?: string
+          from_stage_id?: string | null
+          funnel_id?: string
+          id?: string
+          to_stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          created_at: string
+          funnel_id: string
+          id: string
+          lead_id: string
+          lead_name: string
+          property: string
+          property_code: string
+          secondary_contacts: Json
+          stage_id: string
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          funnel_id: string
+          id: string
+          lead_id: string
+          lead_name: string
+          property?: string
+          property_code?: string
+          secondary_contacts?: Json
+          stage_id: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          lead_id?: string
+          lead_name?: string
+          property?: string
+          property_code?: string
+          secondary_contacts?: Json
+          stage_id?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnels: {
         Row: {
           color: string
@@ -55,7 +143,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_stage_metrics: {
+        Args: { p_funnel_id: string; p_stage_id: string }
+        Returns: {
+          advance_probability: number
+          avg_days_to_advance: number
+          avg_days_to_close: number
+          close_probability: number
+          deal_count: number
+          total_value: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
