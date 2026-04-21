@@ -166,6 +166,7 @@ const AuthPage = () => {
     setSecurityAnswer('');
     setNewPassword('');
     setConfirmPassword('');
+    setAttemptsRemaining(null);
   };
 
   const goBack = () => {
