@@ -473,24 +473,12 @@ export interface StageMetrics {
 }
 
 /**
- * Calcula métricas de uma etapa.
- * Aceita o funil como parâmetro para suportar funis vindos de banco (não apenas mock).
+ * @deprecated Use o hook `useStageMetrics(funnelId, stageId)` que busca métricas
+ * reais do banco a partir do histórico em `deal_stage_events`.
+ * Mantido apenas como fallback no-op para evitar quebrar imports antigos.
  */
-export const getStageMetrics = (funnel: Funnel | undefined, stageId: string): StageMetrics => {
-  const stage = funnel?.stages.find(s => s.id === stageId);
-  if (!funnel || !stage) {
-    return { totalValue: 0, dealCount: 0, closeProbability: 0, advanceProbability: 0, avgDaysToAdvance: 0, avgDaysToClose: 0 };
-  }
-  const stageDeals = deals.filter(d => d.funnelId === funnel.id && d.stage === stage.name);
-  const totalValue = stageDeals.reduce((sum, d) => sum + d.value, 0);
-  const dealCount = stageDeals.length;
-  const stageIdx = funnel.stages.findIndex(s => s.id === stageId);
-  const stagesLeft = Math.max(1, funnel.stages.length - stageIdx);
-  const closeProbability = stage.probability;
-  const advanceProbability = Math.min(100, Math.round(stage.probability + 15));
-  const avgDaysToAdvance = Math.max(1, Math.round(stage.maxDaysInStage * 0.7));
-  const avgDaysToClose = avgDaysToAdvance * stagesLeft;
-  return { totalValue, dealCount, closeProbability, advanceProbability, avgDaysToAdvance, avgDaysToClose };
+export const getStageMetrics = (_funnel: Funnel | undefined, _stageId: string): StageMetrics => {
+  return { totalValue: 0, dealCount: 0, closeProbability: 0, advanceProbability: 0, avgDaysToAdvance: 0, avgDaysToClose: 0 };
 };
 
 export const getDealDaysInStage = (deal: Deal): number => {
