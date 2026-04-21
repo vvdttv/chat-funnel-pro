@@ -136,6 +136,56 @@ const LogRow = ({ log }: { log: IADecisionLog }) => {
 
       {open && (
         <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border/50">
+          {/* Proveniência composicional (Sprint 6) */}
+          {(log.archetype_code || log.status_overlay_code || log.context_tags.length > 0 || log.applied_override_ids.length > 0) && (
+            <div className="bg-card border border-border rounded-md p-2 space-y-1.5">
+              <p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+                <Layers size={10} /> Proveniência composicional
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                <div>
+                  <span className="text-muted-foreground">arquétipo:</span>{' '}
+                  <span className="text-foreground font-mono">{log.archetype_code ?? '—'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">overlay:</span>{' '}
+                  <span className="text-foreground font-mono">{log.status_overlay_code ?? '—'}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">status do deal:</span>{' '}
+                  <span className="text-foreground font-mono">{log.deal_status ?? '—'}</span>
+                </div>
+              </div>
+              {log.context_tags.length > 0 && (
+                <div>
+                  <p className="text-[9px] uppercase text-muted-foreground mt-1.5 mb-0.5 flex items-center gap-1">
+                    <Tag size={9} /> context tags
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {log.context_tags.map(t => (
+                      <span key={t} className="text-[9px] bg-secondary border border-border rounded px-1.5 py-0.5 font-mono">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {log.applied_override_ids.length > 0 && (
+                <div>
+                  <p className="text-[9px] uppercase text-muted-foreground mt-1.5 mb-0.5 flex items-center gap-1">
+                    <Activity size={9} /> overrides aplicados
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {log.applied_override_ids.map(id => (
+                      <span key={id} className="text-[9px] bg-secondary border border-border rounded px-1.5 py-0.5 font-mono">
+                        {id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {log.detected_behavior_codes.length > 0 && (
             <div>
               <p className="text-[10px] uppercase text-muted-foreground mb-1">Comportamentos detectados</p>
