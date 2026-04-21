@@ -317,7 +317,9 @@ const GoalSection = ({
   playbookCode: FunnelStage['playbookCode'];
   onChangePlaybookCode: (c: FunnelStage['playbookCode']) => void;
   onChange: (changes: Partial<NonNullable<FunnelStage['playbookOverride']>>) => void;
-}) => (
+}) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
+  return (
   <div className="space-y-4">
     <div>
       <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5 block">
@@ -431,6 +433,8 @@ const BehaviorsSection = ({
 }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<LeadBehaviorCategory | 'all' | 'active'>('active');
+
+  const { behaviors: LEAD_BEHAVIORS } = useIADatasets();
 
   const filtered = useMemo(() => {
     return LEAD_BEHAVIORS.filter(b => {
@@ -580,6 +584,7 @@ const RulesSection = ({
   onToggle: (id: string) => void;
 }) => {
   const [search, setSearch] = useState('');
+  const { universalRules: IA_UNIVERSAL_RULES, stageRules: STAGE_SPECIFIC_RULES } = useIADatasets();
 
   const groups = useMemo(() => {
     return kinds.map(k => {
@@ -593,7 +598,7 @@ const RulesSection = ({
         specifics: specifics.filter(filterFn),
       };
     });
-  }, [kinds, scope, search]);
+  }, [kinds, scope, search, IA_UNIVERSAL_RULES, STAGE_SPECIFIC_RULES]);
 
   return (
     <div className="space-y-3">
@@ -694,7 +699,9 @@ const FollowUpSection = ({
 }: {
   selectedLadderId: string;
   onSelect: (id: string) => void;
-}) => (
+}) => {
+  const { ladders: FOLLOWUP_LADDERS } = useIADatasets();
+  return (
   <div className="space-y-3">
     <p className="text-[11px] text-muted-foreground">
       Escada de mensagens automáticas quando o lead silencia nesta etapa.
@@ -757,9 +764,10 @@ const HandoffSection = ({
   onChangeAdvance: (arr: string[]) => void;
   onChangeArchive: (arr: string[]) => void;
 }) => {
+  const { triggers: HANDOFF_TRIGGERS } = useIADatasets();
   const relevantTriggers = useMemo(() =>
     HANDOFF_TRIGGERS.filter(t => t.stage === '*' || t.stage === stage),
-    [stage]
+    [stage, HANDOFF_TRIGGERS]
   );
 
   return (
