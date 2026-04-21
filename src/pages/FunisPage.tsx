@@ -117,23 +117,49 @@ const DealCardWidget = ({ widget, deal, compact }: { widget: CardWidget; deal: D
 
 const DealCard = ({ deal, onClick, widgets }: { deal: Deal; onClick: () => void; widgets: CardWidget[] }) => {
   const { funnels } = useFunnelsContext();
+  const { isAdmin } = useAuth();
+  const { members } = useOrgMembers();
   const enabled = widgets.filter(w => w.enabled);
   const compact = enabled.length > 7;
   const funnel = funnels.find(f => f.id === deal.funnelId);
   const stage = funnel?.stages.find(s => s.name === deal.stage);
   const daysInStage = getDealDaysInStage(deal);
   const overdue = stage ? daysInStage > stage.maxDaysInStage : false;
+  const owner = isAdmin && deal.assignedTo ? members.find(m => m.user_id === deal.assignedTo) : null;
+  const ownerLabel = owner ? (owner.display_name || owner.username) : null;
+  const ownerInitials = ownerLabel
+    ? ownerLabel.split(/\s+/).filter(Boolean).slice(0, 2).map(n => n[0]?.toUpperCase()).join('')
+    : '';
   return (
     <div
       onClick={onClick}
       className={`relative bg-card rounded-2xl ${compact ? 'p-2.5' : 'p-4'} active:scale-[0.98] transition-transform flex-1 min-h-0 flex flex-col ${overdue ? 'ring-1 ring-destructive/50' : ''}`}
     >
+      {(isAdmin && (ownerLabel || deal.assignedTo === null)) && (
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-secondary/90 backdrop-blur-sm border border-border rounded-full pl-0.5 pr-2 py-0.5 max-w-[60%]">
+          {ownerLabel ? (
+            <>
+              <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary shrink-0">
+                {ownerInitials}
+              </div>
+              <span className="text-[9px] font-medium text-muted-foreground truncate">{ownerLabel}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-4 h-4 rounded-full bg-warning/20 flex items-center justify-center text-warning shrink-0">
+                <UserCog size={9} />
+              </div>
+              <span className="text-[9px] font-medium text-warning">sem dono</span>
+            </>
+          )}
+        </div>
+      )}
       {overdue && (
         <div className="absolute top-2 right-2 flex items-center gap-1 bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full text-[9px] font-semibold z-10">
           <AlertTriangle size={9} /> atrasado
         </div>
       )}
-      <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'} flex-1 min-h-0 auto-rows-fr`}>
+      <div className={`grid grid-cols-2 ${compact ? 'gap-1' : 'gap-2'} flex-1 min-h-0 auto-rows-fr ${isAdmin ? 'pt-4' : ''}`}>
         {enabled.map(w => (
           <div key={w.id} className={`${w.size === 'full' ? 'col-span-2' : 'col-span-1'} min-h-0 flex flex-col justify-center`}>
             <DealCardWidget widget={w} deal={deal} compact={compact} />
