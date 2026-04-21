@@ -21,7 +21,26 @@ import {
   type StageArchetype, type StatusArchetype, type PhysicalStage,
   type CatalogPlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
+import type { IABehaviorRule, LeadBehavior, FollowUpLadder, HandoffTrigger } from '@/data/iaBehavior';
 import { useFunnels } from '@/hooks/useFunnels';
+
+/**
+ * Snapshot dos catálogos carregados — exposto para callers que precisam
+ * recompor com overrides em rascunho (ex.: PlaybookOverrideEditor) sem
+ * tocar o estado salvo.
+ */
+export interface RuntimeSnapshot {
+  archetypes: StageArchetype[];
+  statusArchetypes: StatusArchetype[];
+  physicalStages: PhysicalStage[];
+  catalogPlaybooks: CatalogPlaybook[];
+  overrides: PlaybookOverride[];
+  rules: IABehaviorRule[];
+  behaviors: LeadBehavior[];
+  ladders: FollowUpLadder[];
+  triggers: HandoffTrigger[];
+  funnelContextTagsById: Record<string, string[]>;
+}
 
 interface RuntimeState {
   loading: boolean;
