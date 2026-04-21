@@ -14,6 +14,7 @@ type DBDealRow = {
   value: number;
   status: string;
   secondary_contacts: unknown;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +49,7 @@ function rowToDeal(row: DBDealRow, funnels: Funnel[]): Deal {
     stage: stage?.name || row.stage_id,
     probability: stage?.probability ?? 0,
     createdAt: row.created_at,
+    assignedTo: row.assigned_to,
     secondaryContacts: Array.isArray(row.secondary_contacts)
       ? (row.secondary_contacts as { name: string; role: string }[])
       : [],
@@ -161,7 +163,18 @@ export function useDeals(funnels: Funnel[]) {
     if (error) console.error('[useDeals] erro ao atualizar status', error);
   }, []);
 
-  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus };
+  /** Reatribui um deal a outro corretor (admin only — RLS valida). */
+  const reassignDeal = useCallback(async (id: string, newAssignedTo: string) => {
+    const { error } = await supabase.from('deals').update({ assigned_to: newAssignedTo }).eq('id', id);
+    if (error) {
+      console.error('[useDeals] erro ao reatribuir', error);
+      return { error: error.message };
+    }
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, assignedTo: newAssignedTo } : d));
+    return { error: null };
+  }, []);
+
+  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, reassignDeal };
 }
 
 // ========== Contexto global ==========
@@ -173,6 +186,7 @@ interface DealsContextValue {
   addDeal: (d: Deal) => void;
   deleteDeal: (id: string) => void;
   setDealStatus: (id: string, status: 'open' | 'won' | 'lost') => void;
+  reassignDeal: (id: string, newAssignedTo: string) => Promise<{ error: string | null }>;
 }
 
 const noop = () => {};
@@ -183,6 +197,7 @@ const DealsContext = createContext<DealsContextValue>({
   addDeal: noop,
   deleteDeal: noop,
   setDealStatus: noop,
+  reassignDeal: async () => ({ error: null }),
 });
 
 export const DealsProvider = DealsContext.Provider;

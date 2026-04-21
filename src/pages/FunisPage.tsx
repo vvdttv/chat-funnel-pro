@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
 import { useDealsContext } from '@/hooks/useDeals';
-import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
+import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus, UserCog } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 import { useFunnelsContext } from '@/hooks/useFunnels';
+import { useAuth } from '@/hooks/useAuth';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { useToast } from '@/hooks/use-toast';
 import type { CardWidget } from '@/components/CardWidgetConfig';
 
 // ========== VIEW MODE ==========
@@ -733,6 +736,63 @@ const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void 
 
 // ========== DEAL DETAIL SHEET ==========
 
+// Admin-only: dropdown para reatribuir o deal a outro membro da empresa.
+const ReassignDealRow = ({ deal }: { deal: Deal }) => {
+  const { isAdmin } = useAuth();
+  const { members, loading } = useOrgMembers();
+  const { reassignDeal } = useDealsContext();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  if (!isAdmin) return null;
+
+  const handleChange = async (userId: string) => {
+    if (userId === deal.assignedTo) return;
+    setSaving(true);
+    const { error } = await reassignDeal(deal.id, userId);
+    setSaving(false);
+    if (error) {
+      toast({ title: 'Falha ao reatribuir', description: error, variant: 'destructive' });
+    } else {
+      const target = members.find(m => m.user_id === userId);
+      toast({ title: 'Deal reatribuído', description: `Responsável: ${target?.display_name || target?.username || '—'}` });
+    }
+  };
+
+  const currentMember = members.find(m => m.user_id === deal.assignedTo);
+
+  return (
+    <div className="bg-secondary rounded-xl p-3 mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <UserCog size={14} className="text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">Responsável</p>
+        {saving && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+      </div>
+      <Select
+        value={deal.assignedTo || ''}
+        onValueChange={handleChange}
+        disabled={loading || saving}
+      >
+        <SelectTrigger className="h-9 bg-background border-border text-sm">
+          <SelectValue placeholder={loading ? 'Carregando...' : 'Selecionar corretor'}>
+            {currentMember ? (currentMember.display_name || currentMember.username) : (deal.assignedTo ? 'Usuário desconhecido' : 'Sem responsável')}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {members.map(m => (
+            <SelectItem key={m.user_id} value={m.user_id}>
+              <span className="flex items-center gap-2">
+                <span>{m.display_name || m.username}</span>
+                <span className="text-[10px] text-muted-foreground uppercase">{m.role}</span>
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
 const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -799,6 +859,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
           <div className="flex-1 min-h-0 flex flex-col">
             {activeTab === 'info' ? (
               <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
+                <ReassignDealRow deal={deal} />
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
