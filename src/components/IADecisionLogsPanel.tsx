@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, AlertTriangle } from 'lucide-react';
+import { Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Layers, Tag, Activity } from 'lucide-react';
 import { useIADecisionLogs, type IADecisionLog } from '@/hooks/useIADecisionLogs';
 
 const STAGE_OPTIONS: Array<{ value: string; label: string }> = [
@@ -33,6 +33,12 @@ const OUTCOME_COLORS: Record<string, string> = {
   failure: 'bg-destructive/15 text-destructive border-destructive/30',
   handoff: 'bg-primary/15 text-primary border-primary/30',
   sem_resultado: 'bg-secondary text-muted-foreground border-border',
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  open: 'bg-primary/15 text-primary border-primary/30',
+  won: 'bg-success/15 text-success border-success/30',
+  lost: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
 function fmtTime(iso: string): string {
@@ -83,14 +89,34 @@ const LogRow = ({ log }: { log: IADecisionLog }) => {
               <span className={`text-[9px] px-1.5 py-0.5 rounded border ${outcomeClass}`}>
                 {outcomeKey}
               </span>
+              {log.deal_status && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded border ${STATUS_BADGE[log.deal_status] ?? STATUS_BADGE.open}`}>
+                  {log.deal_status}
+                </span>
+              )}
+              {log.archetype_code && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded border border-[hsl(270,40%,35%)] text-[hsl(270,60%,75%)] bg-[hsl(270,40%,20%)]/40 flex items-center gap-1">
+                  <Layers size={9} />{log.archetype_code}
+                </span>
+              )}
+              {log.status_overlay_code && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded border border-warning/30 text-warning bg-warning/10">
+                  overlay: {log.status_overlay_code}
+                </span>
+              )}
               {log.detected_behavior_codes.length > 0 && (
                 <span className="text-[9px] text-muted-foreground">
-                  {log.detected_behavior_codes.length} comp.
+                  · {log.detected_behavior_codes.length} comp.
                 </span>
               )}
               {log.applied_rule_codes.length > 0 && (
                 <span className="text-[9px] text-muted-foreground">
                   · {log.applied_rule_codes.length} regras
+                </span>
+              )}
+              {log.applied_override_ids.length > 0 && (
+                <span className="text-[9px] text-muted-foreground">
+                  · {log.applied_override_ids.length} ovr
                 </span>
               )}
               {log.deal_id && (
@@ -110,6 +136,56 @@ const LogRow = ({ log }: { log: IADecisionLog }) => {
 
       {open && (
         <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border/50">
+          {/* Proveniência composicional (Sprint 6) */}
+          {(log.archetype_code || log.status_overlay_code || log.context_tags.length > 0 || log.applied_override_ids.length > 0) && (
+            <div className="bg-card border border-border rounded-md p-2 space-y-1.5">
+              <p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+                <Layers size={10} /> Proveniência composicional
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                <div>
+                  <span className="text-muted-foreground">arquétipo:</span>{' '}
+                  <span className="text-foreground font-mono">{log.archetype_code ?? '—'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">overlay:</span>{' '}
+                  <span className="text-foreground font-mono">{log.status_overlay_code ?? '—'}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">status do deal:</span>{' '}
+                  <span className="text-foreground font-mono">{log.deal_status ?? '—'}</span>
+                </div>
+              </div>
+              {log.context_tags.length > 0 && (
+                <div>
+                  <p className="text-[9px] uppercase text-muted-foreground mt-1.5 mb-0.5 flex items-center gap-1">
+                    <Tag size={9} /> context tags
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {log.context_tags.map(t => (
+                      <span key={t} className="text-[9px] bg-secondary border border-border rounded px-1.5 py-0.5 font-mono">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {log.applied_override_ids.length > 0 && (
+                <div>
+                  <p className="text-[9px] uppercase text-muted-foreground mt-1.5 mb-0.5 flex items-center gap-1">
+                    <Activity size={9} /> overrides aplicados
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {log.applied_override_ids.map(id => (
+                      <span key={id} className="text-[9px] bg-secondary border border-border rounded px-1.5 py-0.5 font-mono">
+                        {id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {log.detected_behavior_codes.length > 0 && (
             <div>
               <p className="text-[10px] uppercase text-muted-foreground mb-1">Comportamentos detectados</p>

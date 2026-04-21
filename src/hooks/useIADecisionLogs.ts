@@ -24,6 +24,12 @@ export interface IADecisionLog {
   action_taken: string;
   outcome: string | null;
   context: Record<string, unknown>;
+  // ----- Sprint 6: proveniência composicional -----
+  archetype_code: string | null;
+  status_overlay_code: string | null;
+  applied_override_ids: string[];
+  context_tags: string[];
+  deal_status: 'open' | 'won' | 'lost' | null;
 }
 
 export interface IALogFilters {
@@ -61,7 +67,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
     try {
       let q = supabase
         .from('ia_decision_logs')
-        .select('id,created_at,deal_id,funnel_id,stage_id,playbook_code,detected_behavior_codes,applied_rule_codes,intent,tone,action_taken,outcome,context')
+        .select('id,created_at,deal_id,funnel_id,stage_id,playbook_code,detected_behavior_codes,applied_rule_codes,intent,tone,action_taken,outcome,context,archetype_code,status_overlay_code,applied_override_ids,context_tags,deal_status')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -90,6 +96,11 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
         action_taken: r.action_taken ?? '',
         outcome: r.outcome,
         context: asObj(r.context),
+        archetype_code: (r as { archetype_code?: string | null }).archetype_code ?? null,
+        status_overlay_code: (r as { status_overlay_code?: string | null }).status_overlay_code ?? null,
+        applied_override_ids: asArray<string>((r as { applied_override_ids?: unknown }).applied_override_ids),
+        context_tags: asArray<string>((r as { context_tags?: unknown }).context_tags),
+        deal_status: ((r as { deal_status?: string | null }).deal_status ?? null) as IADecisionLog['deal_status'],
       }));
       setLogs(mapped);
     } catch (e) {
