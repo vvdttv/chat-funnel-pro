@@ -37,8 +37,9 @@ const AuthPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
-    if (!loading && session) navigate('/', { replace: true });
-  }, [session, loading, navigate]);
+    // Não redireciona se acabou de redefinir senha — força passar pelo login
+    if (!loading && session && mode !== 'forgot-success') navigate('/', { replace: true });
+  }, [session, loading, navigate, mode]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -126,7 +127,14 @@ const AuthPage = () => {
       }
       return;
     }
+    // Force logout de qualquer sessão ativa por segurança após troca de senha
+    await supabase.auth.signOut().catch(() => {});
     setMode('forgot-success');
+    // limpa campos sensíveis
+    setSecurityAnswer('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPassword('');
   };
 
   const goLogin = () => {
