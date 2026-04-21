@@ -383,6 +383,22 @@ export const IADecisionLogsPanel = () => {
             ? <Loader2 size={11} className="animate-spin text-muted-foreground" />
             : <RefreshCw size={11} className="text-muted-foreground" />}
         </button>
+        <button
+          onClick={handleExportCSV}
+          disabled={logs.length === 0}
+          className="p-1.5 rounded-md bg-secondary border border-border active:bg-card disabled:opacity-40 flex items-center gap-1 text-[10px] text-muted-foreground"
+          title="Exportar CSV"
+        >
+          <FileSpreadsheet size={11} /> CSV
+        </button>
+        <button
+          onClick={handleExportJSON}
+          disabled={logs.length === 0}
+          className="p-1.5 rounded-md bg-secondary border border-border active:bg-card disabled:opacity-40 flex items-center gap-1 text-[10px] text-muted-foreground"
+          title="Exportar JSON"
+        >
+          <FileJson size={11} /> JSON
+        </button>
       </div>
 
       {/* Filtros avançados */}
