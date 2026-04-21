@@ -59,6 +59,50 @@ export type Database = {
           },
         ]
       }
+      deal_status_events: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          deal_id: string
+          from_status: string | null
+          id: string
+          lost_substage: string | null
+          organization_id: string
+          reason: string | null
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          deal_id: string
+          from_status?: string | null
+          id?: string
+          lost_substage?: string | null
+          organization_id: string
+          reason?: string | null
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          deal_id?: string
+          from_status?: string | null
+          id?: string
+          lost_substage?: string | null
+          organization_id?: string
+          reason?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_status_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           assigned_to: string | null
@@ -67,14 +111,18 @@ export type Database = {
           id: string
           lead_id: string
           lead_name: string
+          lost_substage: string | null
           organization_id: string
           property: string
           property_code: string
           secondary_contacts: Json
           stage_id: string
           status: string
+          status_changed_at: string
+          status_reason: string | null
           updated_at: string
           value: number
+          won_date: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -83,14 +131,18 @@ export type Database = {
           id: string
           lead_id: string
           lead_name: string
+          lost_substage?: string | null
           organization_id: string
           property?: string
           property_code?: string
           secondary_contacts?: Json
           stage_id: string
           status?: string
+          status_changed_at?: string
+          status_reason?: string | null
           updated_at?: string
           value?: number
+          won_date?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -99,14 +151,18 @@ export type Database = {
           id?: string
           lead_id?: string
           lead_name?: string
+          lost_substage?: string | null
           organization_id?: string
           property?: string
           property_code?: string
           secondary_contacts?: Json
           stage_id?: string
           status?: string
+          status_changed_at?: string
+          status_reason?: string | null
           updated_at?: string
           value?: number
+          won_date?: string | null
         }
         Relationships: [
           {
@@ -169,13 +225,69 @@ export type Database = {
           },
         ]
       }
+      funnel_stages: {
+        Row: {
+          context_tags: Json
+          created_at: string
+          funnel_id: string
+          id: string
+          organization_id: string
+          position: number
+          purpose: string
+          stage_archetype_id: string | null
+          stage_id: string
+          updated_at: string
+        }
+        Insert: {
+          context_tags?: Json
+          created_at?: string
+          funnel_id: string
+          id?: string
+          organization_id: string
+          position?: number
+          purpose?: string
+          stage_archetype_id?: string | null
+          stage_id: string
+          updated_at?: string
+        }
+        Update: {
+          context_tags?: Json
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          organization_id?: string
+          position?: number
+          purpose?: string
+          stage_archetype_id?: string | null
+          stage_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_stages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_stages_stage_archetype_id_fkey"
+            columns: ["stage_archetype_id"]
+            isOneToOne: false
+            referencedRelation: "stage_archetypes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnels: {
         Row: {
           color: string
+          context_tags: Json
           created_at: string
           description: string
           icon: string
           id: string
+          is_default: boolean
           name: string
           organization_id: string
           position: number
@@ -184,10 +296,12 @@ export type Database = {
         }
         Insert: {
           color?: string
+          context_tags?: Json
           created_at?: string
           description?: string
           icon?: string
           id: string
+          is_default?: boolean
           name: string
           organization_id: string
           position?: number
@@ -196,10 +310,12 @@ export type Database = {
         }
         Update: {
           color?: string
+          context_tags?: Json
           created_at?: string
           description?: string
           icon?: string
           id?: string
+          is_default?: boolean
           name?: string
           organization_id?: string
           position?: number
@@ -226,7 +342,7 @@ export type Database = {
           is_active: boolean
           label: string
           organization_id: string
-          priority: string
+          priority: Database["public"]["Enums"]["handoff_priority"]
           stage: string
           updated_at: string
         }
@@ -239,7 +355,7 @@ export type Database = {
           is_active?: boolean
           label: string
           organization_id: string
-          priority: string
+          priority?: Database["public"]["Enums"]["handoff_priority"]
           stage: string
           updated_at?: string
         }
@@ -252,7 +368,7 @@ export type Database = {
           is_active?: boolean
           label?: string
           organization_id?: string
-          priority?: string
+          priority?: Database["public"]["Enums"]["handoff_priority"]
           stage?: string
           updated_at?: string
         }
@@ -377,6 +493,8 @@ export type Database = {
       }
       lead_behaviors: {
         Row: {
+          applicable_context_tags: Json
+          applicable_statuses: Json
           category: string
           code: string
           created_at: string
@@ -391,6 +509,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applicable_context_tags?: Json
+          applicable_statuses?: Json
           category: string
           code: string
           created_at?: string
@@ -405,6 +525,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applicable_context_tags?: Json
+          applicable_statuses?: Json
           category?: string
           code?: string
           created_at?: string
@@ -470,6 +592,50 @@ export type Database = {
         }
         Relationships: []
       }
+      playbook_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          layer: string
+          organization_id: string
+          payload: Json
+          scope_id: string
+          scope_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          layer: string
+          organization_id: string
+          payload?: Json
+          scope_id: string
+          scope_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          layer?: string
+          organization_id?: string
+          payload?: Json
+          scope_id?: string
+          scope_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -514,8 +680,48 @@ export type Database = {
           },
         ]
       }
+      stage_archetypes: {
+        Row: {
+          code: string
+          context_tags: Json
+          created_at: string
+          default_playbook_code: string | null
+          id: string
+          is_active: boolean
+          name: string
+          position: number
+          purpose: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          context_tags?: Json
+          created_at?: string
+          default_playbook_code?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          position?: number
+          purpose?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          context_tags?: Json
+          created_at?: string
+          default_playbook_code?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          purpose?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stage_playbooks: {
         Row: {
+          archetype_id: string | null
           code: string
           created_at: string
           default_ladder_code: string | null
@@ -524,13 +730,16 @@ export type Database = {
           id: string
           identity: Json
           is_active: boolean
+          kind: string
           name: string
           organization_id: string
+          status_archetype_id: string | null
           success_criteria: Json
           typical_behavior_codes: Json
           updated_at: string
         }
         Insert: {
+          archetype_id?: string | null
           code: string
           created_at?: string
           default_ladder_code?: string | null
@@ -539,13 +748,16 @@ export type Database = {
           id?: string
           identity?: Json
           is_active?: boolean
+          kind?: string
           name: string
           organization_id: string
+          status_archetype_id?: string | null
           success_criteria?: Json
           typical_behavior_codes?: Json
           updated_at?: string
         }
         Update: {
+          archetype_id?: string | null
           code?: string
           created_at?: string
           default_ladder_code?: string | null
@@ -554,13 +766,22 @@ export type Database = {
           id?: string
           identity?: Json
           is_active?: boolean
+          kind?: string
           name?: string
           organization_id?: string
+          status_archetype_id?: string | null
           success_criteria?: Json
           typical_behavior_codes?: Json
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stage_playbooks_archetype_id_fkey"
+            columns: ["archetype_id"]
+            isOneToOne: false
+            referencedRelation: "stage_archetypes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stage_playbooks_organization_id_fkey"
             columns: ["organization_id"]
@@ -568,7 +789,44 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stage_playbooks_status_archetype_id_fkey"
+            columns: ["status_archetype_id"]
+            isOneToOne: false
+            referencedRelation: "status_archetypes"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      status_archetypes: {
+        Row: {
+          code: string
+          created_at: string
+          default_overlay_rules: Json
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_overlay_rules?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_overlay_rules?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -630,6 +888,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "corretor"
+      handoff_priority: "P0" | "P1" | "P2" | "P3"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -758,6 +1017,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "corretor"],
+      handoff_priority: ["P0", "P1", "P2", "P3"],
     },
   },
 } as const
