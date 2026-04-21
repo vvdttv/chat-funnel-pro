@@ -3,6 +3,7 @@ import { Shield, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeQuestion, sanitizeAnswer } from '@/lib/sanitize';
 
 const SecurityQuestionManager = () => {
   const { profile } = useAuth();
@@ -35,21 +36,25 @@ const SecurityQuestionManager = () => {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (question.trim().length < 5) {
-      toast({ title: 'Pergunta muito curta', description: 'Mínimo 5 caracteres.', variant: 'destructive' });
+    const cleanQuestion = sanitizeQuestion(question);
+    const cleanAnswer = sanitizeAnswer(answer);
+    const cleanConfirm = sanitizeAnswer(confirm);
+
+    if (cleanQuestion.length < 5) {
+      toast({ title: 'Pergunta muito curta', description: 'Mínimo 5 caracteres (sem HTML).', variant: 'destructive' });
       return;
     }
-    if (answer.trim().length < 2) {
-      toast({ title: 'Resposta inválida', description: 'Mínimo 2 caracteres.', variant: 'destructive' });
+    if (cleanAnswer.length < 2) {
+      toast({ title: 'Resposta inválida', description: 'Mínimo 2 caracteres (sem HTML).', variant: 'destructive' });
       return;
     }
-    if (answer !== confirm) {
+    if (cleanAnswer !== cleanConfirm) {
       toast({ title: 'As respostas não coincidem', variant: 'destructive' });
       return;
     }
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke('set-security-question', {
-      body: { question: question.trim(), answer },
+      body: { question: cleanQuestion, answer: cleanAnswer },
     });
     setSubmitting(false);
     if (error || (data as any)?.error) {
@@ -58,6 +63,7 @@ const SecurityQuestionManager = () => {
     }
     toast({ title: 'Pergunta de segurança salva' });
     setHasQuestion(true);
+    setQuestion(cleanQuestion);
     setAnswer('');
     setConfirm('');
   };
