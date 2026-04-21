@@ -62,7 +62,7 @@ export async function logIADecision(input: LogIADecisionInput): Promise<{ error:
     detected_behavior_codes: detectedBehaviorCodes,
     applied_rule_codes: appliedRuleCodes,
     outcome: outcome ?? null,
-    context,
+    context: context as never,
     archetype_code: playbook.provenance.archetypeCode ?? null,
     status_overlay_code: playbook.provenance.statusOverlayCode ?? null,
     applied_override_ids: playbook.provenance.overrideIds,
