@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import UsersManager from '@/components/UsersManager';
 import SecurityQuestionManager from '@/components/SecurityQuestionManager';
 import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
+import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
@@ -1059,6 +1060,7 @@ const ConfigPage = () => {
 
         {activeTab === 'fluxos' && (
           <>
+            <IABehaviorSeedBanner />
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-muted-foreground">{aiFlows.length} fluxos</span>
               <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform">
