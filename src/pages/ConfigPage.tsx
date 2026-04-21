@@ -10,12 +10,14 @@ import { useCardWidgets } from '@/hooks/useCardWidgets';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { useAuth } from '@/hooks/useAuth';
 import UsersManager from '@/components/UsersManager';
+import SecurityQuestionManager from '@/components/SecurityQuestionManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
+  { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
@@ -1013,6 +1015,8 @@ const ConfigPage = () => {
         )}
 
         {activeTab === 'usuarios' && <UsersManager />}
+
+        {activeTab === 'seguranca' && <SecurityQuestionManager />}
 
         {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 
