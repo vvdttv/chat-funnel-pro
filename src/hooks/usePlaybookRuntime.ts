@@ -167,11 +167,33 @@ export function usePlaybookRuntime() {
     [compose],
   );
 
+  const snapshot: RuntimeSnapshot | null = useMemo(() => {
+    if (state.loading || ia.loading) return null;
+    const funnelContextTagsById: Record<string, string[]> = {};
+    for (const f of funnels) {
+      const tags = (f as unknown as { context_tags?: string[] }).context_tags;
+      funnelContextTagsById[f.id] = Array.isArray(tags) ? tags : [];
+    }
+    return {
+      archetypes: state.archetypes,
+      statusArchetypes: state.statusArchetypes,
+      physicalStages: state.physicalStages,
+      catalogPlaybooks: state.catalogPlaybooks,
+      overrides: state.overrides,
+      rules: ia.rules,
+      behaviors: ia.behaviors,
+      ladders: ia.ladders,
+      triggers: ia.triggers,
+      funnelContextTagsById,
+    };
+  }, [state, ia, funnels]);
+
   return useMemo(() => ({
     loading: state.loading || ia.loading,
     error: state.error ?? ia.error,
     refresh: fetchAll,
     compose,
     renderPrompt,
-  }), [state.loading, state.error, ia.loading, ia.error, fetchAll, compose, renderPrompt]);
+    snapshot,
+  }), [state.loading, state.error, ia.loading, ia.error, fetchAll, compose, renderPrompt, snapshot]);
 }
