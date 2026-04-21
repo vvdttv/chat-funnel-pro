@@ -11,6 +11,7 @@ import { useFunnelsContext } from '@/hooks/useFunnels';
 import { useAuth } from '@/hooks/useAuth';
 import UsersManager from '@/components/UsersManager';
 import SecurityQuestionManager from '@/components/SecurityQuestionManager';
+import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
@@ -283,6 +284,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
+  const [playbookOpen, setPlaybookOpen] = useState(false);
 
   const addTouchpoint = () => {
     const newTp: Touchpoint = {
@@ -308,6 +310,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
   };
 
   return (
+    <>
     <div className="bg-card rounded-xl mb-2 overflow-hidden">
       <div className="flex items-center gap-3 p-4">
         <GripVertical size={16} className="text-muted-foreground shrink-0" />
@@ -337,6 +340,27 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
         <div className="px-3 pb-3">
           {/* Métricas */}
           <StageMetricsPanel funnel={funnel} stageId={stage.id} />
+
+          {/* Comportamento da IA nesta etapa */}
+          <button
+            onClick={() => setPlaybookOpen(true)}
+            className="w-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg p-2.5 mb-3 flex items-center justify-between active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-primary" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-semibold text-foreground">Comportamento da IA</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {stage.playbookCode
+                    ? `Playbook ${stage.playbookCode} vinculado`
+                    : 'Vincular playbook · objetivo, regras, follow-up'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+          </button>
 
           {/* Tempo máximo na etapa */}
           <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
@@ -394,6 +418,13 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
         </div>
       )}
     </div>
+    <StagePlaybookEditor
+      open={playbookOpen}
+      onOpenChange={setPlaybookOpen}
+      stage={stage}
+      onUpdate={onUpdate}
+    />
+    </>
   );
 };
 
