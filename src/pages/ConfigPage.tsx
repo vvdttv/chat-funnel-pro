@@ -51,7 +51,7 @@ const EXECUTOR_OPTIONS: { value: TouchpointExecutor; label: string; icon: typeof
 const getExecutor = (tp: Touchpoint): TouchpointExecutor =>
   tp.executor || (tp.type === 'ai' ? 'ai' : 'agent');
 
-const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: (tp: Touchpoint) => void; onDelete: () => void }) => {
+const TouchpointCard = ({ tp, onUpdate, onDelete, stagePlaybookCode }: { tp: Touchpoint; onUpdate: (tp: Touchpoint) => void; onDelete: () => void; stagePlaybookCode?: 'E0' | 'E1' | 'E2' | 'E3' | 'E4a' | 'E4b' }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Touchpoint>({ ...tp, executor: getExecutor(tp), messageTypes: tp.messageTypes?.length ? tp.messageTypes : ['text'] });
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
@@ -202,6 +202,7 @@ const TouchpointCard = ({ tp, onUpdate, onDelete }: { tp: Touchpoint; onUpdate: 
                 <AIWorkflowBuilder
                   workflow={draft.aiWorkflow}
                   onChange={wf => setDraft(d => ({ ...d, aiWorkflow: wf }))}
+                  stagePlaybookCode={stagePlaybookCode}
                 />
               )}
             </div>
@@ -413,6 +414,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
               tp={tp}
               onUpdate={(updated) => updateTouchpoint(i, updated)}
               onDelete={() => deleteTouchpoint(i)}
+              stagePlaybookCode={stage.playbookCode}
             />
           ))}
         </div>

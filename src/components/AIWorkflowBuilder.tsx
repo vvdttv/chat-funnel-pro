@@ -1,9 +1,58 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   MessageSquare, Clock, PenLine, Mic, GitBranch, MessageCircleQuestion,
   Plus, Pencil, Trash2, ChevronDown, ChevronUp, Type, Image as ImageIcon, Video, Volume2, X,
+  Sparkles, Brain, Shield, ArrowRightCircle,
 } from 'lucide-react';
 import type { AIWorkflow, AIWorkflowBlock, AIWorkflowBlockType, MessageType } from '@/data/mockData';
+import {
+  IA_UNIVERSAL_RULES, LEAD_BEHAVIORS, STAGE_SPECIFIC_RULES, getBehavior, getRule,
+  type IABehaviorRule, type StagePlaybook, type LeadBehaviorCategory,
+} from '@/data/iaBehavior';
+
+// ========== INTENT / TONE OPTIONS ==========
+
+const INTENT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'collect_intent',          label: 'Captar intenção' },
+  { value: 'collect_income',          label: 'Coletar renda (faixa)' },
+  { value: 'collect_regime',          label: 'Coletar regime de trabalho' },
+  { value: 'collect_fgts',            label: 'Coletar FGTS' },
+  { value: 'collect_entry',           label: 'Coletar entrada' },
+  { value: 'collect_composition',     label: 'Coletar composição familiar' },
+  { value: 'collect_urgency',         label: 'Coletar urgência' },
+  { value: 'collect_geo_preference',  label: 'Coletar preferência geográfica' },
+  { value: 'send_doc_list',           label: 'Enviar lista de documentos' },
+  { value: 'request_missing_doc',     label: 'Pedir documento faltante' },
+  { value: 'reassure_privacy',        label: 'Tranquilizar (LGPD)' },
+  { value: 'confirm_understanding',   label: 'Confirmar entendimento' },
+  { value: 'summarize_audio',         label: 'Resumir áudio recebido' },
+  { value: 'celebrate_approval',      label: 'Celebrar aprovação' },
+  { value: 'recovery_plan',           label: 'Plano de recuperação' },
+  { value: 'identity_disclosure',     label: 'Revelar identidade (sou IA)' },
+  { value: 'human_handoff',           label: 'Encaminhar para humano' },
+  { value: 'status_update',           label: 'Update de status' },
+  { value: 'reengagement',            label: 'Reengajamento' },
+  { value: 'qualification_question',  label: 'Pergunta de qualificação' },
+  { value: 'custom',                  label: 'Customizado' },
+];
+
+const TONE_OPTIONS: { value: string; label: string; classes: string }[] = [
+  { value: 'consultivo',  label: 'Consultivo',  classes: 'bg-primary/15 text-primary border-primary/30' },
+  { value: 'objetivo',    label: 'Objetivo',    classes: 'bg-secondary text-foreground border-border' },
+  { value: 'empatico',    label: 'Empático',    classes: 'bg-success/15 text-success border-success/30' },
+  { value: 'urgente',     label: 'Urgente',     classes: 'bg-warning/15 text-warning border-warning/30' },
+  { value: 'educativo',   label: 'Educativo',   classes: 'bg-[hsl(200,40%,25%)]/50 text-[hsl(200,60%,75%)] border-[hsl(200,40%,40%)]' },
+  { value: 'acolhedor',   label: 'Acolhedor',   classes: 'bg-[hsl(330,40%,25%)]/50 text-[hsl(330,60%,75%)] border-[hsl(330,40%,40%)]' },
+  { value: 'firme',       label: 'Firme',       classes: 'bg-destructive/15 text-destructive border-destructive/30' },
+];
+
+const CATEGORY_DOT: Record<LeadBehaviorCategory, string> = {
+  positive:  'bg-success',
+  neutral:   'bg-muted-foreground',
+  evasive:   'bg-warning',
+  negative:  'bg-destructive',
+  objection: 'bg-[hsl(270,60%,65%)]',
+};
 
 // ========== BLOCK META ==========
 
@@ -83,7 +132,7 @@ const BLOCK_META: Record<AIWorkflowBlockType, BlockMeta> = {
 
 const BLOCK_TYPES: AIWorkflowBlockType[] = ['send_message', 'wait', 'typing', 'recording', 'condition', 'wait_reply'];
 
-// ========== BLOCK EDITOR ==========
+// ========== BLOCK EDITOR (config técnica) ==========
 
 const BlockEditor = ({ block, onChange }: { block: AIWorkflowBlock; onChange: (b: AIWorkflowBlock) => void }) => {
   const setCfg = (patch: Record<string, any>) => onChange({ ...block, config: { ...block.config, ...patch } });
@@ -199,9 +248,325 @@ const BlockEditor = ({ block, onChange }: { block: AIWorkflowBlock; onChange: (b
   return null;
 };
 
+// ========== BLOCK BEHAVIOR EDITOR (Fase 3) ==========
+
+interface BehaviorEditorProps {
+  block: AIWorkflowBlock;
+  onChange: (b: AIWorkflowBlock) => void;
+  /** Opcional: se vier, filtra LBs/regras pelo escopo da etapa */
+  stagePlaybookCode?: StagePlaybook['stageCode'];
+  /** Outros blocos do mesmo workflow para o seletor de fallback */
+  siblingBlocks: AIWorkflowBlock[];
+}
+
+const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks }: BehaviorEditorProps) => {
+  const [behaviorPickerOpen, setBehaviorPickerOpen] = useState(false);
+  const [guardrailPickerOpen, setGuardrailPickerOpen] = useState(false);
+  const [behaviorSearch, setBehaviorSearch] = useState('');
+  const [guardrailSearch, setGuardrailSearch] = useState('');
+
+  const reactsToBehaviorIds = block.reactsToBehaviorIds ?? [];
+  const guardrailRuleIds = block.guardrailRuleIds ?? [];
+
+  // LBs candidatos: prioriza os típicos da etapa atual, mas mostra todos com filtro de busca
+  const candidateBehaviors = useMemo(() => {
+    const list = LEAD_BEHAVIORS.filter(b => {
+      if (stagePlaybookCode) {
+        const inStage = b.typicalStages.includes('*') || b.typicalStages.includes(stagePlaybookCode);
+        if (!inStage && !behaviorSearch) return false;
+      }
+      if (behaviorSearch) {
+        const q = behaviorSearch.toLowerCase();
+        return b.label.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+      }
+      return true;
+    });
+    return list.slice(0, 50);
+  }, [stagePlaybookCode, behaviorSearch]);
+
+  // Regras de guardrail: DONT + NOASK (universais sempre + específicas da etapa)
+  const candidateGuardrails = useMemo(() => {
+    const universals = IA_UNIVERSAL_RULES.filter(r => r.kind === 'dont' || r.kind === 'noask');
+    const stageSpecific = stagePlaybookCode
+      ? STAGE_SPECIFIC_RULES.filter(r => (r.kind === 'dont' || r.kind === 'noask') && r.scope === stagePlaybookCode)
+      : [];
+    const merged: IABehaviorRule[] = [...stageSpecific, ...universals];
+    if (!guardrailSearch) return merged.slice(0, 50);
+    const q = guardrailSearch.toLowerCase();
+    return merged.filter(r => r.text.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)).slice(0, 50);
+  }, [stagePlaybookCode, guardrailSearch]);
+
+  const toggleBehavior = (id: string) => {
+    const has = reactsToBehaviorIds.includes(id);
+    onChange({
+      ...block,
+      reactsToBehaviorIds: has
+        ? reactsToBehaviorIds.filter(x => x !== id)
+        : [...reactsToBehaviorIds, id],
+    });
+  };
+
+  const toggleGuardrail = (id: string) => {
+    const has = guardrailRuleIds.includes(id);
+    onChange({
+      ...block,
+      guardrailRuleIds: has
+        ? guardrailRuleIds.filter(x => x !== id)
+        : [...guardrailRuleIds, id],
+    });
+  };
+
+  return (
+    <div className="space-y-3 mt-2 pt-2 border-t border-border">
+      <div className="flex items-center gap-1.5">
+        <Sparkles size={11} className="text-primary" />
+        <span className="text-[10px] uppercase tracking-wide font-semibold text-primary">
+          Comportamento
+        </span>
+      </div>
+
+      {/* Intent + Tom */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div>
+          <label className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 block">Intenção</label>
+          <select
+            value={block.intent ?? ''}
+            onChange={e => onChange({ ...block, intent: e.target.value || undefined })}
+            className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-[11px] text-foreground outline-none focus:border-primary/50"
+          >
+            <option value="">— sem intenção —</option>
+            {INTENT_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 block">Tom</label>
+          <div className="flex gap-1 flex-wrap">
+            {TONE_OPTIONS.map(t => {
+              const active = block.tone === t.value;
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => onChange({ ...block, tone: active ? undefined : t.value })}
+                  className={`px-1.5 py-1 rounded-md text-[9px] font-medium border active:scale-95 ${
+                    active ? t.classes : 'bg-card text-muted-foreground border-border'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Reage a comportamentos */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1">
+            <Brain size={10} className="text-muted-foreground" />
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">
+              Dispara quando o lead apresentar
+            </span>
+          </div>
+          <button
+            onClick={() => setBehaviorPickerOpen(v => !v)}
+            className="text-[10px] text-primary font-medium active:scale-95 flex items-center gap-0.5"
+          >
+            {behaviorPickerOpen ? 'Fechar' : <><Plus size={10} /> Adicionar</>}
+          </button>
+        </div>
+
+        {reactsToBehaviorIds.length === 0 && !behaviorPickerOpen && (
+          <p className="text-[10px] text-muted-foreground italic">
+            Nenhum — bloco roda como passo padrão da etapa.
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-1">
+          {reactsToBehaviorIds.map(id => {
+            const lb = getBehavior(id);
+            if (!lb) return null;
+            return (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 bg-card border border-primary/30 rounded-md px-1.5 py-0.5 text-[10px] text-foreground"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_DOT[lb.category]}`} />
+                <span className="font-mono text-[9px] text-muted-foreground">{lb.id}</span>
+                <span className="truncate max-w-[140px]">{lb.label}</span>
+                <button
+                  onClick={() => toggleBehavior(id)}
+                  className="text-muted-foreground active:scale-95 ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+
+        {behaviorPickerOpen && (
+          <div className="mt-2 bg-secondary/60 rounded-lg p-2 border border-border">
+            <input
+              value={behaviorSearch}
+              onChange={e => setBehaviorSearch(e.target.value)}
+              placeholder={stagePlaybookCode
+                ? `Buscar (mostrando típicos de ${stagePlaybookCode})…`
+                : 'Buscar comportamento…'}
+              className="w-full bg-card border border-border rounded-md px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary/50 mb-2"
+            />
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {candidateBehaviors.map(lb => {
+                const active = reactsToBehaviorIds.includes(lb.id);
+                return (
+                  <button
+                    key={lb.id}
+                    onClick={() => toggleBehavior(lb.id)}
+                    className={`w-full text-left flex items-center gap-1.5 p-1.5 rounded-md transition-colors active:scale-[0.99] ${
+                      active ? 'bg-primary/15 border border-primary/30' : 'bg-card border border-transparent'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${CATEGORY_DOT[lb.category]}`} />
+                    <span className="font-mono text-[9px] text-muted-foreground shrink-0">{lb.id}</span>
+                    <span className="text-[11px] text-foreground truncate">{lb.label}</span>
+                    {active && <span className="ml-auto text-[10px] text-primary shrink-0">✓</span>}
+                  </button>
+                );
+              })}
+              {candidateBehaviors.length === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center py-2">Nada encontrado.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Guardrails */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1">
+            <Shield size={10} className="text-muted-foreground" />
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">
+              Guardrails reforçados
+            </span>
+          </div>
+          <button
+            onClick={() => setGuardrailPickerOpen(v => !v)}
+            className="text-[10px] text-primary font-medium active:scale-95 flex items-center gap-0.5"
+          >
+            {guardrailPickerOpen ? 'Fechar' : <><Plus size={10} /> Adicionar</>}
+          </button>
+        </div>
+
+        {guardrailRuleIds.length === 0 && !guardrailPickerOpen && (
+          <p className="text-[10px] text-muted-foreground italic">
+            Nenhum reforço extra — universais já estão sempre ativos.
+          </p>
+        )}
+
+        <div className="flex flex-col gap-1">
+          {guardrailRuleIds.map(id => {
+            const r = getRule(id);
+            if (!r) return null;
+            const isDont = r.kind === 'dont';
+            return (
+              <div
+                key={id}
+                className={`flex items-start gap-1.5 rounded-md px-1.5 py-1 border text-[10px] ${
+                  isDont
+                    ? 'bg-destructive/10 border-destructive/30 text-foreground'
+                    : 'bg-warning/10 border-warning/30 text-foreground'
+                }`}
+              >
+                <span className={`font-mono text-[9px] shrink-0 ${isDont ? 'text-destructive' : 'text-warning'}`}>
+                  {r.id}
+                </span>
+                <span className="flex-1 leading-snug">{r.text}</span>
+                <button
+                  onClick={() => toggleGuardrail(id)}
+                  className="text-muted-foreground active:scale-95 shrink-0"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {guardrailPickerOpen && (
+          <div className="mt-2 bg-secondary/60 rounded-lg p-2 border border-border">
+            <input
+              value={guardrailSearch}
+              onChange={e => setGuardrailSearch(e.target.value)}
+              placeholder="Buscar regra DONT/NOASK…"
+              className="w-full bg-card border border-border rounded-md px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary/50 mb-2"
+            />
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {candidateGuardrails.map(r => {
+                const active = guardrailRuleIds.includes(r.id);
+                const isDont = r.kind === 'dont';
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => toggleGuardrail(r.id)}
+                    className={`w-full text-left flex items-start gap-1.5 p-1.5 rounded-md active:scale-[0.99] ${
+                      active ? 'bg-primary/15 border border-primary/30' : 'bg-card border border-transparent'
+                    }`}
+                  >
+                    <span className={`font-mono text-[9px] shrink-0 mt-0.5 ${isDont ? 'text-destructive' : 'text-warning'}`}>
+                      {r.id}
+                    </span>
+                    <span className="text-[11px] text-foreground leading-snug flex-1">{r.text}</span>
+                    {active && <span className="text-[10px] text-primary shrink-0">✓</span>}
+                  </button>
+                );
+              })}
+              {candidateGuardrails.length === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center py-2">Nada encontrado.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Fallback */}
+      <div>
+        <div className="flex items-center gap-1 mb-1">
+          <ArrowRightCircle size={10} className="text-muted-foreground" />
+          <label className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">
+            Bloco de fallback
+          </label>
+        </div>
+        <select
+          value={block.fallbackBlockId ?? ''}
+          onChange={e => onChange({ ...block, fallbackBlockId: e.target.value || undefined })}
+          className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-[11px] text-foreground outline-none focus:border-primary/50"
+        >
+          <option value="">— sem fallback —</option>
+          {siblingBlocks
+            .filter(b => b.id !== block.id)
+            .map(b => {
+              const meta = BLOCK_META[b.type];
+              return (
+                <option key={b.id} value={b.id}>
+                  {meta.label} · {meta.summary(b.config).slice(0, 30)}
+                </option>
+              );
+            })}
+        </select>
+      </div>
+    </div>
+  );
+};
+
 // ========== BLOCK CARD ==========
 
-const BlockCard = ({ block, onChange, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: {
+const BlockCard = ({
+  block, onChange, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
+  stagePlaybookCode, siblingBlocks,
+}: {
   block: AIWorkflowBlock;
   onChange: (b: AIWorkflowBlock) => void;
   onDelete: () => void;
@@ -209,10 +574,21 @@ const BlockCard = ({ block, onChange, onDelete, onMoveUp, onMoveDown, canMoveUp,
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  stagePlaybookCode?: StagePlaybook['stageCode'];
+  siblingBlocks: AIWorkflowBlock[];
 }) => {
   const [open, setOpen] = useState(false);
   const meta = BLOCK_META[block.type];
   const Icon = meta.icon;
+
+  // Badges-resumo do comportamento mostrados no header colapsado
+  const intentLabel = block.intent ? INTENT_OPTIONS.find(o => o.value === block.intent)?.label : undefined;
+  const toneOpt = block.tone ? TONE_OPTIONS.find(t => t.value === block.tone) : undefined;
+  const reactCount = block.reactsToBehaviorIds?.length ?? 0;
+  const guardCount = block.guardrailRuleIds?.length ?? 0;
+
+  const hasBehaviorMeta = !!(intentLabel || toneOpt || reactCount || guardCount);
+
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="flex items-center gap-2 p-2.5">
@@ -228,9 +604,41 @@ const BlockCard = ({ block, onChange, onDelete, onMoveUp, onMoveDown, canMoveUp,
         <button onClick={() => setOpen(v => !v)} className="p-1.5 text-muted-foreground active:scale-95"><Pencil size={13} /></button>
         <button onClick={onDelete} className="p-1.5 text-destructive active:scale-95"><Trash2 size={13} /></button>
       </div>
+
+      {hasBehaviorMeta && !open && (
+        <div className="flex flex-wrap gap-1 px-2.5 pb-2">
+          {intentLabel && (
+            <span className="text-[9px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">
+              {intentLabel}
+            </span>
+          )}
+          {toneOpt && (
+            <span className={`text-[9px] px-1.5 py-0.5 rounded border ${toneOpt.classes}`}>
+              {toneOpt.label}
+            </span>
+          )}
+          {reactCount > 0 && (
+            <span className="text-[9px] bg-secondary text-muted-foreground border border-border px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+              <Brain size={9} /> {reactCount}
+            </span>
+          )}
+          {guardCount > 0 && (
+            <span className="text-[9px] bg-secondary text-muted-foreground border border-border px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+              <Shield size={9} /> {guardCount}
+            </span>
+          )}
+        </div>
+      )}
+
       {open && (
         <div className="px-2.5 pb-2.5 pt-1 border-t border-border">
           <BlockEditor block={block} onChange={onChange} />
+          <BlockBehaviorEditor
+            block={block}
+            onChange={onChange}
+            stagePlaybookCode={stagePlaybookCode}
+            siblingBlocks={siblingBlocks}
+          />
         </div>
       )}
     </div>
@@ -284,9 +692,11 @@ const AddBlockMenu = ({ onAdd }: { onAdd: (type: AIWorkflowBlockType) => void })
 interface AIWorkflowBuilderProps {
   workflow: AIWorkflow;
   onChange: (wf: AIWorkflow) => void;
+  /** Opcional: código do playbook da etapa (E0..E4b) para escopar sugestões */
+  stagePlaybookCode?: StagePlaybook['stageCode'];
 }
 
-export const AIWorkflowBuilder = ({ workflow, onChange }: AIWorkflowBuilderProps) => {
+export const AIWorkflowBuilder = ({ workflow, onChange, stagePlaybookCode }: AIWorkflowBuilderProps) => {
   const addBlock = (type: AIWorkflowBlockType) => {
     const newBlock: AIWorkflowBlock = {
       id: `blk-${Date.now()}`,
@@ -318,6 +728,17 @@ export const AIWorkflowBuilder = ({ workflow, onChange }: AIWorkflowBuilderProps
     <div>
       {/* Header global */}
       <div className="bg-card rounded-xl p-3 mb-3 border border-border space-y-2">
+        {stagePlaybookCode && (
+          <div className="flex items-center gap-1.5 pb-2 border-b border-border">
+            <Sparkles size={12} className="text-primary" />
+            <span className="text-[10px] text-muted-foreground">
+              Etapa vinculada ao playbook
+            </span>
+            <span className="text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+              {stagePlaybookCode}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-xs text-foreground">Mostrar status de digitação ao lead</span>
           <input
@@ -358,6 +779,8 @@ export const AIWorkflowBuilder = ({ workflow, onChange }: AIWorkflowBuilderProps
               onMoveDown={() => moveBlock(i, 1)}
               canMoveUp={i > 0}
               canMoveDown={i < workflow.blocks.length - 1}
+              stagePlaybookCode={stagePlaybookCode}
+              siblingBlocks={workflow.blocks}
             />
             {i < workflow.blocks.length - 1 && (
               <div className="flex justify-center py-1">
