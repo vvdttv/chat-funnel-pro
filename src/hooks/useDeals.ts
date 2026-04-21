@@ -14,6 +14,7 @@ type DBDealRow = {
   value: number;
   status: string;
   secondary_contacts: unknown;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +49,7 @@ function rowToDeal(row: DBDealRow, funnels: Funnel[]): Deal {
     stage: stage?.name || row.stage_id,
     probability: stage?.probability ?? 0,
     createdAt: row.created_at,
+    assignedTo: row.assigned_to,
     secondaryContacts: Array.isArray(row.secondary_contacts)
       ? (row.secondary_contacts as { name: string; role: string }[])
       : [],

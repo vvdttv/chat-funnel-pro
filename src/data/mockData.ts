@@ -73,6 +73,7 @@ export interface Deal {
   probability: number;
   createdAt: string;
   secondaryContacts?: { name: string; role: string }[];
+  assignedTo?: string | null;
 }
 
 export interface Activity {
