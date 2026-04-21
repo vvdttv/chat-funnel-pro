@@ -1,9 +1,10 @@
 import { formatCurrency } from '@/data/mockData';
 import { useDealsContext } from '@/hooks/useDeals';
-import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { useState } from 'react';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
