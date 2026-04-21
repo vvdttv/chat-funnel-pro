@@ -296,6 +296,7 @@ export const IADecisionLogsPanel = () => {
   }, [selectedFunnel]);
 
   const topIntents = useMemo(() => stats.byIntent.slice(0, 4), [stats.byIntent]);
+  const heatmap = useMemo(() => buildHeatmap(logs), [logs]);
   const activeFilters = [funnelId, stageId, dealStatus, archetypeCode, overlayCode, outcome, contextTag, search]
     .filter(Boolean).length;
 
@@ -303,6 +304,9 @@ export const IADecisionLogsPanel = () => {
     setFunnelId(''); setStageId(''); setDealStatus(''); setArchetypeCode('');
     setOverlayCode(''); setOutcome(''); setContextTag(''); setSearch('');
   };
+
+  const handleExportCSV = () => exportLogsCSV(logs);
+  const handleExportJSON = () => exportLogsJSON(logs);
 
   return (
     <div className="space-y-3">
