@@ -48,8 +48,21 @@ export interface LeadBehavior {
   id: string;                              // LB-xxx
   label: string;
   category: LeadBehaviorCategory;
-  /** Etapas onde costuma aparecer ('*' = qualquer) */
+  /**
+   * @deprecated use `applicableContextTags` (Sprint 3+). Mantido apenas para
+   * compatibilidade visual nos painéis legados; o motor composicional NÃO
+   * filtra mais por essa propriedade.
+   */
   typicalStages: ('*' | 'E0' | 'E1' | 'E2' | 'E3' | 'E4a' | 'E4b')[];
+  /**
+   * Tags de contexto onde este comportamento se aplica. O motor casa
+   * `applicableContextTags ∩ stage.context_tags ≠ ∅` para decidir se o LB
+   * entra no pipeline daquela etapa, independentemente do funil.
+   * '*' = aplica em qualquer contexto.
+   */
+  applicableContextTags?: string[] | ['*'];
+  /** Status do deal em que o LB é elegível. Default: ['open']. */
+  applicableStatuses?: ('open' | 'won' | 'lost')[];
   detectionHints: string[];
   defaultReaction: string;
   nextStep: string;
