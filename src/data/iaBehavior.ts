@@ -14,8 +14,9 @@
  *  - LB-xxx        → comportamentos do lead catalogados (85 itens)
  *  - E{N}-{kind}   → regras específicas de etapa (ex.: E1-DONT-001, E2-ASK-003)
  *
- * Em copy visível ao usuário sempre dizemos "a IA" — nunca "AIA". O prefixo
- * "IA-" nos códigos é apenas chave técnica.
+ * Convenção de nomenclatura única: "IA" (Inteligência Artificial) em toda a
+ * superfície — IDs persistidos, constantes, copy de UI e documentação. Este é
+ * o padrão definitivo desde o renaming pós-6 fases (Sprint 1 da rev. 2).
  */
 
 // ============================================================================
