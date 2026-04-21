@@ -1506,7 +1506,9 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const [activeFunnelId, setActiveFunnelId] = useState<string>('');
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
-  const [lossOpen, setLossOpen] = useState(false);
+  const [lossDeal, setLossDeal] = useState<Deal | null>(null);
+  const { setDealStatus } = useDealsContext();
+  const { toast } = useToast();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
 
