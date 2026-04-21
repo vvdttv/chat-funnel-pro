@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   User, Check, X, Brain, Plus, Play, Loader2, Save, Sparkles, Search,
+  Layers, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import { useArchetypes } from '@/hooks/useArchetypes';
@@ -31,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { LeadBehaviorCategory } from '@/data/iaBehavior';
+import { PlaybookOverrideEditor } from '@/components/PlaybookOverrideEditor';
 
 interface Props {
   open: boolean;
@@ -74,6 +76,7 @@ export const PlaybookFourColumnEditor = ({
   // Coluna ativa em mobile (em desktop todas aparecem via grid)
   const [activeCol, setActiveCol] = useState<ColKey>('identity');
   const [saving, setSaving] = useState(false);
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const [funnelStageRow, setFunnelStageRow] = useState<{
     id: string;
     purpose: string;
@@ -361,6 +364,34 @@ export const PlaybookFourColumnEditor = ({
               stageName={stage.name}
               archetypeCode={archetype?.code}
             />
+          </div>
+
+          {/* Sprint 11 — Overrides composicionais (avançado, colapsável) */}
+          <div className="mt-4 border border-border rounded-xl bg-card/40">
+            <button
+              onClick={() => setOverridesOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-1.5">
+                <Layers size={13} className="text-primary" />
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-foreground">
+                  Overrides composicionais
+                </span>
+                <span className="text-[10px] text-muted-foreground">(avançado)</span>
+              </span>
+              {overridesOpen
+                ? <ChevronUp size={14} className="text-muted-foreground" />
+                : <ChevronDown size={14} className="text-muted-foreground" />}
+            </button>
+            {overridesOpen && (
+              <div className="border-t border-border p-3">
+                <PlaybookOverrideEditor
+                  funnelId={funnelId}
+                  stageId={stage.id}
+                  stageName={stage.name}
+                />
+              </div>
+            )}
           </div>
         </div>
 

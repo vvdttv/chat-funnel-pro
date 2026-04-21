@@ -21,7 +21,26 @@ import {
   type StageArchetype, type StatusArchetype, type PhysicalStage,
   type CatalogPlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
+import type { IABehaviorRule, LeadBehavior, FollowUpLadder, HandoffTrigger } from '@/data/iaBehavior';
 import { useFunnels } from '@/hooks/useFunnels';
+
+/**
+ * Snapshot dos catálogos carregados — exposto para callers que precisam
+ * recompor com overrides em rascunho (ex.: PlaybookOverrideEditor) sem
+ * tocar o estado salvo.
+ */
+export interface RuntimeSnapshot {
+  archetypes: StageArchetype[];
+  statusArchetypes: StatusArchetype[];
+  physicalStages: PhysicalStage[];
+  catalogPlaybooks: CatalogPlaybook[];
+  overrides: PlaybookOverride[];
+  rules: IABehaviorRule[];
+  behaviors: LeadBehavior[];
+  ladders: FollowUpLadder[];
+  triggers: HandoffTrigger[];
+  funnelContextTagsById: Record<string, string[]>;
+}
 
 interface RuntimeState {
   loading: boolean;
@@ -148,11 +167,33 @@ export function usePlaybookRuntime() {
     [compose],
   );
 
+  const snapshot: RuntimeSnapshot | null = useMemo(() => {
+    if (state.loading || ia.loading) return null;
+    const funnelContextTagsById: Record<string, string[]> = {};
+    for (const f of funnels) {
+      const tags = (f as unknown as { context_tags?: string[] }).context_tags;
+      funnelContextTagsById[f.id] = Array.isArray(tags) ? tags : [];
+    }
+    return {
+      archetypes: state.archetypes,
+      statusArchetypes: state.statusArchetypes,
+      physicalStages: state.physicalStages,
+      catalogPlaybooks: state.catalogPlaybooks,
+      overrides: state.overrides,
+      rules: ia.rules,
+      behaviors: ia.behaviors,
+      ladders: ia.ladders,
+      triggers: ia.triggers,
+      funnelContextTagsById,
+    };
+  }, [state, ia, funnels]);
+
   return useMemo(() => ({
     loading: state.loading || ia.loading,
     error: state.error ?? ia.error,
     refresh: fetchAll,
     compose,
     renderPrompt,
-  }), [state.loading, state.error, ia.loading, ia.error, fetchAll, compose, renderPrompt]);
+    snapshot,
+  }), [state.loading, state.error, ia.loading, ia.error, fetchAll, compose, renderPrompt, snapshot]);
 }
