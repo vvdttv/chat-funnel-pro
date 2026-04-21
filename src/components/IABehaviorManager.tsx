@@ -147,12 +147,16 @@ interface BehaviorDraft {
   detectionHints: string;       // CSV
   defaultReaction: string;
   nextStep: string;
+  applicableContextTags: string;  // CSV
+  applicableStatuses: string;     // CSV
 }
 
 const emptyBehavior: BehaviorDraft = {
   code: '', label: '', category: 'neutral',
   typicalStages: '*', detectionHints: '',
   defaultReaction: '', nextStep: '',
+  applicableContextTags: '*',
+  applicableStatuses: 'open',
 };
 
 const BehaviorEditor = ({
