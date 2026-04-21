@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { sanitizeUsername } from '../_shared/sanitize.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const usernameRaw = String(body?.username ?? '').trim().toLowerCase();
+    const usernameRaw = sanitizeUsername(body?.username);
     if (!usernameRaw) {
       return new Response(
         JSON.stringify({ question: null, attemptsRemaining: MAX_ATTEMPTS, maxAttempts: MAX_ATTEMPTS, windowMinutes: WINDOW_MINUTES }),
