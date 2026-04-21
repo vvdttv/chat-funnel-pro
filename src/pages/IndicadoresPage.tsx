@@ -170,6 +170,22 @@ const IndicadoresPage = () => {
               </div>
             )}
           </div>
+
+          {/* Auditoria da IA */}
+          <div className="bg-card rounded-xl overflow-hidden">
+            <button onClick={() => toggleSection('ia')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Bot size={14} className="text-[hsl(270,60%,70%)]" />
+                Decisões da IA
+              </span>
+              {openSection === 'ia' ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+            </button>
+            {openSection === 'ia' && (
+              <div className="px-4 pb-4">
+                <IADecisionLogsPanel />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
