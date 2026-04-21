@@ -44,29 +44,37 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     // Resposta genérica para não revelar existência de usuário
-    const genericFail = () =>
-      new Response(JSON.stringify({ error: 'Usuário ou resposta inválidos.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const genericFail = (attemptsRemaining: number) =>
+      new Response(
+        JSON.stringify({
+          error: 'Usuário ou resposta inválidos.',
+          attemptsRemaining,
+          maxAttempts: MAX_ATTEMPTS,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
 
     if (!profile?.user_id || !profile.security_answer_hash) {
-      return genericFail();
+      return genericFail(MAX_ATTEMPTS);
     }
 
     // Rate limit por user_id
     const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
-    const { count } = await admin
+    const { count: failedCount } = await admin
       .from('password_reset_attempts')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', profile.user_id)
       .eq('success', false)
       .gte('attempted_at', since);
 
-    if ((count ?? 0) >= MAX_ATTEMPTS) {
+    const previousFails = failedCount ?? 0;
+    if (previousFails >= MAX_ATTEMPTS) {
       return new Response(
         JSON.stringify({
           error: `Muitas tentativas. Tente novamente em ${WINDOW_MINUTES} minutos.`,
+          attemptsRemaining: 0,
+          maxAttempts: MAX_ATTEMPTS,
+          windowMinutes: WINDOW_MINUTES,
         }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -80,7 +88,8 @@ Deno.serve(async (req) => {
         user_id: profile.user_id,
         success: false,
       });
-      return genericFail();
+      const remaining = Math.max(0, MAX_ATTEMPTS - (previousFails + 1));
+      return genericFail(remaining);
     }
 
     // Reset da senha via service role
