@@ -42,6 +42,15 @@ const CATEGORY_META: Record<LeadBehaviorCategory, { label: string; classes: stri
   objection: { label: 'Objeção',   classes: 'bg-primary/15 text-primary border-primary/30' },
 };
 
+const STATUS_META: Record<string, { label: string; classes: string }> = {
+  open: { label: 'Em aberto', classes: 'bg-primary/15 text-primary border-primary/30' },
+  won:  { label: 'Ganho',     classes: 'bg-success/15 text-success border-success/30' },
+  lost: { label: 'Perdido',   classes: 'bg-destructive/15 text-destructive border-destructive/30' },
+};
+
+const KNOWN_CONTEXT_TAGS = ['*', 'real-estate', 'general-sales', 'post-sale', 'support', 'b2b', 'b2c'];
+const KNOWN_STATUSES = ['open', 'won', 'lost'];
+
 // ============================================================================
 // Editor de regra
 // ============================================================================
