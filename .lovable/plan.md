@@ -1,223 +1,99 @@
 
 
-# Camada comportamental da IA — execução faseada do documento refinado
+# Plano consolidado — Atualização pós-6 fases (revisão 2 do Opus)
 
-Naming: o documento usa "AIA" como nome próprio da IA. Eu vou tratar como **"a IA"** em toda copy visível ao usuário (UI, labels, mensagens, descrições, mock data e seed). Os IDs estáveis usados como código de referência interna nos dados (`AIA-DO-001`, `AIA-DONT-007`, `AIA-ASK-004`, `AIA-NOASK-015`) ficam como estão — são chaves técnicas, não texto exibido. Onde aparecem em descrição visível, troco para `IA-DO-001`, `IA-DONT-007`, etc., para manter consistência.
+Documento do Opus recebido e analisado integralmente (38 páginas). Ele **substitui** as instruções anteriores como fonte única e aplica **duas mudanças sobrepostas** sobre o que já foi entregue nas 6 fases:
 
----
+- **Mudança A — Desacoplamento do funil padrão**: introdução de `StageArchetype` (10 arquétipos canônicos) × `StatusArchetype` (open/won/lost) com playbook composicional de 4 camadas (seed → status overlay → funnel override → stage override).
+- **Mudança B — Renaming AIA → IA**: alinhar IDs (`AIA-DO-*` → `IA-DO-*`), constantes e strings residuais.
 
-## Visão geral
+Tudo o que já foi entregue nas 6 fases permanece **base intacta**; nada é descartado.
 
-O documento refinado define 6 partes operacionais que precisam virar código:
+## Execução em 6 sprints
 
-1. **Princípios universais** — 25 deveres (DO) + 28 proibições (DONT) + 11 perguntas obrigatórias (ASK) + 18 perguntas proibidas (NOASK) válidos em qualquer etapa.
-2. **Biblioteca de 85 comportamentos do lead** (LB-001 a LB-085) — sinais de detecção, reação padrão, próximo passo.
-3. **6 playbooks de etapa** (E0, E1, E2, E3, E4a, E4b) — objetivo, critérios de sucesso/falha, comportamentos esperados, DO/DONT específicos, ASK/NOASK específicos, encaminhamentos, escada de follow-up.
-4. **Matriz de 30 comportamentos top** + matriz de gatilhos de handoff (P0–P3) + matriz de escadas de follow-up.
-5. **Política de identidade da IA + LGPD + calibração de tom**.
-6. **Modelo de dados** (LeadBehavior, StageBehaviorPlaybook, HandoffPackage, LeadState, LGPDPolicy, FollowUpLadder, IABehavior) e runtime com guardrails.
+### Sprint 1 — Renaming AIA → IA (curto e reversível)
+- Find/replace nos arquivos: `iaBehavior.ts`, `IABehaviorManager.tsx`, `StagePlaybookEditor.tsx`, `AIWorkflowBuilder.tsx`, testes.
+- Migration `01_rename_aia_to_ia.sql`: `UPDATE ia_rules SET code = REPLACE(code, 'AIA-', 'IA-') WHERE code LIKE 'AIA-%'`.
+- Bloquear botão de seed durante a janela.
+- Smoke test (codes IA-*, edição, criar nova regra, seed idempotente, painel de logs).
 
-Tudo isso vai virar **dados editáveis em Lovable Cloud** + extensões ao construtor visual existente. Nada hardcoded.
+### Sprint 2 — Schema + pendências da auditoria
+Migrations sequenciais:
+- `02_handoff_priority_enum.sql` — `CREATE TYPE handoff_priority AS ENUM ('P0','P1','P2','P3')` + ALTER coluna.
+- `03_fks_formais.sql` — FK `organization_id` em todas as 6 tabelas comportamentais.
+- `04_stage_archetypes` + `05_status_archetypes` + `06_playbook_overrides` + `07_deal_status_events` (criação + RLS).
+- `08_deals_add_status` (status NOT NULL DEFAULT 'open' + status_changed_at + status_reason + lost_substage + won_date + backfill).
+- `09_funnels_funnel_stages_cols` (stage_archetype_id, context_tags, purpose, is_default).
+- `10_stage_playbooks_cols` (archetype_id, kind, status_archetype_id).
+- `11_lead_behaviors_context_tags` (applicable_context_tags, applicable_statuses + backfill + deprecação de applicable_stages).
 
----
+### Sprint 3 — Seeds + re-tagging
+- Seed dos **10 stage_archetypes** (first_contact, qualification, discovery_call, scheduling, appointment_followup, documentation, external_review, proposal, negotiation, closing) + **3 status_archetypes** (open/won/lost).
+- Atualizar `iaBehavior.ts` com `STAGE_ARCHETYPES`, `STATUS_ARCHETYPES`, 4 novos playbooks-seed (discovery_call, scheduling, appointment_followup, negotiation) e 2 overlays (won, lost).
+- Re-tagging dos **85 LBs** (mapeamento explícito do Opus, Parte 6.3).
+- 8 novos LBs de pós-venda (LB-086 a LB-093).
+- Migration `12_backfill_funnel_padrao.sql` atribuindo arquétipos às etapas E0–E4a; tratamento de E4b conforme decisão aberta.
+- Estender edge function `seed-ia-behavior` para popular tudo isso.
 
-## Plano em 5 fases
+### Sprint 4 — UI atualizada
+- Wizard de 3 passos para criar funil novo (identidade → etapas/template → revisão).
+- Dropdown obrigatório de arquétipo no formulário de criar/editar etapa.
+- **Tela de 4 colunas** no `StagePlaybookEditor` (seed | overlay | funnel | stage) com célula efetiva destacada, "limpar override", "desativar item".
+- Toggle Aberto/Ganho/Perdido acima das colunas.
+- Sandbox de teste com seletor (funnel, stage, status) mostrando qual camada gerou cada decisão.
+- Warnings de UI (impacto em N etapas, troca de arquétipo, desativar regra universal).
 
-Cada fase é entregue por inteiro, validada por você, e só então avanço. Fases 1–3 são puramente front-end + dados (sem motor real de execução). Fases 4–5 ligam o motor de runtime e o handoff.
+### Sprint 5 — Runtime composicional
+- `resolveEffectivePlaybook(funnelId, stageId, status)` no hook `useIABehavior` aplicando merge das 4 camadas (escalares: superior sobrescreve; listas: additions/disabled; conflito DO×DONT: mais restritivo vence).
+- Cache por chave `(funnel_id, stage_id, stage_archetype_id, status, overrides_version)` com invalidação em writes.
+- Pipeline de 10 passos com filtro de LBs por `context_tags ∩ stage.context_tags ≠ ∅` e `applicable_statuses CONTAINS deal.status`.
+- Transições de status (open↔won↔lost) registrando em `deal_status_events`.
 
-### Fase 1 — Modelo de dados + biblioteca seed (frontend, sem backend)
+### Sprint 6 — Writer de logs + CRUD unificado
+- Adicionar colunas `stage_archetype_id`, `status_archetype_id`, `effective_playbook_layers`, `outcome` em `ia_decision_logs`.
+- Writer fire-and-forget na edge function `ai-chat-analysis` após cada resposta (resolve pendência da auditoria).
+- Eventos extras: `fallback_to_mock`, `status_transition`, `handoff` sem resposta direta.
+- Telemetria de fallback no `useIABehavior` (chama `logFallback(reason)` + console.warn).
+- Novas seções no `IABehaviorManager`: Escadas, Gatilhos, Playbooks de arquétipo (admin master), Overrides agregados, Arquétipos (read-only).
+- Métricas novas no `IndicadoresPage` (heatmap funnel×status, taxa open→won por arquétipo, NPS won, fallbacks, distribuição de outcomes).
 
-Estende `src/data/mockData.ts` com os tipos e a seed completa do documento.
+## Decisões abertas (Opus, Parte 10.2) — preciso de confirmação
 
-**Tipos novos:**
-- `LeadBehaviorCategory = 'positive' | 'neutral' | 'evasive' | 'negative' | 'objection'`
-- `LeadBehavior` — id, label, category, typicalStages[], detectionHints[], defaultReaction, nextStep
-- `IABehaviorRule` — id (ex. `IA-DO-001`), kind ('do' | 'dont' | 'ask' | 'noask'), scope ('universal' | stageId), text, optional bannedReason
-- `StageBehaviorPlaybook` — stageId, goal, successCriteria[], failureCriteria[], expectedBehaviorIds[] (ref LB), stageRules[] (ref IABehaviorRule), handoffTriggers[], followUpLadder, archiveTriggers[]
-- `HandoffPackage` — summary5lines, timeline[], collectedData{}, persona, objectionsRaised[], suggestedNextStep, lossRisk(1-5)
-- `FollowUpStep` — afterHours, tone, sampleMessage
-- `HandoffTrigger` — priority ('P0'|'P1'|'P2'|'P3'), label, condition, action
+Adoto as **sugestões do Opus** como default, mas peço confirmação dos itens potencialmente disruptivos:
 
-**Seeds incluídas (constantes exportadas):**
-- `IA_UNIVERSAL_RULES` — 25 DO + 28 DONT + 11 ASK + 18 NOASK (Parte 2 do doc).
-- `LEAD_BEHAVIORS` — 85 itens com sinais de detecção e reação padrão (Parte 3).
-- `STAGE_PLAYBOOKS` — 6 playbooks (E0, E1, E2, E3, E4a, E4b) referenciando LBs e regras.
-- `HANDOFF_TRIGGERS_MATRIX` — 12 gatilhos P0/P1/P2/P3 (matriz da Parte 5.2).
-- `FOLLOWUP_LADDERS` — 3 escadas padrão (rápida 1h-6h-24h, média 24h-72h-semanal, longa 30d-90d-180d).
-- `IA_IDENTITY_POLICY` e `LGPD_POLICY` — textos do doc, editáveis.
+| # | Decisão | Default proposto |
+|---|---------|------------------|
+| 1 | Etapa "E4b Fechamento Perdido" | **Remover** + migrar deals existentes para `status='lost'` + `lost_substage='closing'` |
+| 2 | Renaming AIA → IA nos IDs persistidos | **Sim**, aplicar tudo |
+| 3 | "AIA" como nome de persona em material externo | **Preservar** se for nome próprio (não há código a mudar) |
+| 4 | Empresas criam arquétipos próprios? | **Não** nos primeiros 6 meses |
+| 5 | Transição lost → open | **Manual** (corretor confirma) |
+| 6 | 8 novos LBs de pós-venda | **Incluir no S3** |
+| 7 | Indicação no overlay won | **Ativa por default**, override desativa |
+| 8 | Overrides de organização (acima do funil) | **Adiar** para release futuro |
+| 9 | Arquivamento automático de lost após 365d | **Ativo por default**, configurável |
 
-**Funil padrão atualizado** para 6 etapas alinhadas ao documento: `E0 Primeiro contato → E1 Pré-qualificação → E2 Captação de documentos → E3 Análise de crédito → E4a Aprovado → E4b Reprovado` (E4a e E4b são etapas terminais paralelas). Cada etapa já vem com seu `playbookId` apontando para a seed.
+Se concordar com todos os defaults, basta responder "Sim, todos os defaults". Caso queira mudar algum, indique o número.
 
-**Validação:** abrir Config > Funil Padrão e ver as 6 etapas com playbooks pré-vinculados; nada quebra na UI atual.
+## Critérios de pronto (resumo verificável)
+- `SELECT COUNT(*) FROM ia_rules WHERE code LIKE 'AIA-%'` retorna 0.
+- Busca por "AIA-" no TS retorna 0 ocorrências.
+- 10 arquétipos + 3 status + tabelas novas com RLS e FKs.
+- `funnel_stages.stage_archetype_id` NOT NULL; `deals.status` NOT NULL DEFAULT 'open'.
+- 85 LBs re-tagueados + 8 novos LBs de pós-venda.
+- Editor com 4 colunas funcionando; sandbox mostrando origem da decisão.
+- Writer de logs ativo gravando ao menos 1 log por resposta.
+- IABehaviorManager com seções de ladders, triggers, overrides.
 
----
+## Riscos principais
+- **Renaming em produção com seed rodado** → janela de baixa atividade + bloqueio de seed durante migration.
+- **Cache stale** → invalidação eager em todos os writes + TTL curto.
+- **UI de 4 colunas em mobile** → accordion responsivo abaixo do breakpoint tablet.
+- **Race conditions em mudança de status** → transação SQL com `SELECT FOR UPDATE`.
 
-### Fase 2 — Editor de Playbook por etapa (Config UI)
+## Observação sobre escopo
 
-Em `src/pages/ConfigPage.tsx`, no editor de etapa expandido, adiciono uma nova seção **"Comportamento da IA nesta etapa"** acima do touchpoint, com 6 abas internas (mobile-friendly, scroll horizontal):
+Este é um plano de **6 sprints sequenciais**. Em cada resposta de execução implementarei **um sprint por vez** (após sua aprovação), validando antes de avançar. Sprint 1 é o mais curto e seguro — recomendo começar por ele assim que confirmar os defaults das decisões abertas.
 
-1. **Objetivo** — campo único editável: o que a IA precisa conseguir nesta etapa. Pré-preenchido com a goal do playbook seed.
-2. **Comportamentos do lead** — lista de LBs ativos na etapa; toggle ativar/desativar cada um, botão editar reação padrão, "+ adicionar comportamento" (escolhe da biblioteca ou cria novo).
-3. **A IA deve / não deve** — duas listas lado a lado (DO/DONT específicos + universais herdados marcados como cinza/somente leitura). Botão "+ adicionar regra".
-4. **Perguntas (ASK / NOASK)** — mesmo padrão: lista de fraseologia pronta com dado capturado, e lista de perguntas banidas com motivo.
-5. **Follow-up** — escolhe escada padrão ou edita passos (afterHours, tom, mensagem-modelo).
-6. **Encaminhamento** — gatilhos de avanço, gatilhos de handoff (lista referenciando matriz P0–P3), gatilhos de descarte.
-
-Cada aba tem search/filtro e badges de categoria/prioridade. Tudo persiste em estado React por enquanto (mock).
-
-**Componentes novos em `src/components/`:**
-- `StagePlaybookEditor.tsx` — sheet bottom full-height com as 6 abas
-- `LeadBehaviorList.tsx` — lista virtualizada com filtros por categoria
-- `IARuleList.tsx` — DO/DONT/ASK/NOASK
-- `FollowUpLadderEditor.tsx`
-- `HandoffTriggerList.tsx`
-
-**Validação:** consigo abrir cada etapa, ver e editar todas as 6 abas, alterações persistem enquanto a sessão continua aberta.
-
----
-
-### Fase 3 — Construtor de fluxo da IA com metadados comportamentais
-
-Estende `src/components/AIWorkflowBuilder.tsx` para que cada bloco ganhe os campos comportamentais previstos no doc:
-
-- **`intent`** — dropdown: `collect_income | send_doc_list | reassure_privacy | confirm_understanding | celebrate_approval | recovery_plan | …` (lista vinda da seed, editável).
-- **`tone`** — `consultivo | objetivo | empático | urgente | educativo | acolhedor`.
-- **`reactsToBehaviorIds`** — multi-select de LBs (mostra hints da biblioteca). Se vazio, é fluxo padrão.
-- **`fallbackBlockId`** — qual bloco rodar se a reação não funcionar (ex.: handoff).
-- **`guardrails`** — checkboxes ligando regras universais relevantes (ex.: "não prometer aprovação", "uma pergunta por mensagem").
-
-Tipo atualizado em `mockData.ts`:
-```ts
-export interface AIWorkflowBlock {
-  id; type; config;
-  intent?: string;
-  tone?: 'consultivo' | 'objetivo' | 'empatico' | 'urgente' | 'educativo' | 'acolhedor';
-  reactsToBehaviorIds?: string[];
-  fallbackBlockId?: string;
-  guardrailRuleIds?: string[];
-}
-```
-
-A UI de cada `BlockCard` ganha um collapsible "Comportamento" com esses 5 campos. Os tipos de bloco existentes (send_message, wait, typing, recording, condition, wait_reply) continuam funcionando — só ganham metadados opcionais.
-
-**Validação:** abrir um bloco no construtor, configurar intent + tom + comportamento que dispara, fechar e reabrir mantendo tudo.
-
----
-
-### Fase 4 — Persistência em Lovable Cloud + edição multiusuário
-
-Migra todas as seeds (universais + 85 LBs + 6 playbooks + matrizes) para tabelas do Lovable Cloud, com RLS por organização. A seed roda na primeira execução.
-
-**Tabelas (migrações via tool):**
-- `ia_rules` — universal/stage rules (DO/DONT/ASK/NOASK), `org_id`, `scope`, `kind`, `code`, `text`, `is_seed`, `is_active`.
-- `lead_behaviors` — 85 LBs editáveis por org, com `detection_hints` JSONB, `default_reaction`, `next_step`.
-- `stage_playbooks` — 1 por etapa por funil por org; vincula `stage_id` + `goal` + `success_criteria` JSONB + `failure_criteria` JSONB + `archive_triggers` JSONB.
-- `playbook_behavior_links` — many-to-many playbook ↔ lead_behavior (com possível override de reação).
-- `playbook_rule_links` — many-to-many playbook ↔ ia_rules específicas de etapa.
-- `followup_ladders` + `followup_steps` — escadas reutilizáveis por etapa.
-- `handoff_triggers` — gatilhos com priority, condition, action, escopo (universal ou por etapa).
-- `ai_workflow_blocks` — blocos do construtor com os novos campos comportamentais.
-
-RLS: leitura/escrita restritas a membros da org via `has_role`. Função `seed_default_ia_library(org_id)` que popula tudo a partir das constantes da Fase 1 quando uma org é criada (ou via botão "Restaurar padrão" no Config).
-
-Hooks novos:
-- `useIARules(scope)`, `useLeadBehaviors()`, `useStagePlaybook(stageId)`, `useFollowUpLadders()`, `useHandoffTriggers()`.
-
-A UI da Fase 2 e Fase 3 deixa de operar em mock e passa a ler/escrever via esses hooks.
-
-**Validação:** dois usuários da mesma org veem e editam os mesmos playbooks; ao restaurar padrão, tudo volta à seed.
-
----
-
-### Fase 5 — Runtime, guardrails e HandoffPackage
-
-Edge function nova `ia-conversation` que finalmente executa a camada comportamental contra mensagens reais (ou simuladas) do lead.
-
-Fluxo por mensagem recebida:
-
-```text
-Mensagem do lead
-  ↓
-1. Carrega LeadState do deal (etapa atual, persona, dados já coletados)
-  ↓
-2. Classifica mensagem contra LeadBehaviors do playbook ativo
-   (Lovable AI Gateway, gemini-2.5-flash, prompt com hints de detecção)
-  ↓
-3. Aplica guardrails universais (DONT + NOASK) — bloqueia respostas proibidas
-  ↓
-4. Seleciona bloco do AIWorkflow cujo reactsToBehaviorIds bate
-   (fallback: bloco padrão da etapa)
-  ↓
-5. Gera resposta usando: goal da etapa + tom do bloco + DO+ASK aplicáveis
-   + dados já em LeadState (nunca pergunta de novo)
-  ↓
-6. Pós-processa: valida 1 pergunta por msg, ≤4 linhas, sem promessa de prazo
-  ↓
-7. Atualiza LeadState (novos dados, persona, próximo follow-up agendado)
-  ↓
-8. Avalia handoff triggers; se bater P0/P1, gera HandoffPackage
-   e marca o deal para corretor humano
-```
-
-**Tabelas adicionais:**
-- `lead_states` — 1 por deal: `persona` JSONB, `collected_data` JSONB, `objections_raised[]`, `loss_risk_score`, `last_followup_at`, `next_followup_at`, `current_playbook_id`.
-- `handoff_packages` — registro por handoff: `summary`, `timeline` JSONB, `collected_data` JSONB, `next_step`, `status`.
-- `ia_decision_logs` — auditabilidade: cada turno registra mensagem do lead, LB classificado, bloco escolhido, regras aplicadas, resposta gerada, latência.
-
-**Reescrita de `ai-chat-analysis`** para reusar a mesma camada quando o corretor pergunta no Modo IA dentro do chat — passa a citar regras e LBs reconhecidos no histórico, virando um co-piloto consciente do playbook.
-
-**UI nova mínima:**
-- No chat de oportunidade, chip lateral "Estado da IA": etapa atual do playbook, último LB detectado, próximo passo previsto, próximo follow-up agendado.
-- No card do deal, badge "📦 Pacote de handoff pronto" quando gerado, abrindo um sheet com o resumo estruturado.
-
-**Validação:** simular conversa em ambiente de teste — IA detecta LB-018 (negativado), aplica reação correta, não promete aprovação (guardrail ativo), pede 1 dado por vez, agenda follow-up. Ao receber LB-061 ("quero humano"), gera HandoffPackage e marca deal.
-
----
-
-## Detalhes técnicos
-
-```text
-src/data/mockData.ts
-└─ + tipos LeadBehavior, IABehaviorRule, StagePlaybook, HandoffPackage, FollowUpStep
-└─ + constantes IA_UNIVERSAL_RULES (82), LEAD_BEHAVIORS (85), STAGE_PLAYBOOKS (6),
-     HANDOFF_TRIGGERS_MATRIX (12), FOLLOWUP_LADDERS (3)
-└─ + extensão de AIWorkflowBlock com intent/tone/reactsToBehaviorIds/fallback/guardrails
-
-src/components/
-├─ StagePlaybookEditor.tsx  (Fase 2)
-├─ LeadBehaviorList.tsx     (Fase 2)
-├─ IARuleList.tsx           (Fase 2)
-├─ FollowUpLadderEditor.tsx (Fase 2)
-├─ HandoffTriggerList.tsx   (Fase 2)
-└─ AIWorkflowBuilder.tsx    (Fase 3 — adiciona collapsible "Comportamento")
-
-src/pages/ConfigPage.tsx    (Fase 2 — abre StagePlaybookEditor)
-
-Lovable Cloud (Fase 4)
-└─ tabelas ia_rules, lead_behaviors, stage_playbooks, playbook_behavior_links,
-   playbook_rule_links, followup_ladders, followup_steps, handoff_triggers,
-   ai_workflow_blocks  (todas com RLS por org)
-
-supabase/functions/
-├─ ia-conversation/         (Fase 5 — engine de runtime)
-└─ ai-chat-analysis/        (Fase 5 — refatorado para usar a camada)
-
-Lovable Cloud (Fase 5)
-└─ tabelas lead_states, handoff_packages, ia_decision_logs
-```
-
-**Texto vs IDs:** internamente os códigos (`IA-DO-001`, `LB-018`) são chaves estáveis e ficam no banco. Em toda copy exibida ao usuário, escrevo "a IA" — nunca "AIA". Onde o doc refinado dizia "AIA deve…", a UI dirá "A IA deve…".
-
-**Decisões deferidas (cada uma vira conversa própria depois):**
-- Conexão real com WhatsApp Business (canal de entrada).
-- Parser de áudio do lead (transcrição via gateway).
-- Análise de documentos enviados (OCR + classificação de tipo).
-- Calibração fina de prompts por persona detectada (formal/informal, técnico/leigo).
-- Tela de auditoria das `ia_decision_logs` em Indicadores.
-
----
-
-## O que acontece após aprovar
-
-Começo pela **Fase 1**: estendo `mockData.ts` com tipos e seeds completas das 25 DO + 28 DONT + 11 ASK + 18 NOASK + 85 LBs + 6 playbooks + 12 gatilhos + 3 escadas, atualizo o funil padrão para 6 etapas e te chamo para validar antes de avançar para a Fase 2.
+**Próximo passo aguardado:** confirmação dos 9 defaults (ou ajustes) + autorização para iniciar Sprint 1 (Renaming).
 
