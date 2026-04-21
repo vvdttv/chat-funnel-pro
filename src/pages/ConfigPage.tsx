@@ -1086,6 +1086,12 @@ const ConfigPage = () => {
           </>
         )}
       </div>
+      <FunnelWizard
+        open={funnelWizardOpen}
+        onOpenChange={setFunnelWizardOpen}
+        addFunnel={addFunnel}
+        onCreated={(f) => setSelectedFunnelId(f.id)}
+      />
     </div>
   );
 };
