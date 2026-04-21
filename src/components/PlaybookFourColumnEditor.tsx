@@ -316,47 +316,39 @@ export const PlaybookFourColumnEditor = ({
         {/* Colunas — mobile single, desktop grid */}
         <div className="flex-1 overflow-y-auto p-3">
           <div className="md:grid md:grid-cols-4 md:gap-3">
-            {(activeCol === 'identity' || true) && (
-              <div className={activeCol !== 'identity' ? 'hidden md:block' : ''}>
-                <ColHeader col="identity" />
-                <IdentityColumn value={identity} onChange={setIdentity} />
-              </div>
-            )}
-            {(activeCol === 'success' || true) && (
-              <div className={activeCol !== 'success' ? 'hidden md:block' : ''}>
-                <ColHeader col="success" />
-                <CriteriaColumn
-                  items={successCriteria}
-                  onChange={setSuccessCriteria}
-                  tone="success"
-                  placeholder="Ex: lead aceitou agendamento"
-                />
-              </div>
-            )}
-            {(activeCol === 'failure' || true) && (
-              <div className={activeCol !== 'failure' ? 'hidden md:block' : ''}>
-                <ColHeader col="failure" />
-                <CriteriaColumn
-                  items={failureCriteria}
-                  onChange={setFailureCriteria}
-                  tone="destructive"
-                  placeholder="Ex: lead pediu para não contatar"
-                />
-              </div>
-            )}
-            {(activeCol === 'behaviors' || true) && (
-              <div className={activeCol !== 'behaviors' ? 'hidden md:block' : ''}>
-                <ColHeader col="behaviors" />
-                <BehaviorsColumn
-                  selected={expectedBehaviorIds}
-                  onToggle={(id) => {
-                    setExpectedBehaviorIds(prev =>
-                      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
-                    );
-                  }}
-                />
-              </div>
-            )}
+            <div className={activeCol !== 'identity' ? 'hidden md:block' : ''}>
+              <ColHeader col="identity" />
+              <IdentityColumn value={identity} onChange={setIdentity} />
+            </div>
+            <div className={activeCol !== 'success' ? 'hidden md:block' : ''}>
+              <ColHeader col="success" />
+              <CriteriaColumn
+                items={successCriteria}
+                onChange={setSuccessCriteria}
+                tone="success"
+                placeholder="Ex: lead aceitou agendamento"
+              />
+            </div>
+            <div className={activeCol !== 'failure' ? 'hidden md:block' : ''}>
+              <ColHeader col="failure" />
+              <CriteriaColumn
+                items={failureCriteria}
+                onChange={setFailureCriteria}
+                tone="destructive"
+                placeholder="Ex: lead pediu para não contatar"
+              />
+            </div>
+            <div className={activeCol !== 'behaviors' ? 'hidden md:block' : ''}>
+              <ColHeader col="behaviors" />
+              <BehaviorsColumn
+                selected={expectedBehaviorIds}
+                onToggle={(id) => {
+                  setExpectedBehaviorIds(prev =>
+                    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+                  );
+                }}
+              />
+            </div>
           </div>
 
           {/* Sandbox de preview (sempre visível abaixo) */}
