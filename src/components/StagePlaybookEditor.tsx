@@ -369,7 +369,8 @@ const GoalSection = ({
       tone="destructive"
     />
   </div>
-);
+  );
+};
 
 const CriteriaList = ({
   label, items, onChange, tone,
@@ -738,7 +739,8 @@ const FollowUpSection = ({
       );
     })}
   </div>
-);
+  );
+};
 
 const formatHours = (h: number): string => {
   if (h < 24) return `${h}h`;
