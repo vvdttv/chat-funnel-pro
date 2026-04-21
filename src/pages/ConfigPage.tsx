@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, getStageMetrics, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { useStageMetrics } from '@/hooks/useStageMetrics';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -255,15 +256,18 @@ const MetricCard = ({ icon: Icon, label, value, accent }: { icon: typeof DollarS
 );
 
 const StageMetricsPanel = ({ funnel, stageId }: { funnel: Funnel; stageId: string }) => {
-  const m = getStageMetrics(funnel, stageId);
+  const { metrics: m, loading } = useStageMetrics(funnel.id, stageId);
+  const fmt = (v: number) => loading ? '…' : v;
+  const fmtDays = (v: number) => loading ? '…' : `${v}d`;
+  const fmtPct = (v: number) => loading ? '…' : `${v}%`;
   return (
     <div className="grid grid-cols-2 gap-1.5 mb-3">
-      <MetricCard icon={DollarSign} label="Valor total" value={formatCurrency(m.totalValue)} accent="text-primary" />
-      <MetricCard icon={Users} label="Oportunidades" value={String(m.dealCount)} />
-      <MetricCard icon={Target} label="Prob. fechamento" value={`${m.closeProbability}%`} accent="text-primary" />
-      <MetricCard icon={TrendingUp} label="Prob. avanço" value={`${m.advanceProbability}%`} />
-      <MetricCard icon={ArrowRight} label="Tempo médio avanço" value={`${m.avgDaysToAdvance}d`} />
-      <MetricCard icon={Timer} label="Tempo médio fechamento" value={`${m.avgDaysToClose}d`} />
+      <MetricCard icon={DollarSign} label="Valor total" value={loading ? '…' : formatCurrency(m.totalValue)} accent="text-primary" />
+      <MetricCard icon={Users} label="Oportunidades" value={String(fmt(m.dealCount))} />
+      <MetricCard icon={Target} label="Prob. fechamento" value={fmtPct(m.closeProbability)} accent="text-primary" />
+      <MetricCard icon={TrendingUp} label="Prob. avanço" value={fmtPct(m.advanceProbability)} />
+      <MetricCard icon={ArrowRight} label="Tempo médio avanço" value={fmtDays(m.avgDaysToAdvance)} />
+      <MetricCard icon={Timer} label="Tempo médio fechamento" value={fmtDays(m.avgDaysToClose)} />
     </div>
   );
 };
