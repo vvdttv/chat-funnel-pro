@@ -465,6 +465,47 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
                   <span className="text-[10px] text-muted-foreground">🔒 Apenas você vê isso</span>
                 </div>
                 <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                {msg.provenance && (
+                  <div className="mt-2 pt-2 border-t border-[hsl(270,40%,30%)] flex flex-wrap gap-1">
+                    {msg.provenance.archetypeCode && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[hsl(270,50%,25%)] text-[hsl(270,70%,80%)]" title="Arquétipo de etapa">
+                        🧬 {msg.provenance.archetypeCode}
+                      </span>
+                    )}
+                    {msg.provenance.statusOverlayCode && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[hsl(40,50%,25%)] text-[hsl(40,80%,75%)]" title="Overlay de status">
+                        🎭 {msg.provenance.statusOverlayCode}
+                      </span>
+                    )}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                      msg.provenance.dealStatus === 'won' ? 'bg-[hsl(140,50%,20%)] text-[hsl(140,70%,75%)]' :
+                      msg.provenance.dealStatus === 'lost' ? 'bg-[hsl(0,50%,25%)] text-[hsl(0,70%,80%)]' :
+                      'bg-secondary text-muted-foreground'
+                    }`} title="Status do deal">
+                      {msg.provenance.dealStatus}
+                    </span>
+                    {msg.provenance.contextTags.slice(0, 3).map(tag => (
+                      <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-[hsl(200,40%,20%)] text-[hsl(200,70%,80%)]" title="Context tag">
+                        #{tag}
+                      </span>
+                    ))}
+                    {msg.provenance.contextTags.length > 3 && (
+                      <span className="text-[9px] text-muted-foreground" title={msg.provenance.contextTags.slice(3).join(', ')}>
+                        +{msg.provenance.contextTags.length - 3}
+                      </span>
+                    )}
+                    {msg.provenance.overrideIds.length > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[hsl(320,40%,25%)] text-[hsl(320,70%,80%)]" title={msg.provenance.overrideIds.join(' | ')}>
+                        ⚙️ {msg.provenance.overrideIds.length} override{msg.provenance.overrideIds.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {msg.provenance.appliedRuleCodes && msg.provenance.appliedRuleCodes.length > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground" title={msg.provenance.appliedRuleCodes.join(', ')}>
+                        📜 {msg.provenance.appliedRuleCodes.length} regras
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${
