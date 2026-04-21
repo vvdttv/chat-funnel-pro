@@ -385,10 +385,14 @@ export type Database = {
       ia_decision_logs: {
         Row: {
           action_taken: string
+          applied_override_ids: Json
           applied_rule_codes: Json
+          archetype_code: string | null
           context: Json
+          context_tags: Json
           created_at: string
           deal_id: string | null
+          deal_status: string | null
           detected_behavior_codes: Json
           funnel_id: string | null
           id: string
@@ -397,14 +401,19 @@ export type Database = {
           outcome: string | null
           playbook_code: string | null
           stage_id: string | null
+          status_overlay_code: string | null
           tone: string | null
         }
         Insert: {
           action_taken?: string
+          applied_override_ids?: Json
           applied_rule_codes?: Json
+          archetype_code?: string | null
           context?: Json
+          context_tags?: Json
           created_at?: string
           deal_id?: string | null
+          deal_status?: string | null
           detected_behavior_codes?: Json
           funnel_id?: string | null
           id?: string
@@ -413,14 +422,19 @@ export type Database = {
           outcome?: string | null
           playbook_code?: string | null
           stage_id?: string | null
+          status_overlay_code?: string | null
           tone?: string | null
         }
         Update: {
           action_taken?: string
+          applied_override_ids?: Json
           applied_rule_codes?: Json
+          archetype_code?: string | null
           context?: Json
+          context_tags?: Json
           created_at?: string
           deal_id?: string | null
+          deal_status?: string | null
           detected_behavior_codes?: Json
           funnel_id?: string | null
           id?: string
@@ -429,6 +443,7 @@ export type Database = {
           outcome?: string | null
           playbook_code?: string | null
           stage_id?: string | null
+          status_overlay_code?: string | null
           tone?: string | null
         }
         Relationships: [
@@ -865,6 +880,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      change_deal_status: {
+        Args: {
+          p_deal_id: string
+          p_lost_substage?: string
+          p_new_status: string
+          p_reason?: string
+        }
+        Returns: {
+          changed_at: string
+          deal_id: string
+          from_status: string
+          to_status: string
+        }[]
+      }
       current_org_id: { Args: never; Returns: string }
       get_stage_metrics: {
         Args: { p_funnel_id: string; p_stage_id: string }
@@ -885,6 +914,15 @@ export type Database = {
         Returns: boolean
       }
       is_org_admin: { Args: never; Returns: boolean }
+      move_deal_stage: {
+        Args: { p_deal_id: string; p_new_stage_id: string; p_reason?: string }
+        Returns: {
+          deal_id: string
+          from_stage_id: string
+          moved_at: string
+          to_stage_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "corretor"

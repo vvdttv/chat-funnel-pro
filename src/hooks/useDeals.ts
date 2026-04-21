@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, useCallback, createContext, useContext } f
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal, Funnel } from '@/data/mockData';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  moveDealStageAtomic, changeDealStatusAtomic, type DealStatus,
+} from '@/lib/dealTransitions';
 
 type DBDealRow = {
   id: string;
@@ -188,10 +191,47 @@ export function useDeals(funnels: Funnel[]) {
     if (error) console.error('[useDeals] erro ao deletar deal', error);
   }, []);
 
-  /** Marca como ganho/perdido — atualiza status no banco. */
-  const setDealStatus = useCallback(async (id: string, status: 'open' | 'won' | 'lost') => {
-    const { error } = await supabase.from('deals').update({ status }).eq('id', id);
+  /**
+   * Marca como ganho/perdido — usa RPC atômica `change_deal_status` com
+   * `SELECT FOR UPDATE` no servidor (evita corrida com outras abas).
+   */
+  const setDealStatus = useCallback(async (
+    id: string,
+    status: DealStatus,
+    reason?: string,
+    lostSubstage?: string,
+  ) => {
+    const { error } = await changeDealStatusAtomic(id, status, reason, lostSubstage);
     if (error) console.error('[useDeals] erro ao atualizar status', error);
+    return { error };
+  }, []);
+
+  /**
+   * Move um deal entre etapas usando RPC atômica `move_deal_stage` —
+   * `SELECT FOR UPDATE` impede que dois usuários movam o mesmo deal ao
+   * mesmo tempo. Atualiza o estado local apenas se a RPC sucedeu.
+   */
+  const moveDealStage = useCallback(async (
+    id: string,
+    newStageId: string,
+    reason?: string,
+  ) => {
+    const { data, error } = await moveDealStageAtomic(id, newStageId, reason);
+    if (error) {
+      console.error('[useDeals] erro ao mover etapa', error);
+      return { error };
+    }
+    if (data) {
+      const stage = funnelsRef.current
+        .flatMap(f => f.stages)
+        .find(s => s.id === data.toStageId);
+      if (stage) {
+        setDeals(prev => prev.map(d =>
+          d.id === id ? { ...d, stage: stage.name, probability: stage.probability } : d,
+        ));
+      }
+    }
+    return { error: null };
   }, []);
 
   /** Reatribui um deal a outro corretor (admin only — RLS valida). */
@@ -205,7 +245,7 @@ export function useDeals(funnels: Funnel[]) {
     return { error: null };
   }, []);
 
-  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, reassignDeal };
+  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, moveDealStage, reassignDeal };
 }
 
 // ========== Contexto global ==========
@@ -216,7 +256,8 @@ interface DealsContextValue {
   updateDeal: (d: Deal) => void;
   addDeal: (d: Deal) => void;
   deleteDeal: (id: string) => void;
-  setDealStatus: (id: string, status: 'open' | 'won' | 'lost') => void;
+  setDealStatus: (id: string, status: DealStatus, reason?: string, lostSubstage?: string) => Promise<{ error: string | null }>;
+  moveDealStage: (id: string, newStageId: string, reason?: string) => Promise<{ error: string | null }>;
   reassignDeal: (id: string, newAssignedTo: string) => Promise<{ error: string | null }>;
 }
 
@@ -227,7 +268,8 @@ const DealsContext = createContext<DealsContextValue>({
   updateDeal: noop,
   addDeal: noop,
   deleteDeal: noop,
-  setDealStatus: noop,
+  setDealStatus: async () => ({ error: null }),
+  moveDealStage: async () => ({ error: null }),
   reassignDeal: async () => ({ error: null }),
 });
 
