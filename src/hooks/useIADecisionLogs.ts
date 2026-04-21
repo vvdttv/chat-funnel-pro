@@ -84,6 +84,12 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
       if (dealId) q = q.eq('deal_id', dealId);
       if (outcome) q = q.eq('outcome', outcome);
       if (intent) q = q.eq('intent', intent);
+      if (funnelId) q = q.eq('funnel_id', funnelId);
+      if (stageId) q = q.eq('stage_id', stageId);
+      if (dealStatus) q = q.eq('deal_status', dealStatus);
+      if (archetypeCode) q = q.eq('archetype_code', archetypeCode);
+      if (statusOverlayCode) q = q.eq('status_overlay_code', statusOverlayCode);
+      if (contextTag) q = q.contains('context_tags', [contextTag]);
       if (sinceDays && sinceDays > 0) {
         const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
         q = q.gte('created_at', since);
