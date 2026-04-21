@@ -284,6 +284,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
+  const [playbookOpen, setPlaybookOpen] = useState(false);
 
   const addTouchpoint = () => {
     const newTp: Touchpoint = {
