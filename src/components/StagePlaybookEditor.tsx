@@ -13,7 +13,7 @@
  * objeto FunnelStage via callback `onUpdate`. Persistência real virá na Fase 4.
  */
 
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
@@ -23,11 +23,36 @@ import {
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import {
-  IA_UNIVERSAL_RULES, LEAD_BEHAVIORS, STAGE_PLAYBOOKS,
-  STAGE_SPECIFIC_RULES, FOLLOWUP_LADDERS, HANDOFF_TRIGGERS,
+  IA_UNIVERSAL_RULES as SEED_RULES,
+  LEAD_BEHAVIORS as SEED_BEHAVIORS,
+  STAGE_PLAYBOOKS as SEED_PLAYBOOKS,
+  STAGE_SPECIFIC_RULES as SEED_STAGE_RULES,
+  FOLLOWUP_LADDERS as SEED_LADDERS,
+  HANDOFF_TRIGGERS as SEED_TRIGGERS,
   type IABehaviorRule, type IARuleKind, type LeadBehaviorCategory,
-  type StagePlaybook, type LeadBehavior,
+  type StagePlaybook, type LeadBehavior, type FollowUpLadder, type HandoffTrigger,
 } from '@/data/iaBehavior';
+import { useIABehavior } from '@/hooks/useIABehavior';
+
+// Context interno para distribuir os datasets carregados via hook para os
+// subcomponentes sem precisar refatorar suas assinaturas.
+interface IADatasets {
+  universalRules: IABehaviorRule[];
+  stageRules: IABehaviorRule[];
+  behaviors: LeadBehavior[];
+  playbooks: StagePlaybook[];
+  ladders: FollowUpLadder[];
+  triggers: HandoffTrigger[];
+}
+const IADatasetsCtx = createContext<IADatasets>({
+  universalRules: SEED_RULES,
+  stageRules: SEED_STAGE_RULES,
+  behaviors: SEED_BEHAVIORS,
+  playbooks: SEED_PLAYBOOKS,
+  ladders: SEED_LADDERS,
+  triggers: SEED_TRIGGERS,
+});
+const useIADatasets = () => useContext(IADatasetsCtx);
 
 interface Props {
   open: boolean;
