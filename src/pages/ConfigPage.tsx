@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import UsersManager from '@/components/UsersManager';
 import SecurityQuestionManager from '@/components/SecurityQuestionManager';
 import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
+import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
+import { FunnelWizard } from '@/components/FunnelWizard';
 import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
 import { IABehaviorManager } from '@/components/IABehaviorManager';
 
@@ -288,6 +290,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
   const [playbookOpen, setPlaybookOpen] = useState(false);
+  const [playbook4ColOpen, setPlaybook4ColOpen] = useState(false);
 
   const addTouchpoint = () => {
     const newTp: Touchpoint = {
@@ -345,25 +348,36 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
           <StageMetricsPanel funnel={funnel} stageId={stage.id} />
 
           {/* Comportamento da IA nesta etapa */}
-          <button
-            onClick={() => setPlaybookOpen(true)}
-            className="w-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg p-2.5 mb-3 flex items-center justify-between active:scale-[0.99] transition-transform"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                <Sparkles size={14} className="text-primary" />
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              onClick={() => setPlaybook4ColOpen(true)}
+              className="bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/30 rounded-lg p-2.5 flex flex-col items-start gap-1 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center shrink-0">
+                  <LayoutGrid size={12} className="text-primary" />
+                </div>
+                <p className="text-[11px] font-semibold text-foreground">Playbook 4-col</p>
               </div>
-              <div className="text-left min-w-0">
-                <p className="text-xs font-semibold text-foreground">Comportamento da IA</p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {stage.playbookCode
-                    ? `Playbook ${stage.playbookCode} vinculado`
-                    : 'Vincular playbook · objetivo, regras, follow-up'}
-                </p>
+              <p className="text-[9px] text-muted-foreground text-left leading-tight">
+                Identidade · Sucesso · Falha · Comportamentos
+              </p>
+            </button>
+            <button
+              onClick={() => setPlaybookOpen(true)}
+              className="bg-card border border-border rounded-lg p-2.5 flex flex-col items-start gap-1 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                  <Sparkles size={12} className="text-muted-foreground" />
+                </div>
+                <p className="text-[11px] font-semibold text-foreground">Detalhado</p>
               </div>
-            </div>
-            <ChevronRight size={14} className="text-muted-foreground shrink-0" />
-          </button>
+              <p className="text-[9px] text-muted-foreground text-left leading-tight">
+                {stage.playbookCode ? `${stage.playbookCode} vinculado` : 'Regras + follow-up + handoff'}
+              </p>
+            </button>
+          </div>
 
           {/* Tempo máximo na etapa */}
           <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
@@ -425,6 +439,13 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
     <StagePlaybookEditor
       open={playbookOpen}
       onOpenChange={setPlaybookOpen}
+      stage={stage}
+      onUpdate={onUpdate}
+    />
+    <PlaybookFourColumnEditor
+      open={playbook4ColOpen}
+      onOpenChange={setPlaybook4ColOpen}
+      funnelId={funnel.id}
       stage={stage}
       onUpdate={onUpdate}
     />
@@ -902,6 +923,7 @@ const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
+  const [funnelWizardOpen, setFunnelWizardOpen] = useState(false);
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
   const { profile, isAdmin, signOut } = useAuth();
 
@@ -918,16 +940,7 @@ const ConfigPage = () => {
 
   const handleAddFunnel = () => {
     if (!isAdmin) return;
-    const newFunnel: Funnel = {
-      id: `fun-${Date.now()}`,
-      name: 'Novo Funil',
-      description: 'Descrição do funil',
-      icon: 'Zap',
-      color: 'hsl(var(--primary))',
-      stages: [{ id: `stage-${Date.now()}`, name: 'Novo Lead', probability: 10, maxDaysInStage: 2, touchpoints: [] }],
-    };
-    addFunnel(newFunnel);
-    setSelectedFunnelId(newFunnel.id);
+    setFunnelWizardOpen(true);
   };
 
   const visibleTabs = tabs.filter(t => !t.adminOnly || isAdmin);
@@ -1073,6 +1086,12 @@ const ConfigPage = () => {
           </>
         )}
       </div>
+      <FunnelWizard
+        open={funnelWizardOpen}
+        onOpenChange={setFunnelWizardOpen}
+        addFunnel={addFunnel}
+        onCreated={(f) => setSelectedFunnelId(f.id)}
+      />
     </div>
   );
 };
