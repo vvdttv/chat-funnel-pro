@@ -155,9 +155,11 @@ describe('Pipeline composicional E2E', () => {
     expect(pb.provenance.overrideIds).toEqual([]);
   });
 
-  it('LB com expectedBehaviorIds explícito entra mesmo se contexto nicho não casar', () => {
-    // PB-NEG.typicalBehaviorCodes = ['LB-NEG-001'] — bate contexto
-    // Vamos forçar override expectedBehaviorIds incluindo um LB nichado
+  it('LB de override + LB casado por contexto coexistem (união, sem duplicar)', () => {
+    // PB-NEG.typicalBehaviorCodes = ['LB-NEG-001'] (casa contexto 'negociacao').
+    // Override força ['LB-EXPLICIT'] como explícitos. Resultado esperado:
+    // - LB-EXPLICIT entra (explícito, mesmo com tag 'nicho-x' que não casa)
+    // - LB-NEG-001 entra via matchedByContext (tag 'negociacao' do arquétipo)
     const pb = composeEffectivePlaybook(buildInput({
       overrides: [{
         scopeType: 'stage', scopeId: 'F1::E3', layer: 'stage',
@@ -166,7 +168,8 @@ describe('Pipeline composicional E2E', () => {
     }));
     const ids = pb.expectedBehaviors.map(b => b.id);
     expect(ids).toContain('LB-EXPLICIT');     // explícito força entrada
-    expect(ids).not.toContain('LB-NEG-001');  // override SUBSTITUI lista
+    expect(ids).toContain('LB-NEG-001');      // matchedByContext via 'negociacao'
+    expect(ids.filter(i => i === 'LB-EXPLICIT')).toHaveLength(1); // sem duplicata
   });
 
   it('renderSystemPrompt expõe override IDs no contexto composicional', () => {
