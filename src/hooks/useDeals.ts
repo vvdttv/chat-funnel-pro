@@ -245,7 +245,7 @@ export function useDeals(funnels: Funnel[]) {
     return { error: null };
   }, []);
 
-  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, reassignDeal };
+  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, moveDealStage, reassignDeal };
 }
 
 // ========== Contexto global ==========
@@ -256,7 +256,8 @@ interface DealsContextValue {
   updateDeal: (d: Deal) => void;
   addDeal: (d: Deal) => void;
   deleteDeal: (id: string) => void;
-  setDealStatus: (id: string, status: 'open' | 'won' | 'lost') => void;
+  setDealStatus: (id: string, status: DealStatus, reason?: string, lostSubstage?: string) => Promise<{ error: string | null }>;
+  moveDealStage: (id: string, newStageId: string, reason?: string) => Promise<{ error: string | null }>;
   reassignDeal: (id: string, newAssignedTo: string) => Promise<{ error: string | null }>;
 }
 
@@ -267,7 +268,8 @@ const DealsContext = createContext<DealsContextValue>({
   updateDeal: noop,
   addDeal: noop,
   deleteDeal: noop,
-  setDealStatus: noop,
+  setDealStatus: async () => ({ error: null }),
+  moveDealStage: async () => ({ error: null }),
   reassignDeal: async () => ({ error: null }),
 });
 
