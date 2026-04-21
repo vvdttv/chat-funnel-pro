@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast';
 import { usePlaybookRuntime } from '@/hooks/usePlaybookRuntime';
 import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
 import { useIABehavior } from '@/hooks/useIABehavior';
-import { useFunnels } from '@/hooks/useFunnels';
 import {
   composeEffectivePlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
