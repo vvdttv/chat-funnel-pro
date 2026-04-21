@@ -13,7 +13,7 @@
  * objeto FunnelStage via callback `onUpdate`. Persistência real virá na Fase 4.
  */
 
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
@@ -23,11 +23,36 @@ import {
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import {
-  IA_UNIVERSAL_RULES, LEAD_BEHAVIORS, STAGE_PLAYBOOKS,
-  STAGE_SPECIFIC_RULES, FOLLOWUP_LADDERS, HANDOFF_TRIGGERS,
+  IA_UNIVERSAL_RULES as SEED_RULES,
+  LEAD_BEHAVIORS as SEED_BEHAVIORS,
+  STAGE_PLAYBOOKS as SEED_PLAYBOOKS,
+  STAGE_SPECIFIC_RULES as SEED_STAGE_RULES,
+  FOLLOWUP_LADDERS as SEED_LADDERS,
+  HANDOFF_TRIGGERS as SEED_TRIGGERS,
   type IABehaviorRule, type IARuleKind, type LeadBehaviorCategory,
-  type StagePlaybook, type LeadBehavior,
+  type StagePlaybook, type LeadBehavior, type FollowUpLadder, type HandoffTrigger,
 } from '@/data/iaBehavior';
+import { useIABehavior } from '@/hooks/useIABehavior';
+
+// Context interno para distribuir os datasets carregados via hook para os
+// subcomponentes sem precisar refatorar suas assinaturas.
+interface IADatasets {
+  universalRules: IABehaviorRule[];
+  stageRules: IABehaviorRule[];
+  behaviors: LeadBehavior[];
+  playbooks: StagePlaybook[];
+  ladders: FollowUpLadder[];
+  triggers: HandoffTrigger[];
+}
+const IADatasetsCtx = createContext<IADatasets>({
+  universalRules: SEED_RULES,
+  stageRules: SEED_STAGE_RULES,
+  behaviors: SEED_BEHAVIORS,
+  playbooks: SEED_PLAYBOOKS,
+  ladders: SEED_LADDERS,
+  triggers: SEED_TRIGGERS,
+});
+const useIADatasets = () => useContext(IADatasetsCtx);
 
 interface Props {
   open: boolean;
@@ -62,7 +87,26 @@ const PRIORITY_CLASSES: Record<string, string> = {
   P3: 'bg-muted text-muted-foreground border-border',
 };
 
-export const StagePlaybookEditor = ({ open, onOpenChange, stage, onUpdate }: Props) => {
+export const StagePlaybookEditor = (props: Props) => {
+  const { rules, behaviors, ladders, triggers, playbooks } = useIABehavior();
+  const datasets: IADatasets = useMemo(() => ({
+    universalRules: rules.filter(r => r.scope === 'universal'),
+    stageRules:     rules.filter(r => r.scope !== 'universal'),
+    behaviors,
+    playbooks,
+    ladders,
+    triggers,
+  }), [rules, behaviors, ladders, triggers, playbooks]);
+
+  return (
+    <IADatasetsCtx.Provider value={datasets}>
+      <StagePlaybookEditorInner {...props} />
+    </IADatasetsCtx.Provider>
+  );
+};
+
+const StagePlaybookEditorInner = ({ open, onOpenChange, stage, onUpdate }: Props) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
   const [activeSection, setActiveSection] = useState<SectionKey>('goal');
 
   // Resolve playbook seed a partir do code (ou primeiro encaixe pelo nome)
@@ -228,7 +272,9 @@ export const StagePlaybookEditor = ({ open, onOpenChange, stage, onUpdate }: Pro
 // Seletor inicial de playbook
 // ============================================================================
 
-const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']) => void }) => (
+const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']) => void }) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
+  return (
   <div className="p-4 space-y-3">
     <p className="text-xs text-muted-foreground">
       Vincule esta etapa a um playbook comportamental da IA. O conteúdo padrão
@@ -254,7 +300,8 @@ const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']
       ))}
     </div>
   </div>
-);
+  );
+};
 
 // ============================================================================
 // Aba 1 — Objetivo
@@ -270,7 +317,9 @@ const GoalSection = ({
   playbookCode: FunnelStage['playbookCode'];
   onChangePlaybookCode: (c: FunnelStage['playbookCode']) => void;
   onChange: (changes: Partial<NonNullable<FunnelStage['playbookOverride']>>) => void;
-}) => (
+}) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
+  return (
   <div className="space-y-4">
     <div>
       <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5 block">
@@ -320,7 +369,8 @@ const GoalSection = ({
       tone="destructive"
     />
   </div>
-);
+  );
+};
 
 const CriteriaList = ({
   label, items, onChange, tone,
@@ -384,6 +434,8 @@ const BehaviorsSection = ({
 }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<LeadBehaviorCategory | 'all' | 'active'>('active');
+
+  const { behaviors: LEAD_BEHAVIORS } = useIADatasets();
 
   const filtered = useMemo(() => {
     return LEAD_BEHAVIORS.filter(b => {
@@ -533,6 +585,7 @@ const RulesSection = ({
   onToggle: (id: string) => void;
 }) => {
   const [search, setSearch] = useState('');
+  const { universalRules: IA_UNIVERSAL_RULES, stageRules: STAGE_SPECIFIC_RULES } = useIADatasets();
 
   const groups = useMemo(() => {
     return kinds.map(k => {
@@ -546,7 +599,7 @@ const RulesSection = ({
         specifics: specifics.filter(filterFn),
       };
     });
-  }, [kinds, scope, search]);
+  }, [kinds, scope, search, IA_UNIVERSAL_RULES, STAGE_SPECIFIC_RULES]);
 
   return (
     <div className="space-y-3">
@@ -647,7 +700,9 @@ const FollowUpSection = ({
 }: {
   selectedLadderId: string;
   onSelect: (id: string) => void;
-}) => (
+}) => {
+  const { ladders: FOLLOWUP_LADDERS } = useIADatasets();
+  return (
   <div className="space-y-3">
     <p className="text-[11px] text-muted-foreground">
       Escada de mensagens automáticas quando o lead silencia nesta etapa.
@@ -684,7 +739,8 @@ const FollowUpSection = ({
       );
     })}
   </div>
-);
+  );
+};
 
 const formatHours = (h: number): string => {
   if (h < 24) return `${h}h`;
@@ -710,9 +766,10 @@ const HandoffSection = ({
   onChangeAdvance: (arr: string[]) => void;
   onChangeArchive: (arr: string[]) => void;
 }) => {
+  const { triggers: HANDOFF_TRIGGERS } = useIADatasets();
   const relevantTriggers = useMemo(() =>
     HANDOFF_TRIGGERS.filter(t => t.stage === '*' || t.stage === stage),
-    [stage]
+    [stage, HANDOFF_TRIGGERS]
   );
 
   return (
