@@ -39,6 +39,14 @@ export interface IALogFilters {
   outcome?: string;
   intent?: string;
   limit?: number;
+  // ----- Sprint 13: filtros composicionais -----
+  funnelId?: string;
+  stageId?: string;
+  dealStatus?: 'open' | 'won' | 'lost';
+  archetypeCode?: string;
+  statusOverlayCode?: string;
+  contextTag?: string;
+  search?: string;
 }
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -53,6 +61,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
 
   const {
     playbookCode, dealId, sinceDays, outcome, intent,
+    funnelId, stageId, dealStatus, archetypeCode, statusOverlayCode, contextTag, search,
     limit = 100,
   } = filters;
 
@@ -75,6 +84,12 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
       if (dealId) q = q.eq('deal_id', dealId);
       if (outcome) q = q.eq('outcome', outcome);
       if (intent) q = q.eq('intent', intent);
+      if (funnelId) q = q.eq('funnel_id', funnelId);
+      if (stageId) q = q.eq('stage_id', stageId);
+      if (dealStatus) q = q.eq('deal_status', dealStatus);
+      if (archetypeCode) q = q.eq('archetype_code', archetypeCode);
+      if (statusOverlayCode) q = q.eq('status_overlay_code', statusOverlayCode);
+      if (contextTag) q = q.contains('context_tags', [contextTag]);
       if (sinceDays && sinceDays > 0) {
         const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
         q = q.gte('created_at', since);
@@ -102,7 +117,20 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
         context_tags: asArray<string>((r as { context_tags?: unknown }).context_tags),
         deal_status: ((r as { deal_status?: string | null }).deal_status ?? null) as IADecisionLog['deal_status'],
       }));
-      setLogs(mapped);
+      // Busca textual client-side (action_taken, intent, tone, playbook_code)
+      const filtered = search && search.trim()
+        ? mapped.filter(l => {
+            const q = search.trim().toLowerCase();
+            return (
+              l.action_taken.toLowerCase().includes(q) ||
+              (l.intent ?? '').toLowerCase().includes(q) ||
+              (l.tone ?? '').toLowerCase().includes(q) ||
+              (l.playbook_code ?? '').toLowerCase().includes(q) ||
+              (l.deal_id ?? '').toLowerCase().includes(q)
+            );
+          })
+        : mapped;
+      setLogs(filtered);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar logs';
       console.error('[useIADecisionLogs]', e);
@@ -111,7 +139,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [session, playbookCode, dealId, sinceDays, outcome, intent, limit]);
+  }, [session, playbookCode, dealId, sinceDays, outcome, intent, funnelId, stageId, dealStatus, archetypeCode, statusOverlayCode, contextTag, search, limit]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -120,17 +148,40 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
     const byOutcome = new Map<string, number>();
     const byIntent = new Map<string, number>();
     const byPlaybook = new Map<string, number>();
+    const byStatus = new Map<string, number>();
+    const byArchetype = new Map<string, number>();
+    const byOverlay = new Map<string, number>();
+    const byFunnel = new Map<string, number>();
+    const byContextTag = new Map<string, number>();
+    // Matriz funnel × stage (para correlação)
+    const funnelStageMatrix = new Map<string, Map<string, number>>();
     for (const l of logs) {
       const o = l.outcome ?? 'sem_resultado';
       byOutcome.set(o, (byOutcome.get(o) ?? 0) + 1);
       if (l.intent) byIntent.set(l.intent, (byIntent.get(l.intent) ?? 0) + 1);
       if (l.playbook_code) byPlaybook.set(l.playbook_code, (byPlaybook.get(l.playbook_code) ?? 0) + 1);
+      if (l.deal_status) byStatus.set(l.deal_status, (byStatus.get(l.deal_status) ?? 0) + 1);
+      if (l.archetype_code) byArchetype.set(l.archetype_code, (byArchetype.get(l.archetype_code) ?? 0) + 1);
+      if (l.status_overlay_code) byOverlay.set(l.status_overlay_code, (byOverlay.get(l.status_overlay_code) ?? 0) + 1);
+      if (l.funnel_id) byFunnel.set(l.funnel_id, (byFunnel.get(l.funnel_id) ?? 0) + 1);
+      for (const t of l.context_tags) byContextTag.set(t, (byContextTag.get(t) ?? 0) + 1);
+      if (l.funnel_id && l.stage_id) {
+        const inner = funnelStageMatrix.get(l.funnel_id) ?? new Map<string, number>();
+        inner.set(l.stage_id, (inner.get(l.stage_id) ?? 0) + 1);
+        funnelStageMatrix.set(l.funnel_id, inner);
+      }
     }
     return {
       total,
       byOutcome: Array.from(byOutcome.entries()).sort((a, b) => b[1] - a[1]),
       byIntent: Array.from(byIntent.entries()).sort((a, b) => b[1] - a[1]),
       byPlaybook: Array.from(byPlaybook.entries()).sort((a, b) => b[1] - a[1]),
+      byStatus: Array.from(byStatus.entries()).sort((a, b) => b[1] - a[1]),
+      byArchetype: Array.from(byArchetype.entries()).sort((a, b) => b[1] - a[1]),
+      byOverlay: Array.from(byOverlay.entries()).sort((a, b) => b[1] - a[1]),
+      byFunnel: Array.from(byFunnel.entries()).sort((a, b) => b[1] - a[1]),
+      byContextTag: Array.from(byContextTag.entries()).sort((a, b) => b[1] - a[1]),
+      funnelStageMatrix,
     };
   }, [logs]);
 
