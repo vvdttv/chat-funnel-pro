@@ -676,6 +676,61 @@ export const IADecisionLogsPanel = () => {
         </div>
       )}
 
+      {/* Heatmap temporal (dia × hora) */}
+      {heatmap.total > 0 && (
+        <div className="bg-secondary/50 rounded-lg p-3 border border-border/50">
+          <p className="text-[10px] uppercase text-muted-foreground mb-2 flex items-center gap-1">
+            <Clock size={10} /> Heatmap dia × hora
+            <span className="ml-auto text-muted-foreground/70 normal-case">
+              pico: {heatmap.max} · total: {heatmap.total}
+            </span>
+          </p>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <div className="min-w-[480px]">
+              <div className="flex items-end gap-[1px] pl-7 mb-0.5">
+                {Array.from({ length: 24 }).map((_, h) => (
+                  <div key={h} className="flex-1 text-center text-[7px] text-muted-foreground/70">
+                    {h % 3 === 0 ? h : ''}
+                  </div>
+                ))}
+              </div>
+              {heatmap.matrix.map((row, w) => (
+                <div key={w} className="flex items-center gap-[1px]">
+                  <div className="w-7 text-[8px] text-muted-foreground text-right pr-1">
+                    {WEEKDAY_LABELS[w]}
+                  </div>
+                  {row.map((n, h) => {
+                    const intensity = heatmap.max > 0 ? n / heatmap.max : 0;
+                    const bg = n === 0
+                      ? 'bg-card/40'
+                      : intensity > 0.66
+                        ? 'bg-primary'
+                        : intensity > 0.33
+                          ? 'bg-primary/60'
+                          : 'bg-primary/25';
+                    return (
+                      <div
+                        key={h}
+                        className={`flex-1 aspect-square rounded-[2px] border border-border/40 ${bg}`}
+                        title={`${WEEKDAY_LABELS[w]} ${String(h).padStart(2, '0')}h · ${n} decisões`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+              <div className="flex items-center gap-1 mt-1.5 pl-7 text-[8px] text-muted-foreground">
+                <span>0</span>
+                <div className="w-3 h-2 bg-card/40 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary/25 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary/60 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary border border-border/40 rounded-[2px]" />
+                <span>{heatmap.max}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Timeline */}
       <div>
         <p className="text-[10px] uppercase text-muted-foreground mb-2">
