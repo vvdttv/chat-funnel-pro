@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Save, X, Loader2, Filter,
   ShieldCheck, ShieldAlert, HelpCircle, Ban, Bot, AlertTriangle,
+  Tag, Activity,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
