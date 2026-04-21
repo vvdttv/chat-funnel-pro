@@ -11,6 +11,7 @@ import { useFunnelsContext } from '@/hooks/useFunnels';
 import { useAuth } from '@/hooks/useAuth';
 import UsersManager from '@/components/UsersManager';
 import SecurityQuestionManager from '@/components/SecurityQuestionManager';
+import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
