@@ -1693,8 +1693,27 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
         widgets={cardWidgets}
       />
 
-      <LossBottomSheet open={lossOpen} onClose={() => setLossOpen(false)} onConfirm={() => setLossOpen(false)} />
-      <DealDetailSheet deal={selectedDeal} onClose={() => setSelectedDeal(null)} onPendingStepChange={onPendingStepChange} />
+      <LossBottomSheet
+        open={lossDeal !== null}
+        onClose={() => setLossDeal(null)}
+        onConfirm={async (reason) => {
+          if (!lossDeal) return;
+          const target = lossDeal;
+          setLossDeal(null);
+          const { error } = await setDealStatus(target.id, 'lost', reason);
+          if (error) {
+            toast({ title: 'Falha ao registrar perda', description: error, variant: 'destructive' });
+          } else {
+            toast({ title: 'Negócio marcado como perdido', description: `${target.leadName} · ${reason}` });
+          }
+        }}
+      />
+      <DealDetailSheet
+        deal={selectedDeal}
+        onClose={() => setSelectedDeal(null)}
+        onPendingStepChange={onPendingStepChange}
+        onLost={(d) => setLossDeal(d)}
+      />
     </div>
   );
 };
