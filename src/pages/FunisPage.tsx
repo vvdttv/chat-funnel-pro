@@ -819,6 +819,95 @@ const ReassignDealRow = ({ deal }: { deal: Deal }) => {
   );
 };
 
+// ----------------------------------------------------------------------------
+// Sprint 7: ações atômicas (avançar/voltar/ganhar/perder) no detalhe do deal.
+// Usa as RPCs `move_deal_stage` e `change_deal_status` (SELECT FOR UPDATE) via
+// useDealsContext — qualquer falha (permissão, deal removido, conflito) gera
+// toast e mantém o estado local consistente com o servidor.
+// ----------------------------------------------------------------------------
+
+const DealStatusActions = ({
+  deal,
+  onLost,
+}: {
+  deal: Deal;
+  onLost: () => void;
+}) => {
+  const { funnels } = useFunnelsContext();
+  const { setDealStatus, moveDealStage } = useDealsContext();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState<'prev' | 'next' | 'won' | null>(null);
+
+  const funnel = funnels.find(f => f.id === deal.funnelId);
+  const stages = funnel?.stages ?? [];
+  const idx = stages.findIndex(s => s.id === deal.stage || s.name === deal.stage);
+  const prevStage = idx > 0 ? stages[idx - 1] : null;
+  const nextStage = idx >= 0 && idx < stages.length - 1 ? stages[idx + 1] : null;
+
+  const moveTo = async (stageId: string, label: string, slot: 'prev' | 'next') => {
+    setBusy(slot);
+    const { error } = await moveDealStage(deal.id, stageId);
+    setBusy(null);
+    if (error) {
+      toast({ title: 'Não foi possível mover', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Etapa atualizada', description: `Movido para ${label}` });
+    }
+  };
+
+  const markWon = async () => {
+    setBusy('won');
+    const { error } = await setDealStatus(deal.id, 'won', 'Ganho marcado pelo corretor');
+    setBusy(null);
+    if (error) {
+      toast({ title: 'Não foi possível marcar ganho', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: '🎉 Negócio ganho', description: deal.leadName });
+    }
+  };
+
+  return (
+    <div className="bg-secondary rounded-xl p-3 mb-4 space-y-2">
+      <p className="text-xs text-muted-foreground">Etapa & status</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => prevStage && moveTo(prevStage.id, prevStage.name, 'prev')}
+          disabled={!prevStage || busy !== null}
+          className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-card border border-border text-xs font-medium text-foreground disabled:opacity-40 active:scale-[0.98] transition-transform"
+        >
+          {busy === 'prev' ? <Loader2 size={12} className="animate-spin" /> : <ChevronLeft size={12} />}
+          {prevStage ? prevStage.name : 'Início'}
+        </button>
+        <button
+          onClick={() => nextStage && moveTo(nextStage.id, nextStage.name, 'next')}
+          disabled={!nextStage || busy !== null}
+          className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 active:scale-[0.98] transition-transform"
+        >
+          {nextStage ? nextStage.name : 'Final'}
+          {busy === 'next' ? <Loader2 size={12} className="animate-spin" /> : <ChevronRight size={12} />}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={markWon}
+          disabled={busy !== null}
+          className="py-2 rounded-lg bg-success/15 border border-success/30 text-success text-xs font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+        >
+          {busy === 'won' ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+          Marcar ganho
+        </button>
+        <button
+          onClick={onLost}
+          disabled={busy !== null}
+          className="py-2 rounded-lg bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+        >
+          Marcar perdido
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
   const [hasInteracted, setHasInteracted] = useState(false);
