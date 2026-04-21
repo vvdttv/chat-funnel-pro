@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2 } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
 import CardWidgetConfig, { CardWidget } from '@/components/CardWidgetConfig';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 import { useFunnelsContext } from '@/hooks/useFunnels';
+import { useAuth } from '@/hooks/useAuth';
+import UsersManager from '@/components/UsersManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios';
 
-const tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
+const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
+  { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
@@ -863,6 +866,7 @@ const ConfigPage = () => {
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
+  const { profile, isAdmin, signOut } = useAuth();
 
   // Sincroniza seleção quando funis carregam
   useEffect(() => {
@@ -876,6 +880,7 @@ const ConfigPage = () => {
   const selectedFunnel = funnelsList.find(f => f.id === selectedFunnelId);
 
   const handleAddFunnel = () => {
+    if (!isAdmin) return;
     const newFunnel: Funnel = {
       id: `fun-${Date.now()}`,
       name: 'Novo Funil',
@@ -888,12 +893,32 @@ const ConfigPage = () => {
     setSelectedFunnelId(newFunnel.id);
   };
 
+  const visibleTabs = tabs.filter(t => !t.adminOnly || isAdmin);
+
   return (
     <div className="flex flex-col h-full pb-16">
       <div className="px-4 pt-4 pb-2">
+        {/* Header da conta */}
+        <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-2 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAdmin ? 'bg-primary/15 text-primary' : 'bg-secondary text-foreground'}`}>
+              {isAdmin ? <Shield size={14} /> : <User size={14} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{profile?.display_name || profile?.username}</p>
+              <p className="text-[10px] text-muted-foreground truncate">@{profile?.username} · {isAdmin ? 'admin' : 'corretor'}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground bg-secondary px-2.5 py-1.5 rounded-full active:scale-95"
+          >
+            <LogOut size={11} /> Sair
+          </button>
+        </div>
 
         <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4">
-          {tabs.map(tab => {
+          {visibleTabs.map(tab => {
             const Icon = tab.icon;
             return (
               <button
@@ -986,6 +1011,8 @@ const ConfigPage = () => {
             ))}
           </>
         )}
+
+        {activeTab === 'usuarios' && <UsersManager />}
 
         {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 

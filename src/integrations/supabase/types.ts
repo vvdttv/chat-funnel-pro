@@ -21,6 +21,7 @@ export type Database = {
           from_stage_id: string | null
           funnel_id: string
           id: string
+          organization_id: string
           to_stage_id: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           from_stage_id?: string | null
           funnel_id: string
           id?: string
+          organization_id: string
           to_stage_id: string
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           from_stage_id?: string | null
           funnel_id?: string
           id?: string
+          organization_id?: string
           to_stage_id?: string
         }
         Relationships: [
@@ -47,15 +50,24 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_stage_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       deals: {
         Row: {
+          assigned_to: string | null
           created_at: string
           funnel_id: string
           id: string
           lead_id: string
           lead_name: string
+          organization_id: string
           property: string
           property_code: string
           secondary_contacts: Json
@@ -65,11 +77,13 @@ export type Database = {
           value: number
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           funnel_id: string
           id: string
           lead_id: string
           lead_name: string
+          organization_id: string
           property?: string
           property_code?: string
           secondary_contacts?: Json
@@ -79,11 +93,13 @@ export type Database = {
           value?: number
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           funnel_id?: string
           id?: string
           lead_id?: string
           lead_name?: string
+          organization_id?: string
           property?: string
           property_code?: string
           secondary_contacts?: Json
@@ -100,6 +116,13 @@ export type Database = {
             referencedRelation: "funnels"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       funnels: {
@@ -110,6 +133,7 @@ export type Database = {
           icon: string
           id: string
           name: string
+          organization_id: string
           position: number
           stages: Json
           updated_at: string
@@ -121,6 +145,7 @@ export type Database = {
           icon?: string
           id: string
           name: string
+          organization_id: string
           position?: number
           stages?: Json
           updated_at?: string
@@ -132,17 +157,124 @@ export type Database = {
           icon?: string
           id?: string
           name?: string
+          organization_id?: string
           position?: number
           stages?: Json
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "funnels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
         Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          organization_id: string
+          security_answer_hash: string | null
+          security_question: string | null
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          organization_id: string
+          security_answer_hash?: string | null
+          security_question?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          organization_id?: string
+          security_answer_hash?: string | null
+          security_question?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      current_org_id: { Args: never; Returns: string }
       get_stage_metrics: {
         Args: { p_funnel_id: string; p_stage_id: string }
         Returns: {
@@ -154,9 +286,17 @@ export type Database = {
           total_value: number
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_org_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "corretor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -283,6 +423,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "corretor"],
+    },
   },
 } as const
