@@ -412,7 +412,7 @@ const AuthPage = () => {
               </div>
               <button
                 type="submit"
-                disabled={submitting || !newPassword || !confirmPassword}
+                disabled={submitting || !newPassword || !confirmPassword || attemptsRemaining === 0}
                 className="w-full bg-primary text-primary-foreground rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting && <Loader2 className="animate-spin" size={16} />}
