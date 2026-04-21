@@ -170,8 +170,7 @@ export function useDeals(funnels: Funnel[]) {
       console.error('[useDeals] erro ao reatribuir', error);
       return { error: error.message };
     }
-    // Como o deal pode sair da visibilidade do corretor atual, removemos do estado se não for admin/dono
-    // Mas como reassign é admin-only, mantemos na lista (admin vê todos)
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, assignedTo: newAssignedTo } : d));
     return { error: null };
   }, []);
 
