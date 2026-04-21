@@ -48,8 +48,21 @@ export interface LeadBehavior {
   id: string;                              // LB-xxx
   label: string;
   category: LeadBehaviorCategory;
-  /** Etapas onde costuma aparecer ('*' = qualquer) */
+  /**
+   * @deprecated use `applicableContextTags` (Sprint 3+). Mantido apenas para
+   * compatibilidade visual nos painéis legados; o motor composicional NÃO
+   * filtra mais por essa propriedade.
+   */
   typicalStages: ('*' | 'E0' | 'E1' | 'E2' | 'E3' | 'E4a' | 'E4b')[];
+  /**
+   * Tags de contexto onde este comportamento se aplica. O motor casa
+   * `applicableContextTags ∩ stage.context_tags ≠ ∅` para decidir se o LB
+   * entra no pipeline daquela etapa, independentemente do funil.
+   * '*' = aplica em qualquer contexto.
+   */
+  applicableContextTags?: string[] | ['*'];
+  /** Status do deal em que o LB é elegível. Default: ['open']. */
+  applicableStatuses?: ('open' | 'won' | 'lost')[];
   detectionHints: string[];
   defaultReaction: string;
   nextStep: string;
@@ -1126,3 +1139,391 @@ export function getHandoffTrigger(id: string): HandoffTrigger | undefined {
 export function getFollowUpLadder(id: string): FollowUpLadder | undefined {
   return FOLLOWUP_LADDERS.find(l => l.id === id);
 }
+
+// ============================================================================
+// SPRINT 3 — Catálogo de arquétipos + composicional (rev. 2 do Opus)
+// ============================================================================
+
+/**
+ * Arquétipos canônicos de etapa. Espelha o seed global na tabela
+ * `stage_archetypes`. NÃO contém `organization_id` — é catálogo de fábrica.
+ * O usuário não cria arquétipos próprios nos primeiros 6 meses (decisão #4).
+ */
+export interface StageArchetype {
+  code: string;                  // ex.: 'first_contact'
+  name: string;
+  purpose: string;
+  position: number;
+  defaultPlaybookCode: string;   // ex.: 'archetype-first-contact'
+  contextTags: string[];
+}
+
+export const STAGE_ARCHETYPES: StageArchetype[] = [
+  { code: 'first_contact',         name: 'Primeiro contato',          position: 10, defaultPlaybookCode: 'archetype-first-contact',         contextTags: ['entrada','saudacao','intencao'],
+    purpose: 'Responder rápido, capturar intenção e 1 critério adicional sem espantar.' },
+  { code: 'qualification',         name: 'Qualificação',              position: 20, defaultPlaybookCode: 'archetype-qualification',         contextTags: ['renda','perfil','viabilidade','fgts','entrada'],
+    purpose: 'Coletar dados mínimos viáveis para classificar o lead em viável/incerto/inviável.' },
+  { code: 'discovery_call',        name: 'Conversa de descoberta',    position: 25, defaultPlaybookCode: 'archetype-discovery-call',        contextTags: ['dores','contexto','necessidades'],
+    purpose: 'Aprofundar contexto, dores e critérios antes de propor algo concreto.' },
+  { code: 'scheduling',            name: 'Agendamento',               position: 30, defaultPlaybookCode: 'archetype-scheduling',            contextTags: ['agenda','visita','horario','compromisso'],
+    purpose: 'Encaixar visita, ligação ou reunião com horário concreto e confirmação.' },
+  { code: 'appointment_followup',  name: 'Follow-up de visita',       position: 35, defaultPlaybookCode: 'archetype-appointment-followup',  contextTags: ['pos-visita','feedback','decisao'],
+    purpose: 'Coletar feedback estruturado pós-visita e definir próximo passo concreto.' },
+  { code: 'documentation',         name: 'Captação de documentos',    position: 40, defaultPlaybookCode: 'archetype-documentation',         contextTags: ['documentos','lgpd','checklist'],
+    purpose: 'Receber documentação completa e legível com cadência respeitosa e LGPD aplicada.' },
+  { code: 'external_review',       name: 'Análise externa',           position: 50, defaultPlaybookCode: 'archetype-external-review',       contextTags: ['banco','analise','espera','credito'],
+    purpose: 'Atravessar processo controlado por terceiros (banco, jurídico, vistoria) com updates honestos.' },
+  { code: 'proposal',              name: 'Proposta',                  position: 60, defaultPlaybookCode: 'archetype-proposal',              contextTags: ['proposta','oferta','termos'],
+    purpose: 'Formular e apresentar proposta concreta com termos claros.' },
+  { code: 'negotiation',           name: 'Negociação',                position: 70, defaultPlaybookCode: 'archetype-negotiation',           contextTags: ['objecao','preco','condicoes','contraproposta'],
+    purpose: 'Resolver objeções de preço/condição com transparência e sem manipulação.' },
+  { code: 'closing',               name: 'Fechamento',                position: 80, defaultPlaybookCode: 'archetype-closing',               contextTags: ['handoff','assinatura','fechamento'],
+    purpose: 'Conduzir handoff/assinatura/registro com momentum preservado.' },
+];
+
+export interface StatusArchetype {
+  code: 'open' | 'won' | 'lost';
+  name: string;
+  defaultOverlayRules: Record<string, unknown>;
+}
+
+export const STATUS_ARCHETYPES: StatusArchetype[] = [
+  { code: 'open', name: 'Aberto',
+    defaultOverlayRules: { description: 'Estado padrão. Aplica playbook da etapa sem overlay especial.', ladder: 'normal', handoff: 'normal' } },
+  { code: 'won', name: 'Ganho',
+    defaultOverlayRules: { description: 'Vendido. Encerra captura, ativa indicação por padrão, congela follow-ups comerciais.', ladder: 'none', activate_referral: true, freeze_commercial_followups: true } },
+  { code: 'lost', name: 'Perdido',
+    defaultOverlayRules: { description: 'Perdido. Para nurture imediato, escada longa de recuperação com opt-in, archive em 365d.', ladder: 'ladder-longa', require_opt_in_for_followup: true, auto_archive_days: 365 } },
+];
+
+// ----------------------------------------------------------------------------
+// Re-tagging dos 85 LBs existentes — mapeamento explícito do Opus (Parte 6.3).
+// Mantém os LBs originais intactos; o motor consulta este mapa para descobrir
+// `applicableContextTags` e `applicableStatuses` de cada LB-xxx ao montar o
+// pipeline composicional, sem depender mais de `typicalStages`.
+// ----------------------------------------------------------------------------
+
+export interface LBContextMapping {
+  contextTags: string[] | ['*'];
+  statuses: ('open' | 'won' | 'lost')[];
+}
+
+export const LB_CONTEXT_MAP: Record<string, LBContextMapping> = {
+  // E0 → first_contact
+  'LB-001': { contextTags: ['entrada','saudacao'], statuses: ['open'] },
+  'LB-002': { contextTags: ['entrada','intencao'], statuses: ['open'] },
+  'LB-003': { contextTags: ['entrada','intencao'], statuses: ['open'] },
+  'LB-004': { contextTags: ['entrada','intencao','preco'], statuses: ['open'] },
+  'LB-005': { contextTags: ['entrada','intencao'], statuses: ['open'] },
+  'LB-006': { contextTags: ['entrada','intencao'], statuses: ['open'] },
+  'LB-007': { contextTags: ['entrada','intencao','renda'], statuses: ['open'] },
+  'LB-008': { contextTags: ['entrada','fgts'], statuses: ['open'] },
+  'LB-009': { contextTags: ['entrada','intencao'], statuses: ['open'] },
+  'LB-010': { contextTags: ['entrada','saudacao'], statuses: ['open'] },
+  // E1 → qualification (+ alguns dores/contexto)
+  'LB-011': { contextTags: ['perfil','viabilidade'], statuses: ['open'] },
+  'LB-012': { contextTags: ['renda','viabilidade'], statuses: ['open'] },
+  'LB-013': { contextTags: ['*'], statuses: ['open'] },
+  'LB-014': { contextTags: ['*'], statuses: ['open'] },
+  'LB-015': { contextTags: ['*'], statuses: ['open'] },
+  'LB-016': { contextTags: ['renda','viabilidade'], statuses: ['open'] },
+  'LB-017': { contextTags: ['renda','viabilidade'], statuses: ['open'] },
+  'LB-018': { contextTags: ['perfil','viabilidade'], statuses: ['open'] },
+  'LB-019': { contextTags: ['perfil','renda'], statuses: ['open'] },
+  'LB-020': { contextTags: ['perfil','renda'], statuses: ['open'] },
+  'LB-021': { contextTags: ['perfil','renda'], statuses: ['open'] },
+  'LB-022': { contextTags: ['perfil','renda'], statuses: ['open'] },
+  'LB-023': { contextTags: ['perfil','viabilidade','dores'], statuses: ['open'] },
+  'LB-024': { contextTags: ['perfil','dores'], statuses: ['open'] },
+  'LB-025': { contextTags: ['entrada','viabilidade'], statuses: ['open'] },
+  'LB-026': { contextTags: ['perfil','renda'], statuses: ['open'] },
+  'LB-027': { contextTags: ['viabilidade','condicoes'], statuses: ['open'] },
+  // E2 → documentation
+  'LB-028': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-029': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-030': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-031': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-032': { contextTags: ['documentos','lgpd'], statuses: ['open'] },
+  'LB-033': { contextTags: ['documentos'], statuses: ['open'] },
+  'LB-034': { contextTags: ['documentos','lgpd'], statuses: ['open'] },
+  'LB-035': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-036': { contextTags: ['documentos'], statuses: ['open'] },
+  'LB-037': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  'LB-038': { contextTags: ['documentos'], statuses: ['open'] },
+  'LB-039': { contextTags: ['documentos','lgpd'], statuses: ['open'] },
+  'LB-040': { contextTags: ['documentos','checklist'], statuses: ['open'] },
+  // E3 → external_review
+  'LB-041': { contextTags: ['banco','espera','analise'], statuses: ['open'] },
+  'LB-042': { contextTags: ['banco','espera','analise'], statuses: ['open'] },
+  'LB-043': { contextTags: ['banco','analise','dores'], statuses: ['open'] },
+  'LB-044': { contextTags: ['banco','fgts','analise'], statuses: ['open'] },
+  'LB-045': { contextTags: ['banco','analise','dores'], statuses: ['open'] },
+  'LB-046': { contextTags: ['banco','entrada','analise'], statuses: ['open'] },
+  'LB-047': { contextTags: ['banco','espera'], statuses: ['open'] },
+  // E4a → closing/handoff (status open, transição para won)
+  'LB-048': { contextTags: ['handoff','fechamento'], statuses: ['open','won'] },
+  'LB-049': { contextTags: ['handoff','dores','decisao'], statuses: ['open'] },
+  'LB-050': { contextTags: ['handoff','assinatura'], statuses: ['open','won'] },
+  'LB-051': { contextTags: ['handoff','decisao'], statuses: ['open'] },
+  'LB-052': { contextTags: ['handoff','objecao','preco'], statuses: ['open'] },
+  // E4b → status=lost (recuperação)
+  'LB-053': { contextTags: ['recuperacao','dores'], statuses: ['lost'] },
+  'LB-054': { contextTags: ['recuperacao','dores'], statuses: ['lost'] },
+  'LB-055': { contextTags: ['recuperacao','dores'], statuses: ['lost'] },
+  'LB-056': { contextTags: ['recuperacao','banco'], statuses: ['lost'] },
+  'LB-057': { contextTags: ['recuperacao','documentos','lgpd'], statuses: ['open','lost'] },
+  'LB-058': { contextTags: ['recuperacao'], statuses: ['lost'] },
+  // Universais — '*' aplicam em qualquer contexto
+  'LB-059': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-060': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-061': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-062': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-063': { contextTags: ['*','objecao'], statuses: ['open'] },
+  'LB-064': { contextTags: ['*','objecao','preco'], statuses: ['open'] },
+  'LB-065': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-066': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-067': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-068': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-069': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-070': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-071': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-072': { contextTags: ['*','objecao'], statuses: ['open','won','lost'] },
+  'LB-073': { contextTags: ['*'], statuses: ['open','won'] },
+  'LB-074': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-075': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-076': { contextTags: ['*','objecao'], statuses: ['open'] },
+  'LB-077': { contextTags: ['*','objecao','preco'], statuses: ['open'] },
+  'LB-078': { contextTags: ['*'], statuses: ['open'] },
+  'LB-079': { contextTags: ['*'], statuses: ['open','won'] },
+  'LB-080': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-081': { contextTags: ['*'], statuses: ['open','won','lost'] },
+  'LB-082': { contextTags: ['*','objecao'], statuses: ['open','won'] },
+  'LB-083': { contextTags: ['*'], statuses: ['open','won'] },
+  'LB-084': { contextTags: ['*'], statuses: ['open'] },
+  'LB-085': { contextTags: ['*','lgpd'], statuses: ['open','won','lost'] },
+};
+
+/** Retorna context_tags + applicable_statuses do LB (com fallback razoável). */
+export function getLBContextMapping(lbId: string): LBContextMapping {
+  return LB_CONTEXT_MAP[lbId] ?? { contextTags: ['*'], statuses: ['open'] };
+}
+
+// ----------------------------------------------------------------------------
+// 8 novos comportamentos de pós-venda (Opus Parte 6.4) — LB-086..LB-093.
+// Aplicam em status 'won' (deal vendido); contextos: pos-venda, indicacao,
+// retencao, suporte, garantia, NPS.
+// ----------------------------------------------------------------------------
+
+export const POST_SALES_BEHAVIORS: LeadBehavior[] = [
+  { id: 'LB-086', label: 'Cliente pergunta sobre vistoria/entrega de chaves',
+    category: 'positive', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','assinatura'], applicableStatuses: ['won'],
+    detectionHints: ['vistoria','chaves','entrega','quando recebo'],
+    defaultReaction: 'Confirmar status logístico (responsável + prazo) sem prometer datas que não controla; oferecer escalonar ao corretor responsável.',
+    nextStep: 'Registrar pedido + handoff parcial ao corretor que conduz pós-venda.' },
+  { id: 'LB-087', label: 'Cliente reporta problema/defeito após entrega',
+    category: 'negative', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','garantia','dores'], applicableStatuses: ['won'],
+    detectionHints: ['problema','defeito','não funciona','vazamento','infiltração'],
+    defaultReaction: 'Acolher sem minimizar + abrir chamado formal + repassar ao corretor/construtora; nunca dar parecer técnico.',
+    nextStep: 'Handoff P1 ao corretor + abrir ticket de garantia.' },
+  { id: 'LB-088', label: 'Cliente quer indicar amigos/familiares (referral espontâneo)',
+    category: 'positive', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','indicacao'], applicableStatuses: ['won'],
+    detectionHints: ['indicar','amigo procurando','tenho um conhecido','recomendar vocês'],
+    defaultReaction: 'Agradecer + explicar política de indicação (se houver) + abrir canal direto para o indicado.',
+    nextStep: 'Criar deal vinculado com tag "indicação"; comunicar corretor de origem.' },
+  { id: 'LB-089', label: 'Pedido de NPS / avaliação',
+    category: 'neutral', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','nps'], applicableStatuses: ['won'],
+    detectionHints: ['enviar NPS','pediram avaliação','quero deixar review','google review'],
+    defaultReaction: 'Confirmar caminho oficial (link do NPS/Google) + agradecer disposição; não pressionar nota.',
+    nextStep: 'Registrar consentimento; disparar pesquisa.' },
+  { id: 'LB-090', label: 'Cliente pergunta sobre 2ª compra / investimento',
+    category: 'positive', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','intencao','investimento'], applicableStatuses: ['won'],
+    detectionHints: ['outro imóvel','investir','segundo apartamento','para alugar'],
+    defaultReaction: 'Reconhecer + abrir novo deal vinculado mantendo o histórico do primeiro; não recomeçar qualificação do zero.',
+    nextStep: 'Criar novo deal em E0/qualification; copiar perfil financeiro já validado.' },
+  { id: 'LB-091', label: 'Pedido de ajuda com cartório / registro',
+    category: 'objection', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','assinatura','juridico'], applicableStatuses: ['won'],
+    detectionHints: ['cartório','registro','escritura','ITBI'],
+    defaultReaction: 'Reconhecer + redirecionar ao corretor responsável; não dar parecer cartorário.',
+    nextStep: 'Handoff parcial.' },
+  { id: 'LB-092', label: 'Reclamação no canal pós-venda',
+    category: 'negative', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','retencao','dores'], applicableStatuses: ['won'],
+    detectionHints: ['estou insatisfeito','não fui bem atendido','reclamação'],
+    defaultReaction: 'Acolher empaticamente em 1 linha + escalonar imediatamente ao gestor; nunca defender a empresa.',
+    nextStep: 'Handoff P0 ao gestor; abrir ticket de retenção.' },
+  { id: 'LB-093', label: 'Pedido de exclusão pós-venda (LGPD)',
+    category: 'objection', typicalStages: ['*'],
+    applicableContextTags: ['pos-venda','lgpd'], applicableStatuses: ['won','lost'],
+    detectionHints: ['apagar dados','LGPD','direito ao esquecimento'],
+    defaultReaction: 'Confirmar pedido + abrir ticket LGPD com prazo legal; explicar quais dados precisam ser retidos por obrigação fiscal.',
+    nextStep: 'Workflow LGPD pós-venda.' },
+];
+
+// ----------------------------------------------------------------------------
+// 4 novos playbooks-seed por arquétipo (Opus Parte 6.5) — discovery_call,
+// scheduling, appointment_followup, negotiation. Os outros 6 arquétipos
+// reaproveitam mapeamento dos playbooks E0..E4b já existentes via overlays.
+// ----------------------------------------------------------------------------
+
+export interface ArchetypePlaybookSeed {
+  code: string;                  // ex.: 'archetype-discovery-call'
+  name: string;
+  archetypeCode: StageArchetype['code'];
+  goal: string;
+  successCriteria: string[];
+  failureCriteria: string[];
+  expectedBehaviorIds: string[];
+  followUpLadderId: string;
+  handoffTriggerIds: string[];
+}
+
+export const ARCHETYPE_PLAYBOOK_SEEDS: ArchetypePlaybookSeed[] = [
+  {
+    code: 'archetype-discovery-call', name: 'Conversa de descoberta',
+    archetypeCode: 'discovery_call',
+    goal: 'Aprofundar contexto, dor e critérios reais antes de recomendar imóvel ou avançar para proposta.',
+    successCriteria: [
+      'Capturou pelo menos 2 dores concretas do lead',
+      'Confirmou prazo realista de decisão',
+      'Validou critérios não-negociáveis (must-have vs nice-to-have)',
+    ],
+    failureCriteria: [
+      'Lead respondeu apenas com generalidades em 3 turnos',
+      'Lead recusou conversa aprofundada e pediu apenas catálogo',
+    ],
+    expectedBehaviorIds: ['LB-013','LB-023','LB-024','LB-068'],
+    followUpLadderId: 'ladder-media',
+    handoffTriggerIds: ['HO-008'],
+  },
+  {
+    code: 'archetype-scheduling', name: 'Agendamento',
+    archetypeCode: 'scheduling',
+    goal: 'Marcar visita/ligação com horário concreto, canal definido e confirmação no dia anterior.',
+    successCriteria: [
+      'Lead confirmou horário e canal',
+      'Corretor recebeu agendamento estruturado',
+      'Lembrete D-1 enviado',
+    ],
+    failureCriteria: [
+      'Lead aceitou genericamente mas não confirmou horário em 24h',
+      'No-show sem aviso',
+    ],
+    expectedBehaviorIds: ['LB-014','LB-015','LB-024','LB-031'],
+    followUpLadderId: 'ladder-rapida',
+    handoffTriggerIds: ['HO-010'],
+  },
+  {
+    code: 'archetype-appointment-followup', name: 'Follow-up de visita',
+    archetypeCode: 'appointment_followup',
+    goal: 'Coletar feedback estruturado pós-visita em <2h e propor próximo passo concreto.',
+    successCriteria: [
+      'Feedback (gostou / objeção principal / interesse 0-10) coletado',
+      'Próximo passo combinado (proposta, 2ª visita, encerramento)',
+    ],
+    failureCriteria: [
+      'Sem retorno em 48h após visita',
+      'Lead deu feedback positivo mas sumiu antes de avançar',
+    ],
+    expectedBehaviorIds: ['LB-014','LB-015','LB-049','LB-051','LB-064'],
+    followUpLadderId: 'ladder-rapida',
+    handoffTriggerIds: ['HO-008'],
+  },
+  {
+    code: 'archetype-negotiation', name: 'Negociação',
+    archetypeCode: 'negotiation',
+    goal: 'Resolver objeções de preço/condição com transparência, sem ceder a manipulação ou pressão artificial.',
+    successCriteria: [
+      'Objeção principal nomeada e respondida com dado concreto',
+      'Contraproposta registrada e repassada ao corretor',
+    ],
+    failureCriteria: [
+      'Lead encerrou citando preço sem permitir contraproposta',
+      'IA prometeu desconto sem autorização',
+    ],
+    expectedBehaviorIds: ['LB-052','LB-063','LB-064','LB-077'],
+    followUpLadderId: 'ladder-media',
+    handoffTriggerIds: ['HO-001'],
+  },
+];
+
+// ----------------------------------------------------------------------------
+// 2 overlays de status (won, lost) — aplicados sobre QUALQUER playbook quando
+// o deal está nesses status terminais. Engine composicional faz merge na
+// camada 2 (status overlay).
+// ----------------------------------------------------------------------------
+
+export interface StatusOverlaySeed {
+  code: string;                  // ex.: 'overlay-won'
+  statusCode: 'won' | 'lost';
+  name: string;
+  /** Regras adicionais que entram no playbook efetivo. */
+  additions: {
+    do?: string[];
+    dont?: string[];
+    ask?: string[];
+    noask?: string[];
+    expectedBehaviorIds?: string[];
+  };
+  /** Regras a desativar (por id) quando este overlay está ativo. */
+  disabledRuleIds?: string[];
+  /** Substitui escada de follow-up. */
+  followUpLadderId?: string | null;
+}
+
+export const STATUS_OVERLAY_SEEDS: StatusOverlaySeed[] = [
+  {
+    code: 'overlay-won', statusCode: 'won', name: 'Overlay · Ganho',
+    additions: {
+      do: [
+        'Manter canal aberto exclusivamente para pós-venda, indicação e suporte.',
+        'Reconhecer aniversários do contrato (1 ano, 5 anos) com mensagem leve.',
+        'Sempre direcionar dúvida técnica/jurídica ao corretor responsável.',
+      ],
+      dont: [
+        'Não disparar nurture comercial nem sugerir 2ª compra antes de 90d pós-entrega.',
+        'Não pedir NPS na primeira semana após a entrega das chaves.',
+      ],
+      expectedBehaviorIds: ['LB-086','LB-087','LB-088','LB-089','LB-090','LB-091','LB-092','LB-093'],
+    },
+    followUpLadderId: null,
+  },
+  {
+    code: 'overlay-lost', statusCode: 'lost', name: 'Overlay · Perdido',
+    additions: {
+      do: [
+        'Respeitar silêncio imediato; só retomar com opt-in explícito.',
+        'Quando retomar, abrir com pergunta neutra ("ainda faz sentido falarmos?").',
+      ],
+      dont: [
+        'Não enviar nurture sem opt-in.',
+        'Não citar o motivo da perda anterior em mensagens de retomada.',
+        'Não sugerir os mesmos imóveis que estavam em jogo na perda.',
+      ],
+      expectedBehaviorIds: ['LB-053','LB-054','LB-055','LB-056','LB-058'],
+    },
+    followUpLadderId: 'ladder-longa',
+  },
+];
+
+// Helpers de leitura para o motor composicional.
+export function getStageArchetype(code: string): StageArchetype | undefined {
+  return STAGE_ARCHETYPES.find(a => a.code === code);
+}
+export function getStatusArchetype(code: string): StatusArchetype | undefined {
+  return STATUS_ARCHETYPES.find(s => s.code === code);
+}
+export function getArchetypePlaybook(code: string): ArchetypePlaybookSeed | undefined {
+  return ARCHETYPE_PLAYBOOK_SEEDS.find(p => p.code === code);
+}
+export function getStatusOverlay(statusCode: 'won' | 'lost'): StatusOverlaySeed | undefined {
+  return STATUS_OVERLAY_SEEDS.find(o => o.statusCode === statusCode);
+}
+
+/** Catálogo unificado de TODOS os LBs (85 originais + 8 pós-venda). */
+export const ALL_LEAD_BEHAVIORS: LeadBehavior[] = [...LEAD_BEHAVIORS, ...POST_SALES_BEHAVIORS];
