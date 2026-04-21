@@ -35,6 +35,9 @@ const AuthPage = () => {
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [maxAttempts, setMaxAttempts] = useState(3);
+  const [windowMinutes, setWindowMinutes] = useState(15);
 
   useEffect(() => {
     if (!loading && session) navigate('/', { replace: true });
@@ -71,10 +74,24 @@ const AuthPage = () => {
       return;
     }
     const q = (data as any)?.question;
+    const remaining = (data as any)?.attemptsRemaining;
+    const max = (data as any)?.maxAttempts;
+    const win = (data as any)?.windowMinutes;
+    if (typeof remaining === 'number') setAttemptsRemaining(remaining);
+    if (typeof max === 'number') setMaxAttempts(max);
+    if (typeof win === 'number') setWindowMinutes(win);
     if (!q) {
       toast({
         title: 'Sem pergunta de segurança',
         description: 'Esse usuário não tem pergunta cadastrada. Peça ao admin para resetar sua senha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (typeof remaining === 'number' && remaining === 0) {
+      toast({
+        title: 'Bloqueado temporariamente',
+        description: `Muitas tentativas erradas. Aguarde ${win ?? 15} minutos e tente novamente.`,
         variant: 'destructive',
       });
       return;
@@ -114,11 +131,23 @@ const AuthPage = () => {
     });
     setSubmitting(false);
     const errMsg = (data as any)?.error || error?.message;
+    const remaining = (data as any)?.attemptsRemaining;
+    if (typeof remaining === 'number') setAttemptsRemaining(remaining);
     if (errMsg) {
       // Resposta errada → volta para passo 2 para tentar de novo
       const lower = errMsg.toLowerCase();
       if (lower.includes('inválid') || lower.includes('invalid')) {
-        toast({ title: 'Resposta incorreta', description: 'Verifique sua resposta e tente novamente.', variant: 'destructive' });
+        const remainingNote =
+          typeof remaining === 'number'
+            ? remaining === 0
+              ? ' Você esgotou suas tentativas. Aguarde 15 minutos.'
+              : ` Restam ${remaining} tentativa(s).`
+            : '';
+        toast({
+          title: 'Resposta incorreta',
+          description: `Verifique sua resposta e tente novamente.${remainingNote}`,
+          variant: 'destructive',
+        });
         setStep(2);
         setSecurityAnswer('');
       } else {
