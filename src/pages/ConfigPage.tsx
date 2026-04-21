@@ -1012,6 +1012,8 @@ const ConfigPage = () => {
           </>
         )}
 
+        {activeTab === 'usuarios' && <UsersManager />}
+
         {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 
         {activeTab === 'card_layout' && (
