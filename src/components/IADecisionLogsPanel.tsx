@@ -12,9 +12,11 @@ import { useMemo, useState } from 'react';
 import {
   Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles,
   AlertTriangle, Layers, Tag, Activity, Search, X, Workflow, Target,
+  Download, FileJson, FileSpreadsheet, Clock,
 } from 'lucide-react';
 import { useIADecisionLogs, type IADecisionLog } from '@/hooks/useIADecisionLogs';
 import { useFunnels } from '@/hooks/useFunnels';
+import { exportLogsCSV, exportLogsJSON, buildHeatmap, WEEKDAY_LABELS } from '@/lib/iaDecisionLogsExport';
 
 const WINDOW_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 1, label: 'Últimas 24h' },
