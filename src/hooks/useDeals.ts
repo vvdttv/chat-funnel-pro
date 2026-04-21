@@ -80,7 +80,7 @@ export function useDeals(funnels: Funnel[]) {
     }));
   }, [funnels]);
 
-  // Load inicial — só roda quando temos a org do usuário (RLS filtra)
+  // Load inicial + Realtime — só roda quando temos a org do usuário (RLS filtra)
   useEffect(() => {
     if (!orgId) { setDeals([]); setLoading(false); return; }
     let cancelled = false;
@@ -100,7 +100,38 @@ export function useDeals(funnels: Funnel[]) {
       setDeals(mapped);
       setLoading(false);
     })();
-    return () => { cancelled = true; };
+
+    // Subscription realtime — RLS continua filtrando o que cada usuário recebe
+    const channel = supabase
+      .channel(`deals-org-${orgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deals' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const row = payload.new as DBDealRow;
+            setDeals(prev => prev.some(d => d.id === row.id) ? prev : [rowToDeal(row, funnelsRef.current), ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const row = payload.new as DBDealRow;
+            setDeals(prev => {
+              // Se o deal saiu da visibilidade do usuário (reatribuído a outro corretor), RLS já fará o filtro
+              // mas como o evento ainda chega, mantemos o registro se já existia.
+              const exists = prev.some(d => d.id === row.id);
+              if (!exists) return [rowToDeal(row, funnelsRef.current), ...prev];
+              return prev.map(d => d.id === row.id ? { ...rowToDeal(row, funnelsRef.current) } : d);
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const row = payload.old as { id?: string };
+            if (row?.id) setDeals(prev => prev.filter(d => d.id !== row.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [orgId]);
 
   const persistDeal = useCallback((deal: Deal) => {
