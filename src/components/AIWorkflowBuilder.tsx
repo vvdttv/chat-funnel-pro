@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import type { AIWorkflow, AIWorkflowBlock, AIWorkflowBlockType, MessageType } from '@/data/mockData';
 import {
-  IA_UNIVERSAL_RULES, LEAD_BEHAVIORS, STAGE_SPECIFIC_RULES, getBehavior, getRule,
   type IABehaviorRule, type StagePlaybook, type LeadBehaviorCategory,
 } from '@/data/iaBehavior';
+import { useIABehavior, selectBehavior, selectRule } from '@/hooks/useIABehavior';
 
 // ========== INTENT / TONE OPTIONS ==========
 
@@ -265,12 +265,16 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
   const [behaviorSearch, setBehaviorSearch] = useState('');
   const [guardrailSearch, setGuardrailSearch] = useState('');
 
+  const { rules, behaviors } = useIABehavior();
+  const universalRules = useMemo(() => rules.filter(r => r.scope === 'universal'), [rules]);
+  const stageRules = useMemo(() => rules.filter(r => r.scope !== 'universal'), [rules]);
+
   const reactsToBehaviorIds = block.reactsToBehaviorIds ?? [];
   const guardrailRuleIds = block.guardrailRuleIds ?? [];
 
   // LBs candidatos: prioriza os típicos da etapa atual, mas mostra todos com filtro de busca
   const candidateBehaviors = useMemo(() => {
-    const list = LEAD_BEHAVIORS.filter(b => {
+    const list = behaviors.filter(b => {
       if (stagePlaybookCode) {
         const inStage = b.typicalStages.includes('*') || b.typicalStages.includes(stagePlaybookCode);
         if (!inStage && !behaviorSearch) return false;
@@ -282,19 +286,19 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
       return true;
     });
     return list.slice(0, 50);
-  }, [stagePlaybookCode, behaviorSearch]);
+  }, [stagePlaybookCode, behaviorSearch, behaviors]);
 
   // Regras de guardrail: DONT + NOASK (universais sempre + específicas da etapa)
   const candidateGuardrails = useMemo(() => {
-    const universals = IA_UNIVERSAL_RULES.filter(r => r.kind === 'dont' || r.kind === 'noask');
+    const universals = universalRules.filter(r => r.kind === 'dont' || r.kind === 'noask');
     const stageSpecific = stagePlaybookCode
-      ? STAGE_SPECIFIC_RULES.filter(r => (r.kind === 'dont' || r.kind === 'noask') && r.scope === stagePlaybookCode)
+      ? stageRules.filter(r => (r.kind === 'dont' || r.kind === 'noask') && r.scope === stagePlaybookCode)
       : [];
     const merged: IABehaviorRule[] = [...stageSpecific, ...universals];
     if (!guardrailSearch) return merged.slice(0, 50);
     const q = guardrailSearch.toLowerCase();
     return merged.filter(r => r.text.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)).slice(0, 50);
-  }, [stagePlaybookCode, guardrailSearch]);
+  }, [stagePlaybookCode, guardrailSearch, universalRules, stageRules]);
 
   const toggleBehavior = (id: string) => {
     const has = reactsToBehaviorIds.includes(id);
@@ -386,7 +390,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
 
         <div className="flex flex-wrap gap-1">
           {reactsToBehaviorIds.map(id => {
-            const lb = getBehavior(id);
+            const lb = selectBehavior(behaviors, id);
             if (!lb) return null;
             return (
               <span
@@ -468,7 +472,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
 
         <div className="flex flex-col gap-1">
           {guardrailRuleIds.map(id => {
-            const r = getRule(id);
+            const r = selectRule(rules, id);
             if (!r) return null;
             const isDont = r.kind === 'dont';
             return (
