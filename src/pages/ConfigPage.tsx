@@ -414,6 +414,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
               tp={tp}
               onUpdate={(updated) => updateTouchpoint(i, updated)}
               onDelete={() => deleteTouchpoint(i)}
+              stagePlaybookCode={stage.playbookCode}
             />
           ))}
         </div>
