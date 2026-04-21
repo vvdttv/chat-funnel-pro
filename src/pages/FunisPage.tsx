@@ -908,7 +908,7 @@ const DealStatusActions = ({
   );
 };
 
-const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void }) => {
+const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void; onLost?: (deal: Deal) => void }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showNextStep, setShowNextStep] = useState(false);
@@ -975,6 +975,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
             {activeTab === 'info' ? (
               <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
                 <ReassignDealRow deal={deal} />
+                <DealStatusActions deal={deal} onLost={() => onLost?.(deal)} />
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
