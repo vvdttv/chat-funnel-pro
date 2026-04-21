@@ -39,6 +39,14 @@ export interface IALogFilters {
   outcome?: string;
   intent?: string;
   limit?: number;
+  // ----- Sprint 13: filtros composicionais -----
+  funnelId?: string;
+  stageId?: string;
+  dealStatus?: 'open' | 'won' | 'lost';
+  archetypeCode?: string;
+  statusOverlayCode?: string;
+  contextTag?: string;
+  search?: string;
 }
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -53,6 +61,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
 
   const {
     playbookCode, dealId, sinceDays, outcome, intent,
+    funnelId, stageId, dealStatus, archetypeCode, statusOverlayCode, contextTag, search,
     limit = 100,
   } = filters;
 
