@@ -6,12 +6,14 @@ import IndicadoresPage from '@/pages/IndicadoresPage';
 import ConfigPage from '@/pages/ConfigPage';
 import { useToast } from '@/hooks/use-toast';
 import { FunnelsProvider, useFunnels } from '@/hooks/useFunnels';
+import { DealsProvider, useDeals } from '@/hooks/useDeals';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
   const [hasPendingStep, setHasPendingStep] = useState(false);
   const { toast } = useToast();
   const funnelsState = useFunnels();
+  const dealsState = useDeals(funnelsState.funnels);
 
   const handleTabChange = useCallback((tab: string) => {
     if (hasPendingStep) {
@@ -37,12 +39,14 @@ const Index = () => {
 
   return (
     <FunnelsProvider value={funnelsState}>
-      <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          {renderPage()}
+      <DealsProvider value={dealsState}>
+        <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            {renderPage()}
+          </div>
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
+      </DealsProvider>
     </FunnelsProvider>
   );
 };

@@ -1,4 +1,5 @@
-import { deals, formatCurrency } from '@/data/mockData';
+import { formatCurrency } from '@/data/mockData';
+import { useDealsContext } from '@/hooks/useDeals';
 import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { useFunnelsContext } from '@/hooks/useFunnels';
@@ -14,6 +15,7 @@ const lossData = [
 const IndicadoresPage = () => {
   const [openSection, setOpenSection] = useState<string | null>('funnel');
   const { funnels } = useFunnelsContext();
+  const { deals } = useDealsContext();
 
   const totalDeals = deals.length;
   const receitaPrevista = deals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
@@ -23,7 +25,7 @@ const IndicadoresPage = () => {
     if (!funnel) return false;
     return d.stage === funnel.stages[funnel.stages.length - 1].name;
   }).reduce((sum, d) => sum + d.value, 0);
-  const ticketMedio = deals.reduce((sum, d) => sum + d.value, 0) / totalDeals;
+  const ticketMedio = totalDeals > 0 ? deals.reduce((sum, d) => sum + d.value, 0) / totalDeals : 0;
 
   const toggleSection = (s: string) => setOpenSection(openSection === s ? null : s);
 
