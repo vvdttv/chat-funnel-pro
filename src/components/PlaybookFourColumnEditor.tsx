@@ -365,6 +365,34 @@ export const PlaybookFourColumnEditor = ({
               archetypeCode={archetype?.code}
             />
           </div>
+
+          {/* Sprint 11 — Overrides composicionais (avançado, colapsável) */}
+          <div className="mt-4 border border-border rounded-xl bg-card/40">
+            <button
+              onClick={() => setOverridesOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-1.5">
+                <Layers size={13} className="text-primary" />
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-foreground">
+                  Overrides composicionais
+                </span>
+                <span className="text-[10px] text-muted-foreground">(avançado)</span>
+              </span>
+              {overridesOpen
+                ? <ChevronUp size={14} className="text-muted-foreground" />
+                : <ChevronDown size={14} className="text-muted-foreground" />}
+            </button>
+            {overridesOpen && (
+              <div className="border-t border-border p-3">
+                <PlaybookOverrideEditor
+                  funnelId={funnelId}
+                  stageId={stage.id}
+                  stageName={stage.name}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer com Salvar */}
