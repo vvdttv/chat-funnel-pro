@@ -923,6 +923,7 @@ const ConfigPage = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
+  const [funnelWizardOpen, setFunnelWizardOpen] = useState(false);
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
   const { profile, isAdmin, signOut } = useAuth();
 
@@ -939,16 +940,7 @@ const ConfigPage = () => {
 
   const handleAddFunnel = () => {
     if (!isAdmin) return;
-    const newFunnel: Funnel = {
-      id: `fun-${Date.now()}`,
-      name: 'Novo Funil',
-      description: 'Descrição do funil',
-      icon: 'Zap',
-      color: 'hsl(var(--primary))',
-      stages: [{ id: `stage-${Date.now()}`, name: 'Novo Lead', probability: 10, maxDaysInStage: 2, touchpoints: [] }],
-    };
-    addFunnel(newFunnel);
-    setSelectedFunnelId(newFunnel.id);
+    setFunnelWizardOpen(true);
   };
 
   const visibleTabs = tabs.filter(t => !t.adminOnly || isAdmin);
