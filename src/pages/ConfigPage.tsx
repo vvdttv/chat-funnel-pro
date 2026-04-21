@@ -310,6 +310,7 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
   };
 
   return (
+    <>
     <div className="bg-card rounded-xl mb-2 overflow-hidden">
       <div className="flex items-center gap-3 p-4">
         <GripVertical size={16} className="text-muted-foreground shrink-0" />
@@ -417,6 +418,13 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
         </div>
       )}
     </div>
+    <StagePlaybookEditor
+      open={playbookOpen}
+      onOpenChange={setPlaybookOpen}
+      stage={stage}
+      onUpdate={onUpdate}
+    />
+    </>
   );
 };
 
