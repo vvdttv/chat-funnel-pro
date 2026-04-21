@@ -859,6 +859,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange }: { deal: Deal | 
           <div className="flex-1 min-h-0 flex flex-col">
             {activeTab === 'info' ? (
               <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
+                <ReassignDealRow deal={deal} />
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
