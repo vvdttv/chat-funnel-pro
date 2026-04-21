@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   User, Check, X, Brain, Plus, Play, Loader2, Save, Sparkles, Search,
+  Layers, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import { useArchetypes } from '@/hooks/useArchetypes';
@@ -31,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { LeadBehaviorCategory } from '@/data/iaBehavior';
+import { PlaybookOverrideEditor } from '@/components/PlaybookOverrideEditor';
 
 interface Props {
   open: boolean;
