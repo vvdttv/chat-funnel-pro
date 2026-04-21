@@ -56,6 +56,32 @@ export interface FunnelStage {
   /** Tempo máximo (em dias) que uma oportunidade pode ficar na etapa */
   maxDaysInStage: number;
   touchpoints: Touchpoint[];
+  /**
+   * Vincula a etapa a um playbook comportamental da IA (E0..E4b).
+   * Quando definido, o motor da IA usa o playbook seed correspondente como base.
+   */
+  playbookCode?: 'E0' | 'E1' | 'E2' | 'E3' | 'E4a' | 'E4b';
+  /**
+   * Customizações por etapa que sobrepõem o playbook seed (todos opcionais).
+   * Permite ao admin editar comportamento da IA sem reescrever a seed.
+   */
+  playbookOverride?: {
+    goal?: string;
+    successCriteria?: string[];
+    failureCriteria?: string[];
+    /** IDs de LB-xxx ativos nesta etapa (substitui expectedBehaviorIds da seed) */
+    expectedBehaviorIds?: string[];
+    /** IDs de regras DO/DONT/ASK/NOASK ativas (substitui stageRuleIds da seed) */
+    stageRuleIds?: string[];
+    /** IDs de gatilhos de handoff ativos (HO-xxx) */
+    handoffTriggerIds?: string[];
+    advanceTriggers?: string[];
+    archiveTriggers?: string[];
+    /** Id da escada de follow-up (ladder-rapida | ladder-media | ladder-longa) */
+    followUpLadderId?: string;
+    /** Customização sobre reação padrão de um LB nesta etapa específica */
+    behaviorReactionOverrides?: Record<string, string>;
+  };
 }
 
 export interface Funnel {
