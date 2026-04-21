@@ -89,14 +89,34 @@ const LogRow = ({ log }: { log: IADecisionLog }) => {
               <span className={`text-[9px] px-1.5 py-0.5 rounded border ${outcomeClass}`}>
                 {outcomeKey}
               </span>
+              {log.deal_status && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded border ${STATUS_BADGE[log.deal_status] ?? STATUS_BADGE.open}`}>
+                  {log.deal_status}
+                </span>
+              )}
+              {log.archetype_code && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded border border-[hsl(270,40%,35%)] text-[hsl(270,60%,75%)] bg-[hsl(270,40%,20%)]/40 flex items-center gap-1">
+                  <Layers size={9} />{log.archetype_code}
+                </span>
+              )}
+              {log.status_overlay_code && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded border border-warning/30 text-warning bg-warning/10">
+                  overlay: {log.status_overlay_code}
+                </span>
+              )}
               {log.detected_behavior_codes.length > 0 && (
                 <span className="text-[9px] text-muted-foreground">
-                  {log.detected_behavior_codes.length} comp.
+                  · {log.detected_behavior_codes.length} comp.
                 </span>
               )}
               {log.applied_rule_codes.length > 0 && (
                 <span className="text-[9px] text-muted-foreground">
                   · {log.applied_rule_codes.length} regras
+                </span>
+              )}
+              {log.applied_override_ids.length > 0 && (
+                <span className="text-[9px] text-muted-foreground">
+                  · {log.applied_override_ids.length} ovr
                 </span>
               )}
               {log.deal_id && (
