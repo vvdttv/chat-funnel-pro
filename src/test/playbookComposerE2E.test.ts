@@ -27,11 +27,11 @@ const rules: IABehaviorRule[] = [
 ];
 
 const behaviors: LeadBehavior[] = [
-  { id: 'LB-NEG-001', label: 'Pede desconto', category: 'negotiation',
+  { id: 'LB-NEG-001', label: 'Pede desconto', category: 'objection',
     typicalStages: ['*'], applicableContextTags: ['real-estate','negociacao'],
     applicableStatuses: ['open'], detectionHints: ['desconto'],
     defaultReaction: 'Validar valor com gerente', nextStep: 'Propor contraproposta' },
-  { id: 'LB-LOST-001', label: 'Cliente justificou perda', category: 'recovery',
+  { id: 'LB-LOST-001', label: 'Cliente justificou perda', category: 'negative',
     typicalStages: ['*'], applicableContextTags: ['*'],
     applicableStatuses: ['lost'], detectionHints: ['caro','outro'],
     defaultReaction: 'Agradecer feedback', nextStep: 'Adicionar a nutrição' },
@@ -43,15 +43,15 @@ const behaviors: LeadBehavior[] = [
 
 const ladders: FollowUpLadder[] = [
   { id: 'LADDER-NEG', name: 'Escada de negociação', description: '',
-    steps: [{ at: 'D+1', message: 'Confirmar interesse', tone: 'firme' }] },
+    steps: [{ afterHours: 24, tone: 'firme', sampleMessage: 'Confirmar interesse' }] },
 ];
 
 const triggers: HandoffTrigger[] = [
-  { id: 'HT-UNIV', code: 'UNIV', label: 'Lead pede humano', stage: '*',
+  { id: 'HT-UNIV', label: 'Lead pede humano', stage: '*',
     condition: 'lead diz "atendente"', action: 'avisar gerente', priority: 'P1' },
-  { id: 'HT-E3', code: 'E3-NEG', label: 'Negociação travada', stage: 'E3',
+  { id: 'HT-E3', label: 'Negociação travada', stage: 'E3',
     condition: '3 idas e voltas sem avanço', action: 'escalar', priority: 'P2' },
-  { id: 'HT-OUTRO', code: 'OUT', label: 'Outro funil', stage: 'E9',
+  { id: 'HT-OUTRO', label: 'Outro funil', stage: 'E4b',
     condition: 'x', action: 'y', priority: 'P3' },
 ];
 
