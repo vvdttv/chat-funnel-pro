@@ -219,6 +219,18 @@ const BehaviorEditor = ({
         placeholder="Próximo passo recomendado"
         className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground"
       />
+      <input
+        value={draft.applicableContextTags}
+        onChange={e => onChange({ ...draft, applicableContextTags: e.target.value })}
+        placeholder="Contextos (CSV): * ou real-estate,b2b"
+        className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground font-mono"
+      />
+      <input
+        value={draft.applicableStatuses}
+        onChange={e => onChange({ ...draft, applicableStatuses: e.target.value })}
+        placeholder="Status aplicáveis (CSV): open,won,lost"
+        className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground font-mono"
+      />
       <div className="flex gap-1.5">
         <button
           onClick={onSave}
