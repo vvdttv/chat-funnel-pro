@@ -1,9 +1,19 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { Shield, Loader2, Check } from 'lucide-react';
+import { Shield, Loader2, Check, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeQuestion, sanitizeAnswer } from '@/lib/sanitize';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const SecurityQuestionManager = () => {
   const { profile } = useAuth();
@@ -14,6 +24,8 @@ const SecurityQuestionManager = () => {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -66,6 +78,29 @@ const SecurityQuestionManager = () => {
     setQuestion(cleanQuestion);
     setAnswer('');
     setConfirm('');
+  };
+
+  const onDelete = async () => {
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-security-question');
+    setDeleting(false);
+    if (error || (data as any)?.error) {
+      toast({
+        title: 'Falha ao excluir',
+        description: (data as any)?.error || error?.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setHasQuestion(false);
+    setQuestion('');
+    setAnswer('');
+    setConfirm('');
+    setConfirmDeleteOpen(false);
+    toast({
+      title: 'Pergunta excluída',
+      description: 'O estado de recuperação foi resetado. Cadastre uma nova pergunta para reabilitar o "Esqueci minha senha".',
+    });
   };
 
   if (loading) {
@@ -138,8 +173,53 @@ const SecurityQuestionManager = () => {
             {submitting && <Loader2 size={13} className="animate-spin" />}
             {hasQuestion ? 'Atualizar pergunta' : 'Salvar pergunta'}
           </button>
+
+          {hasQuestion && (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteOpen(true)}
+              disabled={submitting || deleting}
+              className="w-full bg-destructive/10 text-destructive border border-destructive/30 rounded-lg py-2 text-xs font-semibold flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+            >
+              <Trash2 size={13} />
+              Excluir pergunta de segurança
+            </button>
+          )}
         </form>
       </div>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-destructive/15 flex items-center justify-center mb-2">
+              <AlertTriangle className="text-destructive" size={22} />
+            </div>
+            <AlertDialogTitle>Excluir pergunta de segurança?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Sua pergunta atual e resposta serão removidas permanentemente, e o histórico de tentativas
+                de recuperação será zerado.
+              </span>
+              <span className="block font-medium text-destructive">
+                Sem pergunta cadastrada, você não conseguirá usar “Esqueci minha senha” — só um administrador
+                poderá redefinir seu acesso.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); onDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 flex items-center gap-2"
+            >
+              {deleting && <Loader2 size={13} className="animate-spin" />}
+              <Trash2 size={13} />
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
