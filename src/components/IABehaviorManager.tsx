@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Save, X, Loader2, Filter,
   ShieldCheck, ShieldAlert, HelpCircle, Ban, Bot, AlertTriangle,
+  Tag, Activity,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,6 +41,15 @@ const CATEGORY_META: Record<LeadBehaviorCategory, { label: string; classes: stri
   negative:  { label: 'Negativo',  classes: 'bg-destructive/15 text-destructive border-destructive/30' },
   objection: { label: 'Objeção',   classes: 'bg-primary/15 text-primary border-primary/30' },
 };
+
+const STATUS_META: Record<string, { label: string; classes: string }> = {
+  open: { label: 'Em aberto', classes: 'bg-primary/15 text-primary border-primary/30' },
+  won:  { label: 'Ganho',     classes: 'bg-success/15 text-success border-success/30' },
+  lost: { label: 'Perdido',   classes: 'bg-destructive/15 text-destructive border-destructive/30' },
+};
+
+const KNOWN_CONTEXT_TAGS = ['*', 'real-estate', 'general-sales', 'post-sale', 'support', 'b2b', 'b2c'];
+const KNOWN_STATUSES = ['open', 'won', 'lost'];
 
 // ============================================================================
 // Editor de regra
@@ -137,12 +147,16 @@ interface BehaviorDraft {
   detectionHints: string;       // CSV
   defaultReaction: string;
   nextStep: string;
+  applicableContextTags: string;  // CSV
+  applicableStatuses: string;     // CSV
 }
 
 const emptyBehavior: BehaviorDraft = {
   code: '', label: '', category: 'neutral',
   typicalStages: '*', detectionHints: '',
   defaultReaction: '', nextStep: '',
+  applicableContextTags: '*',
+  applicableStatuses: 'open',
 };
 
 const BehaviorEditor = ({
@@ -205,6 +219,18 @@ const BehaviorEditor = ({
         placeholder="Próximo passo recomendado"
         className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground"
       />
+      <input
+        value={draft.applicableContextTags}
+        onChange={e => onChange({ ...draft, applicableContextTags: e.target.value })}
+        placeholder="Contextos (CSV): * ou real-estate,b2b"
+        className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground font-mono"
+      />
+      <input
+        value={draft.applicableStatuses}
+        onChange={e => onChange({ ...draft, applicableStatuses: e.target.value })}
+        placeholder="Status aplicáveis (CSV): open,won,lost"
+        className="w-full text-xs bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground font-mono"
+      />
       <div className="flex gap-1.5">
         <button
           onClick={onSave}
@@ -246,6 +272,8 @@ export const IABehaviorManager = () => {
   const [ruleScopeFilter, setRuleScopeFilter] = useState<string>('');
   const [ruleKindFilter, setRuleKindFilter] = useState<string>('');
   const [behaviorCatFilter, setBehaviorCatFilter] = useState<string>('');
+  const [behaviorContextFilter, setBehaviorContextFilter] = useState<string>('');
+  const [behaviorStatusFilter, setBehaviorStatusFilter] = useState<string>('');
 
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleDraft, setRuleDraft] = useState<RuleDraft>(emptyRule);
@@ -263,7 +291,7 @@ export const IABehaviorManager = () => {
     try {
       const [r, b] = await Promise.all([
         supabase.from('ia_rules').select('id,code,kind,scope,text,meta,is_active').order('code'),
-        supabase.from('lead_behaviors').select('id,code,label,category,typical_stages,detection_hints,default_reaction,next_step,is_active').order('code'),
+        supabase.from('lead_behaviors').select('id,code,label,category,typical_stages,detection_hints,default_reaction,next_step,applicable_context_tags,applicable_statuses,is_active').order('code'),
       ]);
       if (r.error) throw r.error;
       if (b.error) throw b.error;
@@ -284,7 +312,9 @@ export const IABehaviorManager = () => {
         detectionHints: Array.isArray(row.detection_hints) ? (row.detection_hints as string[]) : [],
         defaultReaction: row.default_reaction ?? '',
         nextStep: row.next_step ?? '',
-      })));
+        applicableContextTags: Array.isArray(row.applicable_context_tags) ? (row.applicable_context_tags as string[]) : ['*'],
+        applicableStatuses: Array.isArray(row.applicable_statuses) ? (row.applicable_statuses as LeadBehavior['applicableStatuses']) : ['open'],
+      } as LeadBehavior & { dbId: string })));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar dados';
       console.error('[IABehaviorManager]', e);
@@ -301,9 +331,14 @@ export const IABehaviorManager = () => {
     (!ruleKindFilter || r.kind === ruleKindFilter)
   ), [rules, ruleScopeFilter, ruleKindFilter]);
 
-  const filteredBehaviors = useMemo(() => behaviors.filter(b =>
-    !behaviorCatFilter || b.category === behaviorCatFilter
-  ), [behaviors, behaviorCatFilter]);
+  const filteredBehaviors = useMemo(() => behaviors.filter(b => {
+    if (behaviorCatFilter && b.category !== behaviorCatFilter) return false;
+    const tags = (b as unknown as { applicableContextTags?: string[] }).applicableContextTags ?? ['*'];
+    const statuses = (b as unknown as { applicableStatuses?: string[] }).applicableStatuses ?? ['open'];
+    if (behaviorContextFilter && !tags.includes('*') && !tags.includes(behaviorContextFilter)) return false;
+    if (behaviorStatusFilter && !statuses.includes(behaviorStatusFilter)) return false;
+    return true;
+  }), [behaviors, behaviorCatFilter, behaviorContextFilter, behaviorStatusFilter]);
 
   // -------- ações regras --------
   const startNewRule = () => {
@@ -372,6 +407,8 @@ export const IABehaviorManager = () => {
       detectionHints: b.detectionHints.join('\n'),
       defaultReaction: b.defaultReaction,
       nextStep: b.nextStep,
+      applicableContextTags: ((b as unknown as { applicableContextTags?: string[] }).applicableContextTags ?? ['*']).join(','),
+      applicableStatuses: ((b as unknown as { applicableStatuses?: string[] }).applicableStatuses ?? ['open']).join(','),
     });
     setEditingBehaviorId(b.dbId);
   };
@@ -389,6 +426,8 @@ export const IABehaviorManager = () => {
         detection_hints: splitCsv(behaviorDraft.detectionHints),
         default_reaction: behaviorDraft.defaultReaction.trim(),
         next_step: behaviorDraft.nextStep.trim(),
+        applicable_context_tags: splitCsv(behaviorDraft.applicableContextTags),
+        applicable_statuses: splitCsv(behaviorDraft.applicableStatuses),
         is_active: true,
       };
       if (behaviorDraft.id) {
@@ -570,6 +609,26 @@ export const IABehaviorManager = () => {
               {(Object.keys(CATEGORY_META) as LeadBehaviorCategory[]).map(c =>
                 <option key={c} value={c}>{CATEGORY_META[c].label}</option>)}
             </select>
+            <select
+              value={behaviorContextFilter}
+              onChange={e => setBehaviorContextFilter(e.target.value)}
+              className="text-[11px] bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
+              title="Filtrar por contexto aplicável"
+            >
+              <option value="">Todos contextos</option>
+              {KNOWN_CONTEXT_TAGS.filter(t => t !== '*').map(t =>
+                <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select
+              value={behaviorStatusFilter}
+              onChange={e => setBehaviorStatusFilter(e.target.value)}
+              className="text-[11px] bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
+              title="Filtrar por status do deal aplicável"
+            >
+              <option value="">Todos status</option>
+              {KNOWN_STATUSES.map(s =>
+                <option key={s} value={s}>{STATUS_META[s]?.label ?? s}</option>)}
+            </select>
             <button
               onClick={startNewBehavior}
               className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-semibold active:scale-95"
@@ -632,6 +691,27 @@ export const IABehaviorManager = () => {
                       Etapas: <span className="font-mono">{b.typicalStages.join(', ')}</span>
                     </p>
                   )}
+                  {(() => {
+                    const tags = (b as unknown as { applicableContextTags?: string[] }).applicableContextTags ?? ['*'];
+                    const statuses = (b as unknown as { applicableStatuses?: string[] }).applicableStatuses ?? ['open'];
+                    return (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {tags.map(t => (
+                          <span key={`ctx-${t}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-secondary/60 text-[9px] text-muted-foreground">
+                            <Tag size={8} /> {t}
+                          </span>
+                        ))}
+                        {statuses.map(s => {
+                          const meta = STATUS_META[s] ?? { label: s, classes: 'bg-secondary text-muted-foreground border-border' };
+                          return (
+                            <span key={`st-${s}`} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[9px] font-semibold ${meta.classes}`}>
+                              <Activity size={8} /> {meta.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   {b.defaultReaction && (
                     <p className="text-[10px] text-foreground mt-1 italic">↳ {b.defaultReaction}</p>
                   )}
