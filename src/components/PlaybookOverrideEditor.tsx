@@ -89,7 +89,6 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
   const { items: overrides, loading: loadingOv, upsert, deactivate, refresh } =
     usePlaybookOverrides({ scopeType: 'stage', scopeId: stageScopeId });
   const runtime = usePlaybookRuntime();
-  const { funnels } = useFunnels();
   const { behaviors } = useIABehavior();
 
   const [layer, setLayer] = useState<LayerKey>('stage');
