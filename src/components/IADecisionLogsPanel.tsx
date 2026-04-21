@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, AlertTriangle } from 'lucide-react';
+import { Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Layers, Tag, Activity } from 'lucide-react';
 import { useIADecisionLogs, type IADecisionLog } from '@/hooks/useIADecisionLogs';
 
 const STAGE_OPTIONS: Array<{ value: string; label: string }> = [
@@ -33,6 +33,12 @@ const OUTCOME_COLORS: Record<string, string> = {
   failure: 'bg-destructive/15 text-destructive border-destructive/30',
   handoff: 'bg-primary/15 text-primary border-primary/30',
   sem_resultado: 'bg-secondary text-muted-foreground border-border',
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  open: 'bg-primary/15 text-primary border-primary/30',
+  won: 'bg-success/15 text-success border-success/30',
+  lost: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
 function fmtTime(iso: string): string {
