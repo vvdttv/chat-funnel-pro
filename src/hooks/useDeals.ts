@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal, Funnel } from '@/data/mockData';
+import { useAuth } from '@/hooks/useAuth';
 
 type DBDealRow = {
   id: string;
@@ -58,6 +59,9 @@ function rowToDeal(row: DBDealRow, funnels: Funnel[]): Deal {
  * Recebe a lista de funis para resolver stage_id <-> nome da etapa.
  */
 export function useDeals(funnels: Funnel[]) {
+  const { profile, user, isAdmin } = useAuth();
+  const orgId = profile?.organization_id;
+  const userId = user?.id;
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,9 +78,11 @@ export function useDeals(funnels: Funnel[]) {
     }));
   }, [funnels]);
 
-  // Load inicial
+  // Load inicial — só roda quando temos a org do usuário (RLS filtra)
   useEffect(() => {
+    if (!orgId) { setDeals([]); setLoading(false); return; }
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const { data, error } = await supabase
         .from('deals')
@@ -93,7 +99,7 @@ export function useDeals(funnels: Funnel[]) {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [orgId]);
 
   const persistDeal = useCallback((deal: Deal) => {
     const existing = saveTimers.current.get(deal.id);
@@ -122,8 +128,10 @@ export function useDeals(funnels: Funnel[]) {
   }, [persistDeal]);
 
   const addDeal = useCallback(async (deal: Deal) => {
+    if (!orgId || !userId) return;
     setDeals(prev => [deal, ...prev]);
     const stageId = stageIdFor(funnelsRef.current, deal.funnelId, deal.stage) || deal.stage;
+    // Corretor sempre cria deals atribuídos a si mesmo; admin pode atribuir depois
     const { error } = await supabase.from('deals').insert({
       id: deal.id,
       funnel_id: deal.funnelId,
@@ -135,9 +143,11 @@ export function useDeals(funnels: Funnel[]) {
       value: deal.value,
       status: 'open',
       secondary_contacts: (deal.secondaryContacts || []) as unknown as any,
+      organization_id: orgId,
+      assigned_to: userId,
     });
     if (error) console.error('[useDeals] erro ao criar deal', error);
-  }, []);
+  }, [orgId, userId]);
 
   const deleteDeal = useCallback(async (id: string) => {
     setDeals(prev => prev.filter(d => d.id !== id));

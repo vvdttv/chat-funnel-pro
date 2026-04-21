@@ -1,20 +1,27 @@
 import { useEffect, useRef, useState, useCallback, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Funnel, FunnelStage } from '@/data/mockData';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Hook que carrega/persiste a lista de funis em Lovable Cloud.
  * Sobrevive a reloads. Salva via debounce de 600ms a cada mudança.
+ * Filtra automaticamente por organization_id do usuário logado (via RLS).
  */
 export function useFunnels() {
+  const { profile } = useAuth();
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Load inicial
+  const orgId = profile?.organization_id;
+
+  // Load inicial — só roda quando temos a org do usuário
   useEffect(() => {
+    if (!orgId) { setFunnels([]); setLoading(false); return; }
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const { data, error } = await supabase
         .from('funnels')
@@ -38,9 +45,10 @@ export function useFunnels() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [orgId]);
 
   const persistFunnel = useCallback((funnel: Funnel, position: number) => {
+    if (!orgId) return;
     const existingTimer = saveTimers.current.get(funnel.id);
     if (existingTimer) clearTimeout(existingTimer);
     const timer = setTimeout(async () => {
@@ -52,12 +60,13 @@ export function useFunnels() {
         color: funnel.color,
         stages: funnel.stages as unknown as any,
         position,
+        organization_id: orgId,
       });
       if (error) console.error('[useFunnels] erro ao salvar funil', funnel.id, error);
       saveTimers.current.delete(funnel.id);
     }, 600);
     saveTimers.current.set(funnel.id, timer);
-  }, []);
+  }, [orgId]);
 
   const updateFunnel = useCallback((updated: Funnel) => {
     setFunnels((prev) => {
@@ -69,9 +78,9 @@ export function useFunnels() {
   }, [persistFunnel]);
 
   const addFunnel = useCallback(async (funnel: Funnel) => {
+    if (!orgId) return;
     setFunnels((prev) => {
       const position = prev.length;
-      // dispara insert de forma assíncrona
       supabase.from('funnels').insert({
         id: funnel.id,
         name: funnel.name,
@@ -80,12 +89,13 @@ export function useFunnels() {
         color: funnel.color,
         stages: funnel.stages as unknown as any,
         position,
+        organization_id: orgId,
       }).then(({ error }) => {
         if (error) console.error('[useFunnels] erro ao criar funil', error);
       });
       return [...prev, funnel];
     });
-  }, []);
+  }, [orgId]);
 
   const deleteFunnel = useCallback(async (id: string) => {
     setFunnels((prev) => prev.filter((f) => f.id !== id));
