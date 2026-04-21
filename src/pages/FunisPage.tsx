@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { deals as mockDeals, chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { useDealsContext } from '@/hooks/useDeals';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -1321,6 +1322,7 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
   const { widgets: cardWidgets } = useCardWidgets();
   const { funnels } = useFunnelsContext();
+  const { deals: dealsList } = useDealsContext();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -1329,7 +1331,6 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const [cardIndex, setCardIndex] = useState(0);
   const [lossOpen, setLossOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [dealsList] = useState(mockDeals);
   const [stageFilters, setStageFilters] = useState<StageFilterState>(defaultFilters);
 
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };

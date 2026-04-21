@@ -1,4 +1,5 @@
-import { deals, formatCurrency } from '@/data/mockData';
+import { formatCurrency } from '@/data/mockData';
+import { useDealsContext } from '@/hooks/useDeals';
 import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { useFunnelsContext } from '@/hooks/useFunnels';
