@@ -21,6 +21,12 @@ export interface AIWorkflowBlock {
   id: string;
   type: AIWorkflowBlockType;
   config: Record<string, any>;
+  /** Metadados comportamentais (Fase 3) — todos opcionais */
+  intent?: string;                // ver AIBlockIntent em iaBehavior.ts
+  tone?: string;                  // ver AIBlockTone em iaBehavior.ts
+  reactsToBehaviorIds?: string[]; // refs LB-xxx
+  fallbackBlockId?: string;
+  guardrailRuleIds?: string[];    // refs IA-DONT-xxx / IA-NOASK-xxx aplicadas neste bloco
 }
 
 export interface AIWorkflow {
