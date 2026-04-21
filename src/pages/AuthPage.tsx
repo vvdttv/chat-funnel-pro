@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Loader2, ArrowLeft, KeyRound, Check, User, HelpCircle, Lock } from 'lucide-react';
+import { LogIn, Loader2, ArrowLeft, KeyRound, Check, User, HelpCircle, Lock, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -288,7 +288,7 @@ const AuthPage = () => {
           <Progress value={progressValue} className="h-1.5 mb-4" />
 
           {/* Subtitle */}
-          <div className="mb-4 text-center">
+          <div className="mb-3 text-center">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
               Passo {step} de {TOTAL_STEPS}
             </p>
@@ -297,6 +297,33 @@ const AuthPage = () => {
               {stepMeta.subtitle}
             </p>
           </div>
+
+          {/* Tentativas restantes (visível nos passos 2/3 quando temos a info) */}
+          {step >= 2 && attemptsRemaining !== null && (
+            <div
+              className={`mb-4 flex items-center gap-2 rounded-xl px-3 py-2 border text-[11px] ${
+                attemptsRemaining === 0
+                  ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                  : attemptsRemaining === 1
+                    ? 'bg-warning/10 border-warning/30 text-warning'
+                    : 'bg-secondary border-border text-muted-foreground'
+              }`}
+            >
+              <ShieldAlert size={13} className="shrink-0" />
+              {attemptsRemaining === 0 ? (
+                <span>
+                  Limite atingido. Aguarde {windowMinutes} minutos para tentar novamente.
+                </span>
+              ) : (
+                <span>
+                  <span className="font-semibold">{attemptsRemaining}</span> de{' '}
+                  <span className="font-semibold">{maxAttempts}</span> tentativa
+                  {attemptsRemaining > 1 ? 's' : ''} restante
+                  {attemptsRemaining > 1 ? 's' : ''} antes do bloqueio temporário.
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Passo 1 */}
           {step === 1 && (
