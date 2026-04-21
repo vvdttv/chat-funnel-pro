@@ -50,7 +50,7 @@ export async function logIADecision(input: LogIADecisionInput): Promise<{ error:
 
   const appliedRuleCodes = playbook.applicableRules.map(r => r.id);
 
-  const { error } = await supabase.from('ia_decision_logs').insert({
+  const { error } = await supabase.from('ia_decision_logs').insert([{
     organization_id: organizationId,
     deal_id: dealId ?? null,
     funnel_id: funnelId ?? null,
@@ -68,7 +68,7 @@ export async function logIADecision(input: LogIADecisionInput): Promise<{ error:
     applied_override_ids: playbook.provenance.overrideIds,
     context_tags: playbook.provenance.contextTags,
     deal_status: playbook.provenance.dealStatus,
-  });
+  }]);
 
   if (error) {
     console.error('[logIADecision]', error);
