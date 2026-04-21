@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Loader2, ArrowLeft, KeyRound, Check, User, HelpCircle, Lock } from 'lucide-react';
+import { LogIn, Loader2, ArrowLeft, KeyRound, Check, User, HelpCircle, Lock, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +35,9 @@ const AuthPage = () => {
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [maxAttempts, setMaxAttempts] = useState(3);
+  const [windowMinutes, setWindowMinutes] = useState(15);
 
   useEffect(() => {
     if (!loading && session) navigate('/', { replace: true });
@@ -71,10 +74,24 @@ const AuthPage = () => {
       return;
     }
     const q = (data as any)?.question;
+    const remaining = (data as any)?.attemptsRemaining;
+    const max = (data as any)?.maxAttempts;
+    const win = (data as any)?.windowMinutes;
+    if (typeof remaining === 'number') setAttemptsRemaining(remaining);
+    if (typeof max === 'number') setMaxAttempts(max);
+    if (typeof win === 'number') setWindowMinutes(win);
     if (!q) {
       toast({
         title: 'Sem pergunta de segurança',
         description: 'Esse usuário não tem pergunta cadastrada. Peça ao admin para resetar sua senha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (typeof remaining === 'number' && remaining === 0) {
+      toast({
+        title: 'Bloqueado temporariamente',
+        description: `Muitas tentativas erradas. Aguarde ${win ?? 15} minutos e tente novamente.`,
         variant: 'destructive',
       });
       return;
@@ -114,11 +131,23 @@ const AuthPage = () => {
     });
     setSubmitting(false);
     const errMsg = (data as any)?.error || error?.message;
+    const remaining = (data as any)?.attemptsRemaining;
+    if (typeof remaining === 'number') setAttemptsRemaining(remaining);
     if (errMsg) {
       // Resposta errada → volta para passo 2 para tentar de novo
       const lower = errMsg.toLowerCase();
       if (lower.includes('inválid') || lower.includes('invalid')) {
-        toast({ title: 'Resposta incorreta', description: 'Verifique sua resposta e tente novamente.', variant: 'destructive' });
+        const remainingNote =
+          typeof remaining === 'number'
+            ? remaining === 0
+              ? ' Você esgotou suas tentativas. Aguarde 15 minutos.'
+              : ` Restam ${remaining} tentativa(s).`
+            : '';
+        toast({
+          title: 'Resposta incorreta',
+          description: `Verifique sua resposta e tente novamente.${remainingNote}`,
+          variant: 'destructive',
+        });
         setStep(2);
         setSecurityAnswer('');
       } else {
@@ -137,6 +166,7 @@ const AuthPage = () => {
     setSecurityAnswer('');
     setNewPassword('');
     setConfirmPassword('');
+    setAttemptsRemaining(null);
   };
 
   const goBack = () => {
@@ -258,7 +288,7 @@ const AuthPage = () => {
           <Progress value={progressValue} className="h-1.5 mb-4" />
 
           {/* Subtitle */}
-          <div className="mb-4 text-center">
+          <div className="mb-3 text-center">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
               Passo {step} de {TOTAL_STEPS}
             </p>
@@ -267,6 +297,33 @@ const AuthPage = () => {
               {stepMeta.subtitle}
             </p>
           </div>
+
+          {/* Tentativas restantes (visível nos passos 2/3 quando temos a info) */}
+          {step >= 2 && attemptsRemaining !== null && (
+            <div
+              className={`mb-4 flex items-center gap-2 rounded-xl px-3 py-2 border text-[11px] ${
+                attemptsRemaining === 0
+                  ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                  : attemptsRemaining === 1
+                    ? 'bg-warning/10 border-warning/30 text-warning'
+                    : 'bg-secondary border-border text-muted-foreground'
+              }`}
+            >
+              <ShieldAlert size={13} className="shrink-0" />
+              {attemptsRemaining === 0 ? (
+                <span>
+                  Limite atingido. Aguarde {windowMinutes} minutos para tentar novamente.
+                </span>
+              ) : (
+                <span>
+                  <span className="font-semibold">{attemptsRemaining}</span> de{' '}
+                  <span className="font-semibold">{maxAttempts}</span> tentativa
+                  {attemptsRemaining > 1 ? 's' : ''} restante
+                  {attemptsRemaining > 1 ? 's' : ''} antes do bloqueio temporário.
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Passo 1 */}
           {step === 1 && (
@@ -355,7 +412,7 @@ const AuthPage = () => {
               </div>
               <button
                 type="submit"
-                disabled={submitting || !newPassword || !confirmPassword}
+                disabled={submitting || !newPassword || !confirmPassword || attemptsRemaining === 0}
                 className="w-full bg-primary text-primary-foreground rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
               >
                 {submitting && <Loader2 className="animate-spin" size={16} />}
