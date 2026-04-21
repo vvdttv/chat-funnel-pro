@@ -313,8 +313,8 @@ export const IABehaviorManager = () => {
         defaultReaction: row.default_reaction ?? '',
         nextStep: row.next_step ?? '',
         applicableContextTags: Array.isArray(row.applicable_context_tags) ? (row.applicable_context_tags as string[]) : ['*'],
-        applicableStatuses: Array.isArray(row.applicable_statuses) ? (row.applicable_statuses as string[]) : ['open'],
-      })));
+        applicableStatuses: Array.isArray(row.applicable_statuses) ? (row.applicable_statuses as LeadBehavior['applicableStatuses']) : ['open'],
+      } as LeadBehavior & { dbId: string })));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar dados';
       console.error('[IABehaviorManager]', e);
