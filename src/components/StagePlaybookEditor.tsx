@@ -87,7 +87,26 @@ const PRIORITY_CLASSES: Record<string, string> = {
   P3: 'bg-muted text-muted-foreground border-border',
 };
 
-export const StagePlaybookEditor = ({ open, onOpenChange, stage, onUpdate }: Props) => {
+export const StagePlaybookEditor = (props: Props) => {
+  const { rules, behaviors, ladders, triggers, playbooks } = useIABehavior();
+  const datasets: IADatasets = useMemo(() => ({
+    universalRules: rules.filter(r => r.scope === 'universal'),
+    stageRules:     rules.filter(r => r.scope !== 'universal'),
+    behaviors,
+    playbooks,
+    ladders,
+    triggers,
+  }), [rules, behaviors, ladders, triggers, playbooks]);
+
+  return (
+    <IADatasetsCtx.Provider value={datasets}>
+      <StagePlaybookEditorInner {...props} />
+    </IADatasetsCtx.Provider>
+  );
+};
+
+const StagePlaybookEditorInner = ({ open, onOpenChange, stage, onUpdate }: Props) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
   const [activeSection, setActiveSection] = useState<SectionKey>('goal');
 
   // Resolve playbook seed a partir do code (ou primeiro encaixe pelo nome)
@@ -253,7 +272,9 @@ export const StagePlaybookEditor = ({ open, onOpenChange, stage, onUpdate }: Pro
 // Seletor inicial de playbook
 // ============================================================================
 
-const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']) => void }) => (
+const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']) => void }) => {
+  const { playbooks: STAGE_PLAYBOOKS } = useIADatasets();
+  return (
   <div className="p-4 space-y-3">
     <p className="text-xs text-muted-foreground">
       Vincule esta etapa a um playbook comportamental da IA. O conteúdo padrão
@@ -279,7 +300,8 @@ const PlaybookPicker = ({ onPick }: { onPick: (code: FunnelStage['playbookCode']
       ))}
     </div>
   </div>
-);
+  );
+};
 
 // ============================================================================
 // Aba 1 — Objetivo
