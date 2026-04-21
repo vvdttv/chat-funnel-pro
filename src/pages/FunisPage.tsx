@@ -314,8 +314,12 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
   const baseMessages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
 
   const allMessages = [
-    ...baseMessages.map(m => ({ ...m, attachments: undefined as Attachment[] | undefined })),
-    ...localMessages
+    ...baseMessages.map(m => ({
+      ...m,
+      attachments: undefined as Attachment[] | undefined,
+      provenance: undefined as AIProvenance | null | undefined,
+    })),
+    ...localMessages,
   ];
 
   // Auto-scroll
