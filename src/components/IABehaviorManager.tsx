@@ -272,6 +272,8 @@ export const IABehaviorManager = () => {
   const [ruleScopeFilter, setRuleScopeFilter] = useState<string>('');
   const [ruleKindFilter, setRuleKindFilter] = useState<string>('');
   const [behaviorCatFilter, setBehaviorCatFilter] = useState<string>('');
+  const [behaviorContextFilter, setBehaviorContextFilter] = useState<string>('');
+  const [behaviorStatusFilter, setBehaviorStatusFilter] = useState<string>('');
 
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleDraft, setRuleDraft] = useState<RuleDraft>(emptyRule);
@@ -289,7 +291,7 @@ export const IABehaviorManager = () => {
     try {
       const [r, b] = await Promise.all([
         supabase.from('ia_rules').select('id,code,kind,scope,text,meta,is_active').order('code'),
-        supabase.from('lead_behaviors').select('id,code,label,category,typical_stages,detection_hints,default_reaction,next_step,is_active').order('code'),
+        supabase.from('lead_behaviors').select('id,code,label,category,typical_stages,detection_hints,default_reaction,next_step,applicable_context_tags,applicable_statuses,is_active').order('code'),
       ]);
       if (r.error) throw r.error;
       if (b.error) throw b.error;
@@ -310,6 +312,8 @@ export const IABehaviorManager = () => {
         detectionHints: Array.isArray(row.detection_hints) ? (row.detection_hints as string[]) : [],
         defaultReaction: row.default_reaction ?? '',
         nextStep: row.next_step ?? '',
+        applicableContextTags: Array.isArray(row.applicable_context_tags) ? (row.applicable_context_tags as string[]) : ['*'],
+        applicableStatuses: Array.isArray(row.applicable_statuses) ? (row.applicable_statuses as string[]) : ['open'],
       })));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar dados';
@@ -398,6 +402,8 @@ export const IABehaviorManager = () => {
       detectionHints: b.detectionHints.join('\n'),
       defaultReaction: b.defaultReaction,
       nextStep: b.nextStep,
+      applicableContextTags: ((b as unknown as { applicableContextTags?: string[] }).applicableContextTags ?? ['*']).join(','),
+      applicableStatuses: ((b as unknown as { applicableStatuses?: string[] }).applicableStatuses ?? ['open']).join(','),
     });
     setEditingBehaviorId(b.dbId);
   };
@@ -415,6 +421,8 @@ export const IABehaviorManager = () => {
         detection_hints: splitCsv(behaviorDraft.detectionHints),
         default_reaction: behaviorDraft.defaultReaction.trim(),
         next_step: behaviorDraft.nextStep.trim(),
+        applicable_context_tags: splitCsv(behaviorDraft.applicableContextTags),
+        applicable_statuses: splitCsv(behaviorDraft.applicableStatuses),
         is_active: true,
       };
       if (behaviorDraft.id) {
