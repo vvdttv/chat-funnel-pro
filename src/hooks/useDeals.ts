@@ -161,7 +161,19 @@ export function useDeals(funnels: Funnel[]) {
     if (error) console.error('[useDeals] erro ao atualizar status', error);
   }, []);
 
-  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus };
+  /** Reatribui um deal a outro corretor (admin only — RLS valida). */
+  const reassignDeal = useCallback(async (id: string, newAssignedTo: string) => {
+    const { error } = await supabase.from('deals').update({ assigned_to: newAssignedTo }).eq('id', id);
+    if (error) {
+      console.error('[useDeals] erro ao reatribuir', error);
+      return { error: error.message };
+    }
+    // Como o deal pode sair da visibilidade do corretor atual, removemos do estado se não for admin/dono
+    // Mas como reassign é admin-only, mantemos na lista (admin vê todos)
+    return { error: null };
+  }, []);
+
+  return { deals, loading, error, updateDeal, addDeal, deleteDeal, setDealStatus, reassignDeal };
 }
 
 // ========== Contexto global ==========
@@ -173,6 +185,7 @@ interface DealsContextValue {
   addDeal: (d: Deal) => void;
   deleteDeal: (id: string) => void;
   setDealStatus: (id: string, status: 'open' | 'won' | 'lost') => void;
+  reassignDeal: (id: string, newAssignedTo: string) => Promise<{ error: string | null }>;
 }
 
 const noop = () => {};
@@ -183,6 +196,7 @@ const DealsContext = createContext<DealsContextValue>({
   addDeal: noop,
   deleteDeal: noop,
   setDealStatus: noop,
+  reassignDeal: async () => ({ error: null }),
 });
 
 export const DealsProvider = DealsContext.Provider;
