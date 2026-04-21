@@ -110,66 +110,37 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
 
   // Preview composicional: substitui override do mesmo scope+layer pelo rascunho
   const preview = useMemo(() => {
-    if (runtime.loading) return null;
+    if (runtime.loading || !runtime.snapshot) return null;
     const draftOverride: PlaybookOverride = {
       scopeType: 'stage',
       scopeId: stageScopeId,
       layer,
       payload: draftToPayload(draft),
     };
-    // Garante composição alinhada ao runtime sem efeito colateral global
+    // Em overlay, deal precisa estar won/lost para o overlay ser aplicado.
     const previewStatusForCompose: PreviewStatus =
       layer === 'overlay' && previewStatus === 'open' ? 'won' : previewStatus;
-    // Reaproveita compose() mas precisamos injetar o draft → usamos composer puro
-    const funnel = funnels.find(f => f.id === funnelId);
-    const funnelContextTags: string[] =
-      (funnel as unknown as { context_tags?: string[] })?.context_tags ?? [];
-    // Acessa estado interno do runtime via compose (catálogo já carregado).
-    // Para injetar o rascunho, refazemos a chamada com a lista de overrides
-    // patchada — o runtime expõe `compose`, mas não os arrays brutos.
-    // Solução pragmática: chamamos compose normal e, se houver override no
-    // mesmo scope+layer, reconstruímos a composição manualmente NÃO. Em vez
-    // disso, expomos o snapshot via compose() e fazemos uma 2ª composição
-    // local com os mesmos catálogos. Como compose() já roda o pipeline com
-    // overrides salvos, e queremos prever o NÃO-salvo, refazemos chamando
-    // o composer puro com listas reconstruídas.
-    // ➜ Aqui dependemos do runtime expor catálogos. Próximo bloco ajusta.
-    const snapshot = (runtime as unknown as {
-      __snapshot?: {
-        archetypes: Parameters<typeof composeEffectivePlaybook>[0]['archetypes'];
-        statusArchetypes: Parameters<typeof composeEffectivePlaybook>[0]['statusArchetypes'];
-        physicalStages: Parameters<typeof composeEffectivePlaybook>[0]['physicalStages'];
-        catalogPlaybooks: Parameters<typeof composeEffectivePlaybook>[0]['catalogPlaybooks'];
-        overrides: PlaybookOverride[];
-        rules: Parameters<typeof composeEffectivePlaybook>[0]['rules'];
-        behaviors: Parameters<typeof composeEffectivePlaybook>[0]['behaviors'];
-        ladders: Parameters<typeof composeEffectivePlaybook>[0]['ladders'];
-        triggers: Parameters<typeof composeEffectivePlaybook>[0]['triggers'];
-      };
-    }).__snapshot;
-    if (!snapshot) {
-      // Fallback: usa compose() salvo (não reflete o rascunho ainda não aplicado)
-      return runtime.compose(funnelId, stageId, previewStatusForCompose);
-    }
+    const snap = runtime.snapshot;
+    const funnelContextTags = snap.funnelContextTagsById[funnelId] ?? [];
     const patchedOverrides = [
-      ...snapshot.overrides.filter(
+      ...snap.overrides.filter(
         o => !(o.scopeType === 'stage' && o.scopeId === stageScopeId && o.layer === layer),
       ),
       draftOverride,
     ];
     return composeEffectivePlaybook({
       funnelId, stageId, dealStatus: previewStatusForCompose, funnelContextTags,
-      archetypes: snapshot.archetypes,
-      statusArchetypes: snapshot.statusArchetypes,
-      physicalStages: snapshot.physicalStages,
-      catalogPlaybooks: snapshot.catalogPlaybooks,
+      archetypes: snap.archetypes,
+      statusArchetypes: snap.statusArchetypes,
+      physicalStages: snap.physicalStages,
+      catalogPlaybooks: snap.catalogPlaybooks,
       overrides: patchedOverrides,
-      rules: snapshot.rules,
-      behaviors: snapshot.behaviors,
-      ladders: snapshot.ladders,
-      triggers: snapshot.triggers,
+      rules: snap.rules,
+      behaviors: snap.behaviors,
+      ladders: snap.ladders,
+      triggers: snap.triggers,
     });
-  }, [runtime, funnels, funnelId, stageId, stageScopeId, layer, draft, previewStatus]);
+  }, [runtime.loading, runtime.snapshot, funnelId, stageId, stageScopeId, layer, draft, previewStatus]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
