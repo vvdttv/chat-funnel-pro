@@ -125,6 +125,50 @@ export type Database = {
           },
         ]
       }
+      followup_ladders: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_ladders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnels: {
         Row: {
           color: string
@@ -165,6 +209,218 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "funnels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handoff_triggers: {
+        Row: {
+          action: string
+          code: string
+          condition: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          priority: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          action?: string
+          code: string
+          condition?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          priority: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          code?: string
+          condition?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          priority?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handoff_triggers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_decision_logs: {
+        Row: {
+          action_taken: string
+          applied_rule_codes: Json
+          context: Json
+          created_at: string
+          deal_id: string | null
+          detected_behavior_codes: Json
+          funnel_id: string | null
+          id: string
+          intent: string | null
+          organization_id: string
+          outcome: string | null
+          playbook_code: string | null
+          stage_id: string | null
+          tone: string | null
+        }
+        Insert: {
+          action_taken?: string
+          applied_rule_codes?: Json
+          context?: Json
+          created_at?: string
+          deal_id?: string | null
+          detected_behavior_codes?: Json
+          funnel_id?: string | null
+          id?: string
+          intent?: string | null
+          organization_id: string
+          outcome?: string | null
+          playbook_code?: string | null
+          stage_id?: string | null
+          tone?: string | null
+        }
+        Update: {
+          action_taken?: string
+          applied_rule_codes?: Json
+          context?: Json
+          created_at?: string
+          deal_id?: string | null
+          detected_behavior_codes?: Json
+          funnel_id?: string | null
+          id?: string
+          intent?: string | null
+          organization_id?: string
+          outcome?: string | null
+          playbook_code?: string | null
+          stage_id?: string | null
+          tone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_decision_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_rules: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: string
+          meta: string | null
+          organization_id: string
+          position: number
+          scope: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: string
+          meta?: string | null
+          organization_id: string
+          position?: number
+          scope: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          meta?: string | null
+          organization_id?: string
+          position?: number
+          scope?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_behaviors: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          default_reaction: string
+          detection_hints: Json
+          id: string
+          is_active: boolean
+          label: string
+          next_step: string
+          organization_id: string
+          typical_stages: Json
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          default_reaction?: string
+          detection_hints?: Json
+          id?: string
+          is_active?: boolean
+          label: string
+          next_step?: string
+          organization_id: string
+          typical_stages?: Json
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          default_reaction?: string
+          detection_hints?: Json
+          id?: string
+          is_active?: boolean
+          label?: string
+          next_step?: string
+          organization_id?: string
+          typical_stages?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_behaviors_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -251,6 +507,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_playbooks: {
+        Row: {
+          code: string
+          created_at: string
+          default_ladder_code: string | null
+          failure_criteria: Json
+          goal: string
+          id: string
+          identity: Json
+          is_active: boolean
+          name: string
+          organization_id: string
+          success_criteria: Json
+          typical_behavior_codes: Json
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_ladder_code?: string | null
+          failure_criteria?: Json
+          goal?: string
+          id?: string
+          identity?: Json
+          is_active?: boolean
+          name: string
+          organization_id: string
+          success_criteria?: Json
+          typical_behavior_codes?: Json
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_ladder_code?: string | null
+          failure_criteria?: Json
+          goal?: string
+          id?: string
+          identity?: Json
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          success_criteria?: Json
+          typical_behavior_codes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_playbooks_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
