@@ -16,6 +16,7 @@ import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor'
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
 import { IABehaviorManager } from '@/components/IABehaviorManager';
+import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGlobalList';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
@@ -1076,6 +1077,9 @@ const ConfigPage = () => {
           <>
             <IABehaviorSeedBanner />
             <IABehaviorManager />
+            <div className="my-4 border-t border-border" />
+            <PlaybookOverridesGlobalList />
+            <div className="my-4 border-t border-border" />
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-muted-foreground">{aiFlows.length} fluxos</span>
               <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform">
