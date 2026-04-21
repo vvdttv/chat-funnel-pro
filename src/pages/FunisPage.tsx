@@ -382,6 +382,8 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
       setAiLoading(true);
       try {
         const funnel = funnels.find(f => f.id === deal.funnelId);
+        // Resolve stageId real (Deal.stage guarda o nome legível)
+        const stageId = funnel?.stages.find(s => s.name === deal.stage)?.id ?? null;
         const { data, error } = await supabase.functions.invoke('ai-chat-analysis', {
           body: {
             messages: allMessages.map(m => ({
@@ -396,6 +398,10 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
               value: formatCurrency(deal.value),
               stage: deal.stage,
               funnel: funnel?.name || '',
+              // Sprint 9: contexto composicional
+              dealId: deal.id,
+              funnelId: deal.funnelId,
+              stageId: stageId ?? undefined,
             },
             attachments: currentAttachments.map(a => ({
               type: a.type,
@@ -415,6 +421,7 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
           sender: 'ai',
           content: data.response || data.error || 'Erro ao processar',
           timestamp,
+          provenance: (data?.provenance ?? null) as AIProvenance | null,
         }]);
       } catch (err) {
         console.error('AI error:', err);
