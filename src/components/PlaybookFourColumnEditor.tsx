@@ -76,6 +76,7 @@ export const PlaybookFourColumnEditor = ({
   // Coluna ativa em mobile (em desktop todas aparecem via grid)
   const [activeCol, setActiveCol] = useState<ColKey>('identity');
   const [saving, setSaving] = useState(false);
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const [funnelStageRow, setFunnelStageRow] = useState<{
     id: string;
     purpose: string;
