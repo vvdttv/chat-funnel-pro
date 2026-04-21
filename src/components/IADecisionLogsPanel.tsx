@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import {
   Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles,
   AlertTriangle, Layers, Tag, Activity, Search, X, Workflow, Target,
-  Download, FileJson, FileSpreadsheet, Clock,
+  FileJson, FileSpreadsheet, Clock,
 } from 'lucide-react';
 import { useIADecisionLogs, type IADecisionLog } from '@/hooks/useIADecisionLogs';
 import { useFunnels } from '@/hooks/useFunnels';
