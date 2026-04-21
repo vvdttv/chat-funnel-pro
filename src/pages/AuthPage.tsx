@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { sanitizeUsername, sanitizeAnswer } from '@/lib/sanitize';
 
 type Mode = 'login' | 'forgot' | 'forgot-success';
 type ForgotStep = 1 | 2 | 3;
@@ -64,10 +65,15 @@ const AuthPage = () => {
   // Passo 1 → busca pergunta
   const onLookupQuestion = async (e: FormEvent) => {
     e.preventDefault();
-    if (!recoveryUsername.trim()) return;
+    const cleanUser = sanitizeUsername(recoveryUsername);
+    if (!cleanUser) {
+      toast({ title: 'Usuário inválido', description: 'Use letras, números, ponto, hífen ou underline.', variant: 'destructive' });
+      return;
+    }
+    if (cleanUser !== recoveryUsername) setRecoveryUsername(cleanUser);
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke('get-security-question', {
-      body: { username: recoveryUsername.trim() },
+      body: { username: cleanUser },
     });
     setSubmitting(false);
     if (error) {
@@ -104,10 +110,12 @@ const AuthPage = () => {
   // Passo 2 → valida que respondeu (validação real só no passo 3)
   const onSubmitAnswer = (e: FormEvent) => {
     e.preventDefault();
-    if (securityAnswer.trim().length < 1) {
-      toast({ title: 'Resposta obrigatória', variant: 'destructive' });
+    const cleanAnswer = sanitizeAnswer(securityAnswer);
+    if (cleanAnswer.length < 1) {
+      toast({ title: 'Resposta obrigatória', description: 'Texto sem HTML.', variant: 'destructive' });
       return;
     }
+    if (cleanAnswer !== securityAnswer) setSecurityAnswer(cleanAnswer);
     setStep(3);
   };
 
@@ -125,8 +133,8 @@ const AuthPage = () => {
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke('reset-password-with-question', {
       body: {
-        username: recoveryUsername.trim(),
-        answer: securityAnswer,
+        username: sanitizeUsername(recoveryUsername),
+        answer: sanitizeAnswer(securityAnswer),
         newPassword,
       },
     });
