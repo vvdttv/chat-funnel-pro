@@ -1,9 +1,10 @@
 import { formatCurrency } from '@/data/mockData';
 import { useDealsContext } from '@/hooks/useDeals';
-import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { useState } from 'react';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
@@ -166,6 +167,22 @@ const IndicadoresPage = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Auditoria da IA */}
+          <div className="bg-card rounded-xl overflow-hidden">
+            <button onClick={() => toggleSection('ia')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Bot size={14} className="text-[hsl(270,60%,70%)]" />
+                Decisões da IA
+              </span>
+              {openSection === 'ia' ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+            </button>
+            {openSection === 'ia' && (
+              <div className="px-4 pb-4">
+                <IADecisionLogsPanel />
               </div>
             )}
           </div>
