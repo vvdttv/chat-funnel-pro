@@ -220,12 +220,23 @@ type Attachment = {
 };
 
 // ========== LOCAL MESSAGE TYPE ==========
+interface AIProvenance {
+  archetypeCode: string | null;
+  statusOverlayCode: string | null;
+  overrideIds: string[];
+  contextTags: string[];
+  dealStatus: 'open' | 'won' | 'lost';
+  appliedRuleCodes?: string[];
+}
+
 type LocalMessage = {
   id: string;
   sender: 'agent' | 'lead' | 'ai';
   content: string;
   timestamp: string;
   attachments?: Attachment[];
+  /** Sprint 9: proveniência composicional retornada pela edge `ai-chat-analysis` */
+  provenance?: AIProvenance | null;
 };
 
 // ========== CHAT VIEW ==========
