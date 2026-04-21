@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import bcrypt from 'https://esm.sh/bcryptjs@2.4.3';
+import { sanitizeUsername, sanitizeAnswer } from '../_shared/sanitize.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,8 +16,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const username = String(body?.username ?? '').trim().toLowerCase();
-    const answer = String(body?.answer ?? '');
+    const username = sanitizeUsername(body?.username);
+    const answer = sanitizeAnswer(body?.answer);
+    // newPassword não passa por sanitize — preserva caracteres válidos de senha
     const newPassword = String(body?.newPassword ?? '');
 
     if (!username || !answer || !newPassword) {
@@ -80,8 +82,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const normalized = answer.trim().toLowerCase();
-    const ok = await bcrypt.compare(normalized, profile.security_answer_hash);
+    // answer já vem normalizado (lowercase + whitespace colapsado) por sanitizeAnswer
+    const ok = await bcrypt.compare(answer, profile.security_answer_hash);
 
     if (!ok) {
       await admin.from('password_reset_attempts').insert({
