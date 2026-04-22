@@ -1081,6 +1081,8 @@ const ConfigPage = () => {
             <IABehaviorSeedBanner />
             <IABehaviorManager />
             <div className="my-4 border-t border-border" />
+            <PlaybookOverrideSuggestionsPanel />
+            <div className="my-4 border-t border-border" />
             <PlaybookOverrideMultiScopeEditor />
             <div className="my-4 border-t border-border" />
             <PlaybookOverridesGlobalList />
