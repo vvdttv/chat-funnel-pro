@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus,
+  Target, Tag, Brain, Plus, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -53,7 +53,7 @@ const SEVERITY_META: Record<OverrideSuggestion['severity'], { tone: string; labe
   info: { tone: 'bg-primary/15 text-primary border-primary/30', label: 'Insight' },
 };
 
-const KIND_META: Record<OverrideSuggestion['kind'], { icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
+const KIND_META: Record<OverrideSuggestion['kind'], { icon: LucideIcon; label: string }> = {
   lb_problematic: { icon: Brain, label: 'LB problemático' },
   stage_chronic_loss: { icon: Target, label: 'Etapa crônica' },
   context_tag_toxic: { icon: Tag, label: 'Tag tóxica' },
