@@ -1,56 +1,82 @@
 
 
-# Wiring final dos Sprints 21–26
+# Fechamento dos pendentes — SummaryBlock + RollbackPlanDialog + Cenários do sandbox (S25)
 
-A lógica pura e os componentes standalone já foram entregues na mensagem anterior (6 módulos + 30 testes verdes). Falta plugar tudo nas UIs existentes. Esta execução fecha o ciclo sem criar arquivos novos — apenas edições.
+Três edições atômicas para fechar o ciclo dos Sprints 21–26. Sem arquivos novos, sem migrations.
 
-## O que será plugado
+## 1. `PlaybookOverrideSnapshotsBrowser.tsx` — adicionar `RollbackPlanDialog`
 
-### 1. `PlaybookOverrideSnapshotsBrowser.tsx` — S21 + S22
-- **Toggle "Agrupar por lote"** no topo dos filtros. Quando ligado, snapshots com `[batch_xxx]` no `note` são agrupados em headers colapsáveis ("Lote batch_xxx · N escopos · há 2h"), reusando `groupSnapshotsByBatch` de `playbookSnapshotRollback.ts`.
-- **Botão "Reverter lote inteiro"** em cada header. Abre confirm modal listando o que será revertido (via `buildRollbackPlan`). Executa upserts encadeados + `recordSnapshot` com `action='rollback'` e nota `[rollback de batch_xxx]`. Avisa "dirty" quando há snapshot posterior ao lote no mesmo escopo.
-- **Botões "Exportar CSV" e "Exportar JSON"** no header da lista. Respeitam filtros ativos (`visible`). Usam `buildSnapshotsCSV` / `buildSnapshotsJSON` + download via Blob (mesmo padrão de `iaDecisionLogsExport.ts`).
-- **Card "Resumo do período"** colapsável acima da lista, alimentado por `summarizeAuditPeriod(visible)` — mostra totais por escopo, layer, ação, autor e contagem de batches.
+O estado, o handler `openRollback` e `runRollback` já existem (linhas 152–294). Falta apenas montar o `<Dialog>` no JSX e definir o componente helper.
 
-### 2. `PlaybookOverrideSuggestionsPanel.tsx` — S23
-- Nova seção **"Efetividade das sugestões aplicadas (30d)"** acima da lista de sugestões pendentes, visível só quando há snapshots `auto-sugestão`.
-- Para cada sugestão aplicada nos últimos 30d, renderiza linha com: título, escopo, delta de `failureRate` (▼ verde / ▲ vermelho / ~ neutro / "sem dados"), via `evaluateSnapshotEffectiveness(snapshot, logs)`.
-- Sugestões com delta positivo (piora ≥ 5pp) ganham botão **"Reverter"** que faz upsert do payload anterior + snapshot `action='rollback'` com nota `"reverter sugestão ineficaz"`.
+**Inserir antes do `</div>` final do componente principal (~linha 679):**
 
-### 3. `PlaybookFourColumnEditor.tsx` — S25
-- Nova seção colapsável **"Cenários do sandbox"** abaixo do `SandboxPreview` e acima de "Overrides composicionais".
-- Usa `useSandboxScenarios({ funnelId, stageId })`.
-- UI: input "nome do cenário" + botão "Salvar cenário atual" (snapshot do `{ identity, successCriteria, failureCriteria, expectedBehaviorIds }` no formato `payload`).
-- Lista de cenários salvos com botões "Carregar" (preenche os 4 estados do editor), "Comparar com produção" (renderiza diff via `buildPayloadDiff` entre o cenário e o payload em `playbook_overrides` salvo), "Excluir".
-- Botão "Exportar JSON" usa `exportAll()` + Blob download.
+```tsx
+<RollbackPlanDialog
+  plan={rollbackPlan}
+  funnels={funnels}
+  running={rollbackRunning}
+  progress={rollbackProgress}
+  onClose={closeRollback}
+  onConfirm={runRollback}
+/>
+```
 
-### 4. `IABehaviorManager.tsx` — S26
-- Adicionar terceira aba **"Saúde"** ao tabset existente (`'rules' | 'behaviors' | 'health'`).
-- Quando ativa, renderiza `<IASystemHealthPanel />` direto (componente já criado).
-- Tab fica com ícone `Activity` e contador omitido (não é CRUD).
+**Definir `RollbackPlanDialog` no fim do arquivo** (junto com `SummaryBlock` que já está lá):
 
-### 5. `IndicadoresPage.tsx` — S24
-- Nova seção colapsável **"Saúde composicional"** após "Decisões da IA", com chave `'composicional'` no accordion.
-- Renderiza `<FunnelStatusHeatmap />` (componente já criado).
-- Ícone `Layers`, mesmo padrão visual das outras seções.
+- Recebe `plan: RollbackPlan | null`, `funnels`, `running`, `progress`, `onClose`, `onConfirm`.
+- Renderiza `<Dialog open={!!plan}>` com:
+  - Título: "Reverter lote `<batchId>`"
+  - Descrição: contagem de itens + alerta se `plan.dirtyCount > 0` ("N escopo(s) tiveram alterações posteriores e serão sobrescritos").
+  - Lista (max-height + scroll) de `plan.items`: para cada item mostra `resolveScope(scopeType, scopeId, funnels)` (funil/etapa), badge da `layer`, badge da `action` (rollback/deactivate), ícone amarelo `AlertTriangle` quando `dirty`.
+  - Footer: barra de progresso `progress.done / progress.total` quando `running`; botões "Cancelar" (disabled quando `running`) e "Reverter lote" (variant `destructive`, mostra `Loader2` quando `running`).
+- Usa apenas tokens semânticos (`text-warning`, `text-destructive`, `bg-secondary`, etc.).
+
+## 2. `PlaybookFourColumnEditor.tsx` — seção "Cenários do sandbox" (S25)
+
+**Importar:**
+```tsx
+import { useSandboxScenarios } from '@/hooks/useSandboxScenarios';
+import { buildPayloadDiff, summarizeDiff } from '@/lib/playbookOverrideDiff';
+import { Save, FolderOpen, Trash2, GitCompare, Download } from 'lucide-react';
+```
+
+**Hook dentro do componente:**
+```tsx
+const sandbox = useSandboxScenarios({ funnelId, stageId });
+const [scenarioName, setScenarioName] = useState('');
+const [comparingId, setComparingId] = useState<string | null>(null);
+```
+
+**Posicionamento:** seção colapsável nova abaixo do `SandboxPreview` e acima de "Overrides composicionais" (localizar pela busca de `Overrides composicionais` no arquivo).
+
+**UI:**
+- Header colapsável: ícone `FolderOpen` + "Cenários do sandbox · N salvos".
+- Quando expandido:
+  - Linha de criação: `<Input>` (nome) + botão "Salvar cenário atual" → chama `sandbox.save({ name, funnelId, stageId, status: currentStatus, payload: { identity, successCriteria, failureCriteria, expectedBehaviorIds } })`. Limpa input + `toast` "Cenário salvo".
+  - Lista de `sandbox.items` (cada item card pequeno):
+    - Nome + timestamp (`updatedAt` formatado).
+    - Botão "Carregar" → preenche os 4 estados do editor (`setIdentity`, `setSuccessCriteria`, `setFailureCriteria`, `setExpectedBehaviorIds`) com `scenario.payload`.
+    - Botão "Comparar com produção" → toggla `comparingId`. Quando ativo, renderiza `summarizeDiff(buildPayloadDiff(productionPayload, scenario.payload))` em texto pequeno + lista de `path` mudados (productionPayload = override salvo no escopo atual via `usePlaybookOverrides`).
+    - Botão `Trash2` → `sandbox.remove(scenario.id)` com `confirm()` nativo.
+  - Botão "Exportar JSON" → cria Blob com `sandbox.exportAll()` e dispara download `sandbox_scenarios_<ts>.json`.
+- Vazio: texto muted "Nenhum cenário salvo para esta etapa".
+
+**Sem testes novos** — `useSandboxScenarios` é hook (já testado em S25 indiretamente via lógica) e UI segue padrão dos outros editores.
+
+## 3. Validação
+
+- `tsc --noEmit` deve continuar sem erros.
+- `vitest run` mantém 132/132 verdes (nada de lógica pura é tocado).
+- Smoke manual:
+  1. Abrir Snapshots Browser → ativar agrupamento → clicar "Reverter lote" → conferir dialog com lista, badges, alerta de dirty se aplicável → cancelar e reabrir para confirmar fluxo.
+  2. Abrir editor da etapa → expandir "Cenários do sandbox" → salvar com nome → editar payload → recarregar cenário → comparar com produção → excluir.
 
 ## Arquivos editados
 
 ```text
-src/components/PlaybookOverrideSnapshotsBrowser.tsx   [+ agrupamento, rollback, exports, resumo]
-src/components/PlaybookOverrideSuggestionsPanel.tsx   [+ card de efetividade + reverter]
-src/components/PlaybookFourColumnEditor.tsx           [+ seção cenários sandbox]
-src/components/IABehaviorManager.tsx                  [+ aba Saúde]
-src/pages/IndicadoresPage.tsx                         [+ seção Saúde composicional]
+src/components/PlaybookOverrideSnapshotsBrowser.tsx   [+ render do RollbackPlanDialog + componente helper]
+src/components/PlaybookFourColumnEditor.tsx           [+ seção Cenários do sandbox + hook useSandboxScenarios]
 ```
 
-Nenhum arquivo novo. Nenhuma migration. Nenhum hook novo. Apenas integração visual da lógica já testada.
-
-## Validação
-
-- `tsc --noEmit` deve continuar sem erros.
-- `vitest run` deve manter 132/132 verdes (nenhum teste de UI alterado, nenhum módulo puro tocado).
-- Smoke manual: abrir Snapshots Browser → ativar agrupamento → reverter um lote dummy; abrir Sugestões → ver card efetividade; abrir editor da etapa → salvar/carregar cenário; abrir IABehaviorManager → aba Saúde; abrir Indicadores → expandir nova seção.
-
-Aprovando, entrego os 5 arquivos editados na próxima mensagem.
+Aprovando, entrego os 2 arquivos editados na próxima mensagem.
 
