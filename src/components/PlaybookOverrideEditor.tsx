@@ -543,6 +543,52 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
           )}
         </div>
       </div>
+
+      {/* Histórico versionado + diff visual + rollback */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setHistoryOpen(o => !o)}
+          className="w-full flex items-center justify-between px-3 py-2 active:bg-secondary/40 transition-colors"
+          aria-expanded={historyOpen}
+        >
+          <div className="flex items-center gap-1.5">
+            {historyOpen ? <ChevronDown size={13} className="text-primary" /> : <ChevronRight size={13} className="text-primary" />}
+            <History size={13} className="text-primary" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+              Histórico ({snapshots.length})
+            </span>
+            <span className="text-[10px] text-muted-foreground ml-1">layer {layer}</span>
+          </div>
+          {loadingSnaps && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+        </button>
+
+        {historyOpen && (
+          <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-2">
+            {snapshots.length === 0 && !loadingSnaps && (
+              <p className="text-[11px] text-muted-foreground italic py-2">
+                Nenhuma versão registrada ainda. Salve um override para começar o histórico.
+              </p>
+            )}
+            {snapshots.map((snap, idx) => {
+              const previous = snapshots[idx + 1];
+              const diff = buildPayloadDiff(previous?.payload, snap.payload);
+              const expanded = expandedSnap === snap.id;
+              return (
+                <SnapshotRow
+                  key={snap.id}
+                  snap={snap}
+                  diff={diff}
+                  expanded={expanded}
+                  isLatest={idx === 0}
+                  onToggle={() => setExpandedSnap(expanded ? null : snap.id)}
+                  onRollback={() => handleRollback(snap)}
+                  saving={saving}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
