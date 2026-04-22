@@ -23,9 +23,10 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus, Eye, ArrowRight, type LucideIcon,
+  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -46,6 +47,10 @@ import {
   buildSuggestionPreview, buildEffectiveDiff,
   type SuggestionPreview, type EffectiveFieldDiff,
 } from '@/lib/playbookSuggestionPreview';
+import {
+  buildBatchPlan, buildBatchNote, generateBatchId,
+  type BatchPlan,
+} from '@/lib/playbookSuggestionBatch';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 const WINDOW_OPTIONS = [
