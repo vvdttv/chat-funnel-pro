@@ -25,14 +25,28 @@
 import { useMemo, useState } from 'react';
 import {
   History, Filter, Loader2, AlertTriangle, GitBranch, GitCompare, X,
-  ChevronDown, ChevronRight, User, Calendar,
+  ChevronDown, ChevronRight, User, Calendar, Layers, Download, Undo2,
+  FileText, FileJson,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { usePlaybookOverrideSnapshots, type OverrideSnapshot } from '@/hooks/usePlaybookOverrideSnapshots';
+import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
+import {
+  groupSnapshotsByBatch, buildRollbackPlan, buildRollbackNote,
+  type RollbackPlan,
+} from '@/lib/playbookSnapshotRollback';
+import {
+  exportSnapshotsCSV, exportSnapshotsJSON, summarizeAuditPeriod,
+  type AuditPeriodSummary,
+} from '@/lib/playbookOverrideAuditExport';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 type ScopeFilter = 'all' | PlaybookOverride['scopeType'];
@@ -112,9 +126,11 @@ const resolveScope = (
 export const PlaybookOverrideSnapshotsBrowser = () => {
   // Snapshots: pegamos tudo (sem filtro server-side) e filtramos client-side
   // para permitir filtros cruzados (autor, data, ação) sem N round-trips.
-  const { items, loading, error, refresh } = usePlaybookOverrideSnapshots({ limit: 200 });
+  const { items, loading, error, refresh, recordSnapshot } = usePlaybookOverrideSnapshots({ limit: 200 });
   const { funnels } = useFunnels();
   const { members } = useOrgMembers();
+  const { upsert, deactivate, refresh: refreshOverrides } = usePlaybookOverrides();
+  const { toast } = useToast();
 
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
   const [layerFilter, setLayerFilter] = useState<LayerFilter>('all');
@@ -128,6 +144,14 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
   // Comparação: A e B (ids dos snapshots selecionados, na ordem em que foram clicados)
   const [compareA, setCompareA] = useState<string | null>(null);
   const [compareB, setCompareB] = useState<string | null>(null);
+
+  // Sprint 21+22 — agrupamento por lote, resumo, rollback
+  const [groupByBatch, setGroupByBatch] = useState<boolean>(false);
+  const [showSummary, setShowSummary] = useState<boolean>(false);
+  const [expandedBatch, setExpandedBatch] = useState<Set<string>>(new Set());
+  const [rollbackPlan, setRollbackPlan] = useState<RollbackPlan | null>(null);
+  const [rollbackRunning, setRollbackRunning] = useState(false);
+  const [rollbackProgress, setRollbackProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const memberMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -186,6 +210,93 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
 
   const clearCompare = () => { setCompareA(null); setCompareB(null); };
 
+  // Sprint 22 — resumo agregado dos snapshots VISÍVEIS
+  const summary = useMemo<AuditPeriodSummary>(
+    () => summarizeAuditPeriod(visible, memberMap),
+    [visible, memberMap],
+  );
+
+  // Sprint 21 — agrupamento por lote (sobre os visíveis)
+  const batchGroups = useMemo(() => groupSnapshotsByBatch(visible), [visible]);
+
+  const toggleBatchOpen = (id: string) => {
+    setExpandedBatch(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const openRollback = (batchId: string) => {
+    setRollbackPlan(buildRollbackPlan(items, batchId));
+  };
+
+  const closeRollback = () => {
+    if (rollbackRunning) return;
+    setRollbackPlan(null);
+  };
+
+  const runRollback = async () => {
+    if (!rollbackPlan) return;
+    setRollbackRunning(true);
+    setRollbackProgress({ done: 0, total: rollbackPlan.items.length });
+    let failures = 0;
+    try {
+      for (let i = 0; i < rollbackPlan.items.length; i++) {
+        const it = rollbackPlan.items[i];
+        try {
+          let overrideId = '';
+          if (it.action === 'rollback') {
+            overrideId = await upsert({
+              scopeType: it.scopeType,
+              scopeId: it.scopeId,
+              layer: it.layer,
+              payload: it.targetPayload,
+            });
+          } else if (it.batchSnapshot.overrideId) {
+            await deactivate(it.batchSnapshot.overrideId);
+            overrideId = it.batchSnapshot.overrideId;
+          }
+          await recordSnapshot({
+            overrideId: overrideId || it.batchSnapshot.overrideId,
+            scopeType: it.scopeType,
+            scopeId: it.scopeId,
+            layer: it.layer,
+            payload: it.targetPayload,
+            isActive: it.targetIsActive,
+            action: 'rollback',
+            note: buildRollbackNote(rollbackPlan.batchId, it),
+          });
+        } catch (e) {
+          console.error('[rollback] item falhou', it.key, e);
+          failures += 1;
+        }
+        setRollbackProgress({ done: i + 1, total: rollbackPlan.items.length });
+      }
+      await refreshOverrides();
+      await refresh();
+      if (failures === 0) {
+        toast({
+          title: 'Lote revertido',
+          description: `${rollbackPlan.items.length} escopo(s) restaurados (${rollbackPlan.batchId}).`,
+        });
+      } else {
+        toast({
+          title: 'Rollback parcial',
+          description: `${failures} de ${rollbackPlan.items.length} reversões falharam.`,
+          variant: 'destructive',
+        });
+      }
+      setRollbackPlan(null);
+    } finally {
+      setRollbackRunning(false);
+    }
+  };
+
+  const handleExportCSV = () => exportSnapshotsCSV(visible, memberMap);
+  const handleExportJSON = () => exportSnapshotsJSON(visible);
+
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -205,6 +316,105 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
         (org / funil / etapa) e layers. Marque dois snapshots para comparar
         payloads lado a lado, mesmo entre escopos diferentes.
       </p>
+
+      {/* Sprint 21+22 — toolbar de ações */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Button
+          size="sm" variant="outline"
+          onClick={() => setGroupByBatch(v => !v)}
+          className="h-7 text-[10px] gap-1"
+        >
+          <Layers size={11} /> {groupByBatch ? 'Lista plana' : `Agrupar por lote (${batchGroups.size})`}
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => setShowSummary(v => !v)}
+          className="h-7 text-[10px] gap-1"
+        >
+          <FileText size={11} /> {showSummary ? 'Ocultar resumo' : 'Resumo do período'}
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={handleExportCSV}
+          disabled={visible.length === 0}
+          className="h-7 text-[10px] gap-1"
+        ><Download size={11} /> CSV</Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={handleExportJSON}
+          disabled={visible.length === 0}
+          className="h-7 text-[10px] gap-1"
+        ><FileJson size={11} /> JSON</Button>
+      </div>
+
+      {showSummary && (
+        <div className="bg-card border border-border rounded-lg p-2.5 space-y-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Resumo · {summary.total} snapshot(s) · {summary.batchCount} lote(s)
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <SummaryBlock label="Por escopo" rows={summary.byScope.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por ação" rows={summary.byAction.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por layer" rows={summary.byLayer.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por autor (top)" rows={summary.byAuthor.slice(0, 5).map(([k, n]) => [k, n])} />
+          </div>
+        </div>
+      )}
+
+      {groupByBatch && batchGroups.size > 0 && (
+        <ul className="space-y-1.5">
+          {Array.from(batchGroups.entries()).map(([batchId, snaps]) => {
+            const isOpenB = expandedBatch.has(batchId);
+            const newest = snaps.reduce((acc, s) =>
+              new Date(s.createdAt).getTime() > new Date(acc.createdAt).getTime() ? s : acc, snaps[0]);
+            const distinctScopes = new Set(snaps.map(s => `${s.scopeType}::${s.scopeId}::${s.layer}`)).size;
+            return (
+              <li key={batchId} className="bg-card border border-primary/30 rounded-md overflow-hidden">
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <button
+                    onClick={() => toggleBatchOpen(batchId)}
+                    className="flex items-center gap-1.5 flex-1 min-w-0 text-left active:opacity-70"
+                  >
+                    {isOpenB
+                      ? <ChevronDown size={11} className="text-muted-foreground shrink-0" />
+                      : <ChevronRight size={11} className="text-muted-foreground shrink-0" />}
+                    <Layers size={11} className="text-primary shrink-0" />
+                    <span className="text-[11px] font-mono text-foreground truncate">{batchId}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      · {distinctScopes} escopo(s) · {formatDate(newest.createdAt)}
+                    </span>
+                  </button>
+                  <Button
+                    size="sm" variant="outline"
+                    onClick={() => openRollback(batchId)}
+                    className="h-6 text-[10px] gap-1 px-1.5"
+                  >
+                    <Undo2 size={10} /> Reverter lote
+                  </Button>
+                </div>
+                {isOpenB && (
+                  <ul className="border-t border-border divide-y divide-border">
+                    {snaps.map(s => {
+                      const sc = resolveScope(s.scopeType, s.scopeId, funnels);
+                      return (
+                        <li key={s.id} className="px-3 py-1.5 text-[10px] text-muted-foreground flex items-center gap-2">
+                          <span className={`px-1 rounded border text-[9px] ${SCOPE_TONE[s.scopeType]}`}>
+                            {SCOPE_LABEL[s.scopeType]}
+                          </span>
+                          <span className="text-foreground truncate flex-1">
+                            {sc.funnel ?? sc.raw}{sc.stage && ` › ${sc.stage}`}
+                          </span>
+                          <span className="font-mono shrink-0">{ACTION_META[s.action].label}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {/* Filtros */}
       <div className="bg-card border border-border rounded-lg p-2 space-y-2">

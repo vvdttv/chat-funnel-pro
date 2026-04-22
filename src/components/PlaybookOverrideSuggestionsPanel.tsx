@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, type LucideIcon,
+  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, TrendingDown, TrendingUp, Minus, Activity, Undo2, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -51,6 +51,11 @@ import {
   buildBatchPlan, buildBatchNote, generateBatchId,
   type BatchPlan,
 } from '@/lib/playbookSuggestionBatch';
+import {
+  evaluateRecentSuggestionEffectiveness,
+  type EffectivenessResult,
+} from '@/lib/playbookSuggestionEffectiveness';
+import { buildRollbackPlan } from '@/lib/playbookSnapshotRollback';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 const WINDOW_OPTIONS = [
@@ -112,13 +117,101 @@ export const PlaybookOverrideSuggestionsPanel = () => {
     limit: 1000,
   });
   const { items: overrides, upsert, refresh: refreshOverrides } = usePlaybookOverrides();
-  const { recordSnapshot } = usePlaybookOverrideSnapshots({ limit: 1 });
+  const { items: allSnapshots, recordSnapshot, refresh: refreshSnapshots } = usePlaybookOverrideSnapshots({ limit: 200 });
   const runtime = usePlaybookRuntime();
 
   const suggestions = useMemo(
     () => analyzeDecisionLogs(logs, opts),
     [logs, opts],
   );
+
+  // Sprint 23 — efetividade das sugestões aplicadas nos últimos 30d
+  const effectiveness = useMemo<EffectivenessResult[]>(
+    () => evaluateRecentSuggestionEffectiveness(allSnapshots, logs, { lookbackDays: 30 }),
+    [allSnapshots, logs],
+  );
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+
+  const handleRevert = async (result: EffectivenessResult) => {
+    if (!orgId) return;
+    setRevertingId(result.snapshotId);
+    try {
+      // Plano: se vier de batch, reusa; senão monta um "plano" sintético com
+      // o snapshot anterior do mesmo escopo+layer.
+      const target = allSnapshots.find(s => s.id === result.snapshotId);
+      if (!target) throw new Error('snapshot_not_found');
+
+      const sameKey = allSnapshots
+        .filter(s => s.scopeType === target.scopeType
+          && s.scopeId === target.scopeId
+          && s.layer === target.layer)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      const targetTs = new Date(target.createdAt).getTime();
+      const previous = [...sameKey]
+        .reverse()
+        .find(s => new Date(s.createdAt).getTime() < targetTs) ?? null;
+
+      const targetPayload = previous?.payload ?? {};
+      const targetIsActive = previous?.isActive ?? false;
+
+      let overrideId = '';
+      if (targetIsActive && previous) {
+        overrideId = await upsert({
+          scopeType: target.scopeType,
+          scopeId: target.scopeId,
+          layer: target.layer,
+          payload: targetPayload,
+        });
+      } else {
+        // Sem prévio: desativar override existente (best effort)
+        const existing = overrides.find(o =>
+          o.scopeType === target.scopeType
+          && o.scopeId === target.scopeId
+          && o.layer === target.layer
+          && o.isActive,
+        );
+        if (existing) {
+          await upsert({
+            scopeType: target.scopeType,
+            scopeId: target.scopeId,
+            layer: target.layer,
+            payload: {},
+          });
+          overrideId = existing.id;
+        }
+      }
+
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: target.scopeType,
+        scopeId: target.scopeId,
+        layer: target.layer,
+        payload: targetPayload,
+        isActive: targetIsActive,
+        action: 'rollback',
+        note: `reverter sugestão ineficaz (${result.label}) · snapshot=${target.id}`,
+      });
+
+      await refreshOverrides();
+      await refreshSnapshots();
+      await runtime.refresh();
+      toast({
+        title: 'Sugestão revertida',
+        description: previous
+          ? 'Restaurado o estado anterior à aplicação.'
+          : 'Override desativado (não havia estado anterior).',
+      });
+    } catch (e) {
+      toast({
+        title: 'Erro ao reverter',
+        description: e instanceof Error ? e.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setRevertingId(null);
+    }
+  };
 
   // Substitui o placeholder 'org' pelo orgId real no scope das sugestões de tag tóxica.
   const resolvedSuggestions = useMemo(() => {
@@ -318,6 +411,14 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         encontrou <strong>{resolvedSuggestions.length}</strong> {resolvedSuggestions.length === 1 ? 'padrão recomendado' : 'padrões recomendados'} para virar override.
         Aplicar apenas mescla com o existente — nunca apaga customizações.
       </p>
+
+      {/* Sprint 23 — Efetividade das sugestões aplicadas (30d) */}
+      <EffectivenessCard
+        results={effectiveness}
+        funnels={funnels}
+        revertingId={revertingId}
+        onRevert={handleRevert}
+      />
 
       {/* Sprint 20 — barra de seleção em lote */}
       {!loadingLogs && selectableSuggestions.length > 0 && (
@@ -816,6 +917,93 @@ const BatchPlanDialog = ({
         )}
       </DialogContent>
     </Dialog>
+  );
+};
+
+// ----------------------------------------------------------------------------
+// Sprint 23 — Card de efetividade
+// ----------------------------------------------------------------------------
+
+const STATUS_META: Record<EffectivenessResult['status'], { icon: LucideIcon; cls: string; label: string }> = {
+  improved:     { icon: TrendingDown, cls: 'bg-success/10 text-success border-success/30',         label: 'melhorou' },
+  worsened:     { icon: TrendingUp,   cls: 'bg-destructive/10 text-destructive border-destructive/30', label: 'piorou' },
+  neutral:      { icon: Minus,        cls: 'bg-secondary text-muted-foreground border-border',     label: 'estável' },
+  inconclusive: { icon: Activity,     cls: 'bg-secondary text-muted-foreground border-border',     label: 'sem dados' },
+};
+
+const EffectivenessCard = ({
+  results, funnels, revertingId, onRevert,
+}: {
+  results: EffectivenessResult[];
+  funnels: ReturnType<typeof useFunnels>['funnels'];
+  revertingId: string | null;
+  onRevert: (r: EffectivenessResult) => void;
+}) => {
+  if (results.length === 0) return null;
+  const resolveScopeName = (r: EffectivenessResult): string => {
+    if (r.scopeType === 'org') return 'Organização';
+    if (r.scopeType === 'funnel') {
+      return funnels.find(f => f.id === r.scopeId)?.name ?? r.scopeId;
+    }
+    const [funnelId, stageId] = r.scopeId.split('::');
+    const f = funnels.find(x => x.id === funnelId);
+    const s = f?.stages.find(x => x.id === stageId);
+    return s ? `${f?.name ?? funnelId} › ${s.name}` : r.scopeId;
+  };
+  return (
+    <div className="bg-card border border-border rounded-lg p-2.5 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Activity size={12} className="text-primary" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+          Efetividade das sugestões aplicadas (30d)
+        </span>
+        <span className="text-[10px] text-muted-foreground ml-auto">{results.length}</span>
+      </div>
+      <ul className="space-y-1">
+        {results.slice(0, 6).map(r => {
+          const meta = STATUS_META[r.status];
+          const Icon = meta.icon;
+          const canRevert = r.status === 'worsened';
+          const reverting = revertingId === r.snapshotId;
+          return (
+            <li
+              key={r.snapshotId}
+              className="flex items-center gap-2 bg-background/50 border border-border rounded p-1.5"
+            >
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono inline-flex items-center gap-1 shrink-0 ${meta.cls}`}>
+                <Icon size={9} /> {r.label}
+              </span>
+              <span className="text-[10px] text-foreground truncate flex-1" title={resolveScopeName(r)}>
+                {resolveScopeName(r)}
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono shrink-0">
+                n={r.before.sample}/{r.after.sample}
+              </span>
+              {canRevert && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRevert(r)}
+                  disabled={reverting}
+                  className="h-6 text-[10px] gap-1 px-1.5"
+                  title="Reverter aplicação ineficaz"
+                >
+                  {reverting
+                    ? <Loader2 size={10} className="animate-spin" />
+                    : <Undo2 size={10} />}
+                  Reverter
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {results.length > 6 && (
+        <p className="text-[9px] text-muted-foreground italic text-center">
+          mostrando 6 de {results.length} avaliações
+        </p>
+      )}
+    </div>
   );
 };
 
