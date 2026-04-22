@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch,
-  History, RotateCcw, ChevronDown, ChevronRight,
+  History, RotateCcw, ChevronDown, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,11 +34,29 @@ import {
   composeEffectivePlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
 import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
+import { computeOverrideCascade } from '@/lib/playbookOverrideCascade';
 
+/**
+ * Props legados (Sprint 11): edição em escopo `stage` para uma etapa específica.
+ * Sprint 17: aceita opcionalmente `scope` que sobrepõe os parâmetros e permite
+ * editar overrides em escopo `funnel` ou `org` direto na UI, com aviso de cascata.
+ */
 interface Props {
   funnelId: string;
   stageId: string;
   stageName: string;
+  /**
+   * Quando informado, sobrescreve o escopo padrão (stage) e habilita edição
+   * de overrides multi-escopo. O caller é responsável por garantir scopeId
+   * coerente (`funnelId` para funnel, `orgId` para org).
+   */
+  scope?: {
+    type: PlaybookOverride['scopeType'];
+    id: string;
+    label: string;
+  };
+  /** Quando true, o seletor de escopo (Etapa | Funil | Org) fica visível. */
+  allowScopeSwitch?: boolean;
 }
 
 type LayerKey = 'stage' | 'overlay';
