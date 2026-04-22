@@ -6,6 +6,7 @@ import { useFunnelsContext } from '@/hooks/useFunnels';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
 import { FunnelStatusHeatmap } from '@/components/FunnelStatusHeatmap';
+import { useIADecisionLogs } from '@/hooks/useIADecisionLogs';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
@@ -18,6 +19,7 @@ const IndicadoresPage = () => {
   const [openSection, setOpenSection] = useState<string | null>('funnel');
   const { funnels } = useFunnelsContext();
   const { deals } = useDealsContext();
+  const { logs: iaLogs } = useIADecisionLogs({ sinceDays: 30, limit: 1000 });
 
   const totalDeals = deals.length;
   const receitaPrevista = deals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
@@ -199,7 +201,7 @@ const IndicadoresPage = () => {
             </button>
             {openSection === 'composicional' && (
               <div className="px-4 pb-4">
-                <FunnelStatusHeatmap />
+                <FunnelStatusHeatmap deals={deals} funnels={funnels} logs={iaLogs} />
               </div>
             )}
           </div>

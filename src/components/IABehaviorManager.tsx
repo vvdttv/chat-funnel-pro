@@ -23,7 +23,7 @@ import type {
   LeadBehavior, LeadBehaviorCategory,
 } from '@/data/iaBehavior';
 
-type Tab = 'rules' | 'behaviors';
+type Tab = 'rules' | 'behaviors' | 'health';
 
 const KIND_META: Record<IARuleKind, { label: string; icon: typeof ShieldCheck; classes: string }> = {
   do:    { label: 'DO',    icon: ShieldCheck,  classes: 'bg-success/15 text-success border-success/30' },
@@ -496,7 +496,17 @@ export const IABehaviorManager = () => {
             tab === 'behaviors' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
         >Comportamentos ({behaviors.length})</button>
+        <button
+          onClick={() => setTab('health')}
+          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+            tab === 'health' ? 'bg-card text-foreground' : 'text-muted-foreground'
+          }`}
+        ><Activity size={11} /> Saúde</button>
       </div>
+
+      {tab === 'health' && (
+        <IASystemHealthPanel />
+      )}
 
       {error && (
         <div className="mb-2 p-2 bg-destructive/10 border border-destructive/30 rounded text-[11px] text-destructive">
