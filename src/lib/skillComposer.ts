@@ -194,71 +194,75 @@ export function expandSkillToActions(
 ): ExpandedAction[] {
   const { skillByCode, maxDepth = 5 } = opts;
   const out: ExpandedAction[] = [];
-  const visiting = new Set<string>();
 
-  const walk = (
+  // Itera os filhos de um nó dentro da MESMA skill (sem controle de ciclo)
+  const walkChildren = (
     current: SkillWithNodes,
-    parentId: string | null,
+    parentId: string,
     depth: number,
     keyPrefix: string,
+    callStack: Set<string>,
   ): void => {
-    if (depth > maxDepth) return;
-    const code = current.skill.code;
-    if (visiting.has(code)) {
-      // ciclo — emite nó sentinela e para
-      out.push({
-        id: `${keyPrefix}:CYCLE:${code}`,
-        sourceSkillCode: code,
-        node: {
-          id: `cycle-${code}`,
-          skillId: current.skill.id,
-          kind: 'condition',
-          parentNodeId: null,
-          branchLabel: null,
-          positionX: 0, positionY: 0, position: 0,
-          config: { expression: `[ciclo detectado em ${code}]` },
-        },
-        depth,
-      });
-      return;
-    }
-    visiting.add(code);
-
     const kids = childrenOf(current.nodes, parentId);
     for (const node of kids) {
       out.push({
         id: `${keyPrefix}:${node.id}`,
-        sourceSkillCode: code,
+        sourceSkillCode: current.skill.code,
         node,
         depth,
       });
-      if (node.kind === 'call_skill' && skillByCode) {
+
+      if (node.kind === 'call_skill' && skillByCode && depth < maxDepth) {
         const cfg = node.config as unknown as CallSkillConfig;
         const target = skillByCode.get(cfg.skillCode);
         if (target) {
-          const targetTrigger = triggerOf(target.nodes);
-          if (targetTrigger) {
-            walk(target, targetTrigger.id, depth + 1, `${keyPrefix}:${node.id}>`);
+          if (callStack.has(target.skill.code)) {
+            // ciclo detectado em call_skill
+            out.push({
+              id: `${keyPrefix}:${node.id}:CYCLE:${target.skill.code}`,
+              sourceSkillCode: target.skill.code,
+              node: {
+                id: `cycle-${target.skill.code}`,
+                skillId: target.skill.id,
+                kind: 'condition',
+                parentNodeId: null,
+                branchLabel: null,
+                positionX: 0, positionY: 0, position: 0,
+                config: { expression: `[ciclo detectado em ${target.skill.code}]` },
+              },
+              depth: depth + 1,
+            });
+          } else {
+            const targetTrigger = triggerOf(target.nodes);
+            if (targetTrigger) {
+              const nextStack = new Set(callStack);
+              nextStack.add(target.skill.code);
+              out.push({
+                id: `${keyPrefix}:${node.id}>${target.skill.code}:${targetTrigger.id}`,
+                sourceSkillCode: target.skill.code,
+                node: targetTrigger,
+                depth: depth + 1,
+              });
+              walkChildren(target, targetTrigger.id, depth + 1, `${keyPrefix}:${node.id}>${target.skill.code}`, nextStack);
+            }
           }
         }
       }
-      // Recurse normalmente nos filhos do nó atual
-      walk(current, node.id, depth, keyPrefix);
-    }
 
-    visiting.delete(code);
+      // Continua descendo nos filhos do nó atual (mesma skill)
+      walkChildren(current, node.id, depth, keyPrefix, callStack);
+    }
   };
 
   const trigger = triggerOf(swn.nodes);
   if (!trigger) return [];
-  // Inclui o próprio gatilho como primeira ação
   out.push({
     id: `${swn.skill.code}:${trigger.id}`,
     sourceSkillCode: swn.skill.code,
     node: trigger,
     depth: 0,
   });
-  walk(swn, trigger.id, 0, swn.skill.code);
+  walkChildren(swn, trigger.id, 0, swn.skill.code, new Set([swn.skill.code]));
   return out;
 }
 
