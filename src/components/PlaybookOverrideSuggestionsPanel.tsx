@@ -23,9 +23,10 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus, Eye, ArrowRight, type LucideIcon,
+  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -46,6 +47,10 @@ import {
   buildSuggestionPreview, buildEffectiveDiff,
   type SuggestionPreview, type EffectiveFieldDiff,
 } from '@/lib/playbookSuggestionPreview';
+import {
+  buildBatchPlan, buildBatchNote, generateBatchId,
+  type BatchPlan,
+} from '@/lib/playbookSuggestionBatch';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 const WINDOW_OPTIONS = [
@@ -96,6 +101,11 @@ export const PlaybookOverrideSuggestionsPanel = () => {
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<OverrideSuggestion | null>(null);
   const [opts] = useState<AnalyzeOptions>({});
+  // Sprint 20 — seleção em lote
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchPlan, setBatchPlan] = useState<BatchPlan | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const { logs, loading: loadingLogs, refresh: refreshLogs } = useIADecisionLogs({
     sinceDays: windowDays,
@@ -118,6 +128,102 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         : s,
     );
   }, [suggestions, orgId]);
+
+  const selectableSuggestions = useMemo(
+    () => resolvedSuggestions.filter(s => !appliedIds.has(s.id)),
+    [resolvedSuggestions, appliedIds],
+  );
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(selectableSuggestions.map(s => s.id)));
+  };
+
+  const selectCritical = () => {
+    setSelectedIds(new Set(
+      selectableSuggestions.filter(s => s.severity === 'critical').map(s => s.id),
+    ));
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const openBatchDialog = () => {
+    const chosen = resolvedSuggestions.filter(s => selectedIds.has(s.id));
+    if (chosen.length === 0) return;
+    const plan = buildBatchPlan({
+      suggestions: chosen,
+      existingOverrides: overrides,
+      batchId: generateBatchId(),
+    });
+    setBatchPlan(plan);
+  };
+
+  const closeBatchDialog = () => {
+    if (batchRunning) return;
+    setBatchPlan(null);
+  };
+
+  const runBatch = async () => {
+    if (!batchPlan || !orgId) return;
+    setBatchRunning(true);
+    setBatchProgress({ done: 0, total: batchPlan.items.length });
+    const newApplied = new Set(appliedIds);
+    let failures = 0;
+    try {
+      for (let i = 0; i < batchPlan.items.length; i++) {
+        const item = batchPlan.items[i];
+        try {
+          const overrideId = await upsert({
+            scopeType: item.scopeType,
+            scopeId: item.scopeId,
+            layer: item.layer,
+            payload: item.mergedPayload,
+          });
+          await recordSnapshot({
+            overrideId: overrideId || null,
+            scopeType: item.scopeType,
+            scopeId: item.scopeId,
+            layer: item.layer,
+            payload: item.mergedPayload,
+            isActive: true,
+            action: 'upsert',
+            note: buildBatchNote(batchPlan.batchId, item, batchPlan.totalWrites),
+          });
+          for (const s of item.suggestions) newApplied.add(s.id);
+        } catch (e) {
+          console.error('[batch] item falhou', item.key, e);
+          failures += 1;
+        }
+        setBatchProgress({ done: i + 1, total: batchPlan.items.length });
+      }
+      await refreshOverrides();
+      await runtime.refresh();
+      setAppliedIds(newApplied);
+      clearSelection();
+      if (failures === 0) {
+        toast({
+          title: 'Lote aplicado',
+          description: `${batchPlan.totalSuggestions} sugestões consolidadas em ${batchPlan.totalWrites} gravação(ões). Histórico marcado com ${batchPlan.batchId}.`,
+        });
+      } else {
+        toast({
+          title: 'Lote aplicado com falhas',
+          description: `${failures} de ${batchPlan.totalWrites} gravações falharam. Veja o console.`,
+          variant: 'destructive',
+        });
+      }
+      setBatchPlan(null);
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   const handleApply = async (sug: OverrideSuggestion) => {
     if (!orgId) {
@@ -213,6 +319,40 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         Aplicar apenas mescla com o existente — nunca apaga customizações.
       </p>
 
+      {/* Sprint 20 — barra de seleção em lote */}
+      {!loadingLogs && selectableSuggestions.length > 0 && (
+        <div className="bg-secondary/40 border border-border rounded-lg p-2 flex items-center justify-between gap-2 flex-wrap sticky top-0 z-10">
+          <div className="flex items-center gap-2 flex-wrap text-[11px]">
+            <Layers size={12} className="text-primary" />
+            <span className="font-medium text-foreground">
+              {selectedIds.size}/{selectableSuggestions.length} selecionada(s)
+            </span>
+            <button
+              onClick={selectAll}
+              className="text-[10px] underline text-muted-foreground hover:text-foreground"
+            >Todas</button>
+            <button
+              onClick={selectCritical}
+              className="text-[10px] underline text-destructive hover:opacity-80"
+            >Só críticas</button>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={clearSelection}
+                className="text-[10px] underline text-muted-foreground hover:text-foreground"
+              >Limpar</button>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={openBatchDialog}
+            disabled={selectedIds.size === 0}
+            className="h-7 text-[10px] gap-1"
+          >
+            <Layers size={11} /> Aplicar {selectedIds.size > 0 ? `${selectedIds.size}` : ''} em lote
+          </Button>
+        </div>
+      )}
+
       {loadingLogs && (
         <div className="flex items-center justify-center py-6 text-muted-foreground text-xs gap-1.5">
           <Loader2 size={12} className="animate-spin" /> analisando padrões…
@@ -236,13 +376,24 @@ export const PlaybookOverrideSuggestionsPanel = () => {
           const scopeRes = resolveScope(sug.scope, funnels);
           const applied = appliedIds.has(sug.id);
           const applying = applyingId === sug.id;
+          const selected = selectedIds.has(sug.id);
           return (
             <li
               key={sug.id}
-              className="bg-card border border-border rounded-lg p-2.5 space-y-2"
+              className={`bg-card border rounded-lg p-2.5 space-y-2 transition-colors ${
+                selected ? 'border-primary/60 ring-1 ring-primary/30' : 'border-border'
+              }`}
             >
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                  {!applied && (
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => toggleSelect(sug.id)}
+                      aria-label="Selecionar para lote"
+                      className="h-3.5 w-3.5"
+                    />
+                  )}
                   <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${meta.tone}`}>
                     {meta.label}
                   </span>
@@ -333,6 +484,15 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         onApply={async (sug) => { await handleApply(sug); setPreviewing(null); }}
         applyingId={applyingId}
         appliedIds={appliedIds}
+      />
+
+      <BatchPlanDialog
+        plan={batchPlan}
+        running={batchRunning}
+        progress={batchProgress}
+        funnels={funnels}
+        onClose={closeBatchDialog}
+        onConfirm={runBatch}
       />
     </div>
   );
@@ -538,6 +698,119 @@ const SuggestionPreviewDialog = ({
                   Aplicar agora
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ----------------------------------------------------------------------------
+// Sprint 20 — Dialog de confirmação do lote.
+// ----------------------------------------------------------------------------
+
+interface BatchPlanDialogProps {
+  plan: BatchPlan | null;
+  running: boolean;
+  progress: { done: number; total: number };
+  funnels: ReturnType<typeof useFunnels>['funnels'];
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const BatchPlanDialog = ({
+  plan, running, progress, funnels, onClose, onConfirm,
+}: BatchPlanDialogProps) => {
+  const open = !!plan;
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm flex items-center gap-2">
+            <Layers size={14} className="text-primary" /> Aplicar lote de sugestões
+          </DialogTitle>
+          <DialogDescription className="text-[11px]">
+            {plan && (
+              <>
+                {plan.totalSuggestions} sugestão(ões) selecionada(s) →{' '}
+                <strong>{plan.totalWrites}</strong> gravação(ões) distintas
+                {plan.totalSuggestions !== plan.totalWrites && (
+                  <> (sugestões do mesmo escopo serão fundidas em um único override)</>
+                )}.
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {plan && (
+          <div className="space-y-3">
+            <div className="bg-secondary/40 border border-border rounded p-2 text-[10px] font-mono text-muted-foreground">
+              ID do lote: <span className="text-foreground">{plan.batchId}</span>
+              <p className="text-[10px] mt-1 font-sans not-italic">
+                Cada snapshot do histórico levará esse ID — assim você pode
+                reverter o lote inteiro depois localizando-o no browser de snapshots.
+              </p>
+            </div>
+
+            <ul className="border border-border rounded divide-y divide-border max-h-[40vh] overflow-y-auto">
+              {plan.items.map(item => {
+                const f = funnels.find(fn => fn.id === item.scopeId.split('::')[0]);
+                const stageId = item.scopeType === 'stage' ? item.scopeId.split('::')[1] : undefined;
+                const stageName = stageId ? f?.stages.find(s => s.id === stageId)?.name : undefined;
+                return (
+                  <li key={item.key} className="p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded border bg-secondary text-foreground border-border font-medium uppercase tracking-wide">
+                          {SCOPE_LABEL[item.scopeType]}
+                        </span>
+                        <span className="text-[10px] text-foreground font-medium">
+                          {item.scopeType === 'org'
+                            ? 'Organização'
+                            : item.scopeType === 'funnel'
+                              ? (f?.name ?? item.scopeId)
+                              : `${f?.name ?? item.scopeId.split('::')[0]} › ${stageName ?? stageId}`}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground font-mono">
+                        {item.suggestions.length}× sugestão{item.suggestions.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      {item.summaryTitle}
+                    </p>
+                    {item.existingPayload && Object.keys(item.existingPayload).length > 0 && (
+                      <p className="text-[9px] text-muted-foreground italic">
+                        ↳ override existente será preservado e mesclado com a sugestão.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {running && (
+              <div className="bg-primary/5 border border-primary/30 rounded p-2 text-[11px] text-primary flex items-center gap-2">
+                <Loader2 size={12} className="animate-spin" />
+                Aplicando {progress.done}/{progress.total}…
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline" size="sm" className="h-7 text-[11px]"
+                onClick={onClose} disabled={running}
+              >Cancelar</Button>
+              <Button
+                size="sm" className="h-7 text-[11px] gap-1"
+                onClick={onConfirm} disabled={running || plan.items.length === 0}
+              >
+                {running
+                  ? <Loader2 size={11} className="animate-spin" />
+                  : <Layers size={11} />}
+                Aplicar lote
+              </Button>
             </div>
           </div>
         )}
