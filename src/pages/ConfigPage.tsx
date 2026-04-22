@@ -18,6 +18,7 @@ import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
 import { IABehaviorManager } from '@/components/IABehaviorManager';
 import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGlobalList';
 import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideSnapshotsBrowser';
+import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
@@ -1078,6 +1079,8 @@ const ConfigPage = () => {
           <>
             <IABehaviorSeedBanner />
             <IABehaviorManager />
+            <div className="my-4 border-t border-border" />
+            <PlaybookOverrideMultiScopeEditor />
             <div className="my-4 border-t border-border" />
             <PlaybookOverridesGlobalList />
             <div className="my-4 border-t border-border" />

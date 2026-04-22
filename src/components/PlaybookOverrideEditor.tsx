@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch,
-  History, RotateCcw, ChevronDown, ChevronRight,
+  History, RotateCcw, ChevronDown, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,11 +34,29 @@ import {
   composeEffectivePlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
 import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
+import { computeOverrideCascade } from '@/lib/playbookOverrideCascade';
 
+/**
+ * Props legados (Sprint 11): edição em escopo `stage` para uma etapa específica.
+ * Sprint 17: aceita opcionalmente `scope` que sobrepõe os parâmetros e permite
+ * editar overrides em escopo `funnel` ou `org` direto na UI, com aviso de cascata.
+ */
 interface Props {
   funnelId: string;
   stageId: string;
   stageName: string;
+  /**
+   * Quando informado, sobrescreve o escopo padrão (stage) e habilita edição
+   * de overrides multi-escopo. O caller é responsável por garantir scopeId
+   * coerente (`funnelId` para funnel, `orgId` para org).
+   */
+  scope?: {
+    type: PlaybookOverride['scopeType'];
+    id: string;
+    label: string;
+  };
+  /** Quando true, o seletor de escopo (Etapa | Funil | Org) fica visível. */
+  allowScopeSwitch?: boolean;
 }
 
 type LayerKey = 'stage' | 'overlay';
@@ -88,11 +106,19 @@ const draftToPayload = (d: DraftPayload): PlaybookOverride['payload'] => {
   return payload;
 };
 
-export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) => {
+export const PlaybookOverrideEditor = ({
+  funnelId, stageId, stageName, scope, allowScopeSwitch = false,
+}: Props) => {
   const { toast } = useToast();
-  const stageScopeId = `${funnelId}::${stageId}`;
+
+  // Escopo efetivo — quando `scope` é informado, ele vence; senão usamos stage padrão.
+  const effectiveScope = useMemo<{ type: PlaybookOverride['scopeType']; id: string; label: string }>(() => {
+    if (scope) return scope;
+    return { type: 'stage', id: `${funnelId}::${stageId}`, label: stageName };
+  }, [scope, funnelId, stageId, stageName]);
+
   const { items: overrides, loading: loadingOv, upsert, deactivate, refresh } =
-    usePlaybookOverrides({ scopeType: 'stage', scopeId: stageScopeId });
+    usePlaybookOverrides({ scopeType: effectiveScope.type, scopeId: effectiveScope.id });
   const runtime = usePlaybookRuntime();
   const { behaviors } = useIABehavior();
 
@@ -106,11 +132,21 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
   // Histórico versionado (filtrado por scope+layer ativo)
   const { items: snapshots, loading: loadingSnaps, recordSnapshot, refresh: refreshSnaps } =
     usePlaybookOverrideSnapshots({
-      scopeType: 'stage',
-      scopeId: stageScopeId,
+      scopeType: effectiveScope.type,
+      scopeId: effectiveScope.id,
       layer,
       limit: 30,
     });
+
+  // Cascata: quantas etapas físicas serão impactadas por este escopo (Sprint 17).
+  const cascade = useMemo(() => {
+    if (!runtime.snapshot) return null;
+    return computeOverrideCascade({
+      scopeType: effectiveScope.type,
+      scopeId: effectiveScope.id,
+      physicalStages: runtime.snapshot.physicalStages,
+    });
+  }, [runtime.snapshot, effectiveScope.type, effectiveScope.id]);
 
   // Carrega rascunho do override existente para o layer ativo
   const currentOverride = useMemo(
@@ -122,28 +158,42 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     setDraft(payloadToDraft(currentOverride?.payload));
   }, [currentOverride, layer]);
 
-  // Preview composicional: substitui override do mesmo scope+layer pelo rascunho
+  // Preview composicional: substitui override do mesmo scope+layer pelo rascunho.
+  // Para escopos `funnel` e `org`, mostramos o efeito sobre a primeira etapa
+  // impactada (ou a etapa do prop `stageId` se ela ainda estiver no conjunto)
+  // — assim o admin enxerga o resultado real numa etapa de exemplo.
   const preview = useMemo(() => {
     if (runtime.loading || !runtime.snapshot) return null;
     const draftOverride: PlaybookOverride = {
-      scopeType: 'stage',
-      scopeId: stageScopeId,
+      scopeType: effectiveScope.type,
+      scopeId: effectiveScope.id,
       layer,
       payload: draftToPayload(draft),
     };
-    // Em overlay, deal precisa estar won/lost para o overlay ser aplicado.
     const previewStatusForCompose: PreviewStatus =
       layer === 'overlay' && previewStatus === 'open' ? 'won' : previewStatus;
     const snap = runtime.snapshot;
-    const funnelContextTags = snap.funnelContextTagsById[funnelId] ?? [];
+
+    // Escolhe etapa para o preview composicional.
+    let pvFunnel = funnelId;
+    let pvStage = stageId;
+    if (effectiveScope.type !== 'stage') {
+      const candidates = effectiveScope.type === 'funnel'
+        ? snap.physicalStages.filter(s => s.funnelId === effectiveScope.id)
+        : snap.physicalStages;
+      const fallback = candidates[0];
+      if (fallback) { pvFunnel = fallback.funnelId; pvStage = fallback.stageId; }
+    }
+
+    const funnelContextTags = snap.funnelContextTagsById[pvFunnel] ?? [];
     const patchedOverrides = [
       ...snap.overrides.filter(
-        o => !(o.scopeType === 'stage' && o.scopeId === stageScopeId && o.layer === layer),
+        o => !(o.scopeType === effectiveScope.type && o.scopeId === effectiveScope.id && o.layer === layer),
       ),
       draftOverride,
     ];
     return composeEffectivePlaybook({
-      funnelId, stageId, dealStatus: previewStatusForCompose, funnelContextTags,
+      funnelId: pvFunnel, stageId: pvStage, dealStatus: previewStatusForCompose, funnelContextTags,
       archetypes: snap.archetypes,
       statusArchetypes: snap.statusArchetypes,
       physicalStages: snap.physicalStages,
@@ -154,7 +204,7 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
       ladders: snap.ladders,
       triggers: snap.triggers,
     });
-  }, [runtime.loading, runtime.snapshot, funnelId, stageId, stageScopeId, layer, draft, previewStatus]);
+  }, [runtime.loading, runtime.snapshot, funnelId, stageId, effectiveScope, layer, draft, previewStatus]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -168,11 +218,13 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
         });
         return;
       }
-      const overrideId = await upsert({ scopeType: 'stage', scopeId: stageScopeId, layer, payload });
+      const overrideId = await upsert({
+        scopeType: effectiveScope.type, scopeId: effectiveScope.id, layer, payload,
+      });
       await recordSnapshot({
         overrideId: overrideId || null,
-        scopeType: 'stage',
-        scopeId: stageScopeId,
+        scopeType: effectiveScope.type,
+        scopeId: effectiveScope.id,
         layer,
         payload,
         isActive: true,
@@ -181,9 +233,14 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
       await refresh();
       await refreshSnaps();
       await runtime.refresh();
+      const scopeLabel = effectiveScope.type === 'stage'
+        ? `etapa "${effectiveScope.label}"`
+        : effectiveScope.type === 'funnel'
+          ? `funil "${effectiveScope.label}"`
+          : 'organização inteira';
       toast({
         title: 'Override salvo',
-        description: `Camada "${layer}" desta etapa atualizada.`,
+        description: `Camada "${layer}" da ${scopeLabel} atualizada.`,
       });
     } catch (e) {
       toast({
@@ -194,7 +251,7 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [draft, layer, stageScopeId, upsert, refresh, refreshSnaps, recordSnapshot, runtime, toast]);
+  }, [draft, layer, effectiveScope, upsert, refresh, refreshSnaps, recordSnapshot, runtime, toast]);
 
   const handleRemove = useCallback(async () => {
     if (!currentOverride) return;
@@ -204,8 +261,8 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
       await deactivate(currentOverride.id);
       await recordSnapshot({
         overrideId: currentOverride.id,
-        scopeType: 'stage',
-        scopeId: stageScopeId,
+        scopeType: effectiveScope.type,
+        scopeId: effectiveScope.id,
         layer,
         payload: previousPayload,
         isActive: false,
@@ -227,21 +284,21 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [currentOverride, deactivate, recordSnapshot, refreshSnaps, stageScopeId, layer, runtime, toast]);
+  }, [currentOverride, deactivate, recordSnapshot, refreshSnaps, effectiveScope, layer, runtime, toast]);
 
   const handleRollback = useCallback(async (snap: OverrideSnapshot) => {
     setSaving(true);
     try {
       const overrideId = await upsert({
-        scopeType: 'stage',
-        scopeId: stageScopeId,
+        scopeType: effectiveScope.type,
+        scopeId: effectiveScope.id,
         layer,
         payload: snap.payload,
       });
       await recordSnapshot({
         overrideId: overrideId || null,
-        scopeType: 'stage',
-        scopeId: stageScopeId,
+        scopeType: effectiveScope.type,
+        scopeId: effectiveScope.id,
         layer,
         payload: snap.payload,
         isActive: true,
@@ -265,17 +322,31 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [stageScopeId, layer, upsert, recordSnapshot, refresh, refreshSnaps, runtime, toast]);
+  }, [effectiveScope, layer, upsert, recordSnapshot, refresh, refreshSnaps, runtime, toast]);
+
+  const scopeTypeLabel = effectiveScope.type === 'stage'
+    ? 'Etapa' : effectiveScope.type === 'funnel' ? 'Funil' : 'Organização';
+  const scopeTone = effectiveScope.type === 'stage'
+    ? 'bg-secondary text-foreground border-border'
+    : effectiveScope.type === 'funnel'
+      ? 'bg-primary/15 text-primary border-primary/30'
+      : 'bg-warning/15 text-warning border-warning/30';
 
   return (
     <div className="space-y-3">
       {/* Header + seletor de layer */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <Layers size={14} className="text-primary" />
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Layers size={14} className="text-primary shrink-0" />
           <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
             Overrides composicionais
           </h3>
+          <span
+            className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${scopeTone}`}
+            title={`Escopo: ${scopeTypeLabel} — ${effectiveScope.id}`}
+          >
+            {scopeTypeLabel}: {effectiveScope.label}
+          </span>
         </div>
         <div className="flex gap-1">
           {(['stage', 'overlay'] as LayerKey[]).map(l => {
@@ -297,10 +368,32 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
         </div>
       </div>
 
+      {/* Aviso de cascata — só aparece quando o escopo afeta mais de uma etapa */}
+      {cascade && cascade.affected > 1 && (
+        <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-md p-2">
+          <AlertTriangle size={13} className="text-warning shrink-0 mt-0.5" />
+          <div className="space-y-1 min-w-0">
+            <p className="text-[11px] text-warning font-semibold">
+              Este override em escopo <strong>{scopeTypeLabel.toLowerCase()}</strong> vai afetar
+              {' '}<strong>{cascade.affected}</strong> {cascade.affected === 1 ? 'etapa' : 'etapas'}
+              {' '}assim que for salvo.
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Em ordem de prioridade: arquétipo &lt; org &lt; funil &lt; etapa &lt; overlay. Overrides
+              de escopos mais específicos continuam vencendo este aqui.
+            </p>
+          </div>
+        </div>
+      )}
+
       <p className="text-[11px] text-muted-foreground leading-snug">
         {layer === 'stage'
-          ? `Sobrescreve o playbook desta etapa quando o deal está em andamento (open). A camada "${stageName}" entra após o arquétipo e antes do overlay de status.`
-          : `Sobrescreve a camada de overlay quando o deal vira won ou lost. Útil para ajustar tom de pós-venda ou linguagem de recuperação por etapa.`}
+          ? effectiveScope.type === 'stage'
+            ? `Sobrescreve o playbook desta etapa quando o deal está em andamento (open). A camada "${effectiveScope.label}" entra após o arquétipo e antes do overlay de status.`
+            : effectiveScope.type === 'funnel'
+              ? `Sobrescreve o playbook de TODAS as etapas do funil "${effectiveScope.label}" quando o deal está open. Etapas com override próprio têm prioridade.`
+              : `Sobrescreve o playbook base de TODAS as etapas da organização quando o deal está open. Funil/etapa específicos têm prioridade.`
+          : `Sobrescreve a camada de overlay quando o deal vira won ou lost. Útil para ajustar tom de pós-venda ou linguagem de recuperação.`}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -512,7 +605,7 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
                       <span className="text-muted-foreground italic">nenhum</span>
                     ) : (
                       preview.provenance.overrideIds.map(id => {
-                        const isDraft = id === `stage:${stageScopeId}:${layer}`;
+                        const isDraft = id === `${effectiveScope.type}:${effectiveScope.id}:${layer}`;
                         return (
                           <span
                             key={id}
