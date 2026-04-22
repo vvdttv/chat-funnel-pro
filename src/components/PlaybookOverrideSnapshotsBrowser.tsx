@@ -676,6 +676,15 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
           atualizar lista
         </button>
       )}
+
+      <RollbackPlanDialog
+        plan={rollbackPlan}
+        funnels={funnels}
+        running={rollbackRunning}
+        progress={rollbackProgress}
+        onClose={closeRollback}
+        onConfirm={runRollback}
+      />
     </div>
   );
 };
