@@ -100,6 +100,17 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('open');
   const [draft, setDraft] = useState<DraftPayload>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [expandedSnap, setExpandedSnap] = useState<string | null>(null);
+
+  // Histórico versionado (filtrado por scope+layer ativo)
+  const { items: snapshots, loading: loadingSnaps, recordSnapshot, refresh: refreshSnaps } =
+    usePlaybookOverrideSnapshots({
+      scopeType: 'stage',
+      scopeId: stageScopeId,
+      layer,
+      limit: 30,
+    });
 
   // Carrega rascunho do override existente para o layer ativo
   const currentOverride = useMemo(
