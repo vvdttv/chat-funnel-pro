@@ -94,6 +94,7 @@ export const PlaybookOverrideSuggestionsPanel = () => {
   const [windowDays, setWindowDays] = useState<number>(30);
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<OverrideSuggestion | null>(null);
   const [opts] = useState<AnalyzeOptions>({});
 
   const { logs, loading: loadingLogs, refresh: refreshLogs } = useIADecisionLogs({
