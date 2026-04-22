@@ -485,6 +485,15 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         applyingId={applyingId}
         appliedIds={appliedIds}
       />
+
+      <BatchPlanDialog
+        plan={batchPlan}
+        running={batchRunning}
+        progress={batchProgress}
+        funnels={funnels}
+        onClose={closeBatchDialog}
+        onConfirm={runBatch}
+      />
     </div>
   );
 };
