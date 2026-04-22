@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import {
   User, Check, X, Brain, Plus, Play, Loader2, Save, Sparkles, Search,
   Layers, ChevronDown, ChevronUp,
+  FolderOpen, Trash2, GitCompare, Download,
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import { useArchetypes } from '@/hooks/useArchetypes';
@@ -33,6 +34,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { LeadBehaviorCategory } from '@/data/iaBehavior';
 import { PlaybookOverrideEditor } from '@/components/PlaybookOverrideEditor';
+import { useSandboxScenarios } from '@/hooks/useSandboxScenarios';
+import { buildPayloadDiff, summarizeDiff } from '@/lib/playbookOverrideDiff';
+import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 interface Props {
   open: boolean;
