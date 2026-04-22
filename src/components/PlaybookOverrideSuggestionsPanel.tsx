@@ -258,17 +258,29 @@ export const PlaybookOverrideSuggestionsPanel = () => {
                     <Check size={10} /> Aplicada
                   </span>
                 ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApply(sug)}
-                    disabled={applying}
-                    className="h-7 text-[10px] gap-1"
-                  >
-                    {applying
-                      ? <Loader2 size={11} className="animate-spin" />
-                      : <Plus size={11} />}
-                    Aplicar
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreviewing(sug)}
+                      disabled={applying || runtime.loading || !runtime.snapshot}
+                      className="h-7 text-[10px] gap-1"
+                      aria-label="Pré-visualizar efeito"
+                    >
+                      <Eye size={11} /> Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApply(sug)}
+                      disabled={applying}
+                      className="h-7 text-[10px] gap-1"
+                    >
+                      {applying
+                        ? <Loader2 size={11} className="animate-spin" />
+                        : <Plus size={11} />}
+                      Aplicar
+                    </Button>
+                  </div>
                 )}
               </div>
 
