@@ -506,6 +506,12 @@ export const IABehaviorManager = () => {
           }`}
         ><Sparkles size={11} /> Skills</button>
         <button
+          onClick={() => setTab('suggestions')}
+          className={`flex-1 min-w-[100px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+            tab === 'suggestions' ? 'bg-card text-foreground' : 'text-muted-foreground'
+          }`}
+        ><Sparkles size={11} className="text-primary" /> Sugestões IA</button>
+        <button
           onClick={() => setTab('health')}
           className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
             tab === 'health' ? 'bg-card text-foreground' : 'text-muted-foreground'
@@ -519,6 +525,10 @@ export const IABehaviorManager = () => {
 
       {tab === 'skills' && (
         <IASkillsManager />
+      )}
+
+      {tab === 'suggestions' && (
+        <LBSuggestionsPanel />
       )}
 
       {error && (
