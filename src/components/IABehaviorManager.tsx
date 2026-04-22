@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Save, X, Loader2, Filter,
   ShieldCheck, ShieldAlert, HelpCircle, Ban, Bot, AlertTriangle,
-  Tag, Activity,
+  Tag, Activity, Sparkles,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,8 +23,9 @@ import type {
   LeadBehavior, LeadBehaviorCategory,
 } from '@/data/iaBehavior';
 import { IASystemHealthPanel } from '@/components/IASystemHealthPanel';
+import { IASkillsManager } from '@/components/IASkillsManager';
 
-type Tab = 'rules' | 'behaviors' | 'health';
+type Tab = 'rules' | 'behaviors' | 'skills' | 'health';
 
 const KIND_META: Record<IARuleKind, { label: string; icon: typeof ShieldCheck; classes: string }> = {
   do:    { label: 'DO',    icon: ShieldCheck,  classes: 'bg-success/15 text-success border-success/30' },
@@ -484,22 +485,28 @@ export const IABehaviorManager = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-3 bg-secondary rounded-lg p-1">
+      <div className="flex gap-1 mb-3 bg-secondary rounded-lg p-1 overflow-x-auto">
         <button
           onClick={() => setTab('rules')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+          className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors ${
             tab === 'rules' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
         >Regras ({rules.length})</button>
         <button
           onClick={() => setTab('behaviors')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+          className={`flex-1 min-w-[110px] py-1.5 rounded-md text-xs font-semibold transition-colors ${
             tab === 'behaviors' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
         >Comportamentos ({behaviors.length})</button>
         <button
+          onClick={() => setTab('skills')}
+          className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+            tab === 'skills' ? 'bg-card text-foreground' : 'text-muted-foreground'
+          }`}
+        ><Sparkles size={11} /> Skills</button>
+        <button
           onClick={() => setTab('health')}
-          className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+          className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
             tab === 'health' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
         ><Activity size={11} /> Saúde</button>
@@ -507,6 +514,10 @@ export const IABehaviorManager = () => {
 
       {tab === 'health' && (
         <IASystemHealthPanel />
+      )}
+
+      {tab === 'skills' && (
+        <IASkillsManager />
       )}
 
       {error && (

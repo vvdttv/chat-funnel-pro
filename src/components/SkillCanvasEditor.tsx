@@ -1,16 +1,8 @@
 /**
  * Canvas visual estilo GoHighLevel para edição de Skills da IA.
  *
- * Usa @xyflow/react para drag-and-drop, pan, zoom e conexões. Cada nó é um
- * card custom estilizado com tokens do design system (sem cores cruas).
- *
- * Fluxo:
- *   1. Carrega `nodes` da skill via prop (vem do useSkills.skills[].nodes)
- *   2. Converte para o formato do react-flow (Node[] + Edge[])
- *   3. Persistência debounced (800ms) chama upsertNode/deleteNode no parent
- *   4. Paleta lateral arrasta novos blocos para o canvas
- *   5. Ao clicar num nó, abre o SkillNodeInspector para editar config
- *   6. Validação visual: trigger único, sem ciclos, conflitos DO×DONT
+ * Usa @xyflow/react. Nós custom estilizados com tokens do design system.
+ * Persistência debounced (800ms). Validação visual em tempo real.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,10 +28,6 @@ import { NODE_KIND_META } from '@/data/iaSkills';
 import type { SkillWithNodes } from '@/lib/skillComposer';
 import { SkillNodeInspector } from '@/components/SkillNodeInspector';
 
-// ============================================================================
-// Ícones e cores semânticas por kind
-// ============================================================================
-
 const KIND_ICON: Record<SkillNodeKind, typeof Zap> = {
   trigger: Zap,
   send_message: MessageSquare,
@@ -63,10 +51,6 @@ const KIND_ACCENT: Record<SkillNodeKind, string> = {
   call_skill:   'border-border bg-card',
   condition:    'border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10',
 };
-
-// ============================================================================
-// Nó custom
-// ============================================================================
 
 type SkillNodeData = {
   kind: SkillNodeKind;
@@ -106,39 +90,24 @@ function SkillFlowNode({ data, selected }: NodeProps) {
 
 const nodeTypes = { skill: SkillFlowNode };
 
-// ============================================================================
-// Helpers de conversão
-// ============================================================================
-
 function previewOf(kind: SkillNodeKind, config: Record<string, unknown>): string {
   switch (kind) {
     case 'trigger': {
       const codes = (config.behaviorCodes as string[]) ?? [];
       return codes.length ? codes.join(' · ') : 'Nenhum LB selecionado';
     }
-    case 'send_message':
-      return (config.content as string) ?? '—';
-    case 'wait':
-      return `${config.duration ?? '?'} ${config.unit ?? ''}`;
-    case 'collect':
-      return (config.question as string) ?? (config.field as string) ?? '—';
-    case 'set_tone':
-      return `Tom: ${config.tone ?? '—'}`;
-    case 'handoff':
-      return `${config.priority ?? 'P2'} — ${config.reason ?? ''}`;
-    case 'apply_ladder':
-      return (config.ladderCode as string) ?? '—';
-    case 'call_skill':
-      return (config.skillCode as string) ?? '—';
-    case 'condition':
-      return (config.expression as string) ?? '—';
+    case 'send_message': return (config.content as string) ?? '—';
+    case 'wait': return `${config.duration ?? '?'} ${config.unit ?? ''}`;
+    case 'collect': return (config.question as string) ?? (config.field as string) ?? '—';
+    case 'set_tone': return `Tom: ${config.tone ?? '—'}`;
+    case 'handoff': return `${config.priority ?? 'P2'} — ${config.reason ?? ''}`;
+    case 'apply_ladder': return (config.ladderCode as string) ?? '—';
+    case 'call_skill': return (config.skillCode as string) ?? '—';
+    case 'condition': return (config.expression as string) ?? '—';
   }
 }
 
-function toFlow(
-  nodes: IASkillNode[],
-  warnings: Set<string>,
-): { rfNodes: Node[]; rfEdges: Edge[] } {
+function toFlow(nodes: IASkillNode[], warnings: Set<string>): { rfNodes: Node[]; rfEdges: Edge[] } {
   const rfNodes: Node[] = nodes.map(n => ({
     id: n.id,
     type: 'skill',
@@ -167,19 +136,13 @@ function toFlow(
   return { rfNodes, rfEdges };
 }
 
-// ============================================================================
-// Validação
-// ============================================================================
-
 function detectWarnings(nodes: IASkillNode[]): Set<string> {
   const warnings = new Set<string>();
-  // Trigger: precisa ter pelo menos 1 LB
   const trigger = nodes.find(n => n.kind === 'trigger');
   if (trigger) {
     const codes = (trigger.config as Record<string, unknown>).behaviorCodes as string[] | undefined;
     if (!codes || codes.length === 0) warnings.add(trigger.id);
   }
-  // Mensagem sem conteúdo
   for (const n of nodes) {
     if (n.kind === 'send_message') {
       const content = (n.config as Record<string, unknown>).content as string | undefined;
@@ -190,7 +153,7 @@ function detectWarnings(nodes: IASkillNode[]): Set<string> {
       if (!q) warnings.add(n.id);
     }
   }
-  // Detecção simples de ciclo
+  // Detecção de ciclo
   const childrenOf = new Map<string, string[]>();
   for (const n of nodes) {
     if (n.parentNodeId) {
@@ -214,20 +177,12 @@ function detectWarnings(nodes: IASkillNode[]): Set<string> {
   return warnings;
 }
 
-// ============================================================================
-// Paleta de blocos
-// ============================================================================
-
 const PALETTE_KINDS: SkillNodeKind[] = [
   'send_message', 'wait', 'collect', 'set_tone',
   'handoff', 'apply_ladder', 'call_skill', 'condition',
 ];
 
-interface PaletteProps {
-  onAdd: (kind: SkillNodeKind) => void;
-}
-
-function NodePalette({ onAdd }: PaletteProps) {
+function NodePalette({ onAdd }: { onAdd: (kind: SkillNodeKind) => void }) {
   return (
     <div className="space-y-1.5">
       {PALETTE_KINDS.map(k => {
@@ -235,9 +190,7 @@ function NodePalette({ onAdd }: PaletteProps) {
         const meta = NODE_KIND_META[k];
         return (
           <button
-            key={k}
-            type="button"
-            onClick={() => onAdd(k)}
+            key={k} type="button" onClick={() => onAdd(k)}
             className="w-full flex items-start gap-2 px-3 py-2 rounded-lg bg-secondary hover:bg-accent border border-border transition text-left"
           >
             <Icon className="w-4 h-4 text-foreground/70 mt-0.5 shrink-0" />
@@ -251,10 +204,6 @@ function NodePalette({ onAdd }: PaletteProps) {
     </div>
   );
 }
-
-// ============================================================================
-// Componente principal
-// ============================================================================
 
 export interface SkillCanvasEditorProps {
   skill: SkillWithNodes;
@@ -277,13 +226,11 @@ export function SkillCanvasEditor({
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Sincroniza quando skill.nodes muda externamente (refresh do hook)
   useEffect(() => {
     setNodes(rfNodes);
     setEdges(rfEdges);
   }, [rfNodes, rfEdges, setNodes, setEdges]);
 
-  // Persistência debounced de posições
   const positionTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const persistPosition = useCallback((id: string, x: number, y: number) => {
     if (positionTimers.current[id]) clearTimeout(positionTimers.current[id]);
@@ -387,7 +334,6 @@ export function SkillCanvasEditor({
 
   return (
     <div className="relative h-[70vh] w-full rounded-xl border border-border bg-surface overflow-hidden">
-      {/* Cabeçalho */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-2 bg-card/80 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-sm font-semibold text-foreground truncate">{skill.skill.name}</h3>
@@ -401,17 +347,13 @@ export function SkillCanvasEditor({
           )}
         </div>
 
-        {/* Paleta — Sheet em mobile, popover-like em desktop */}
         <Sheet open={paletteOpen} onOpenChange={setPaletteOpen}>
           <SheetTrigger asChild>
             <Button size="sm" variant="default" className="h-8">
               <Plus className="w-4 h-4 mr-1" /> Bloco
             </Button>
           </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-[280px] bg-card border-border"
-          >
+          <SheetContent side="right" className="w-[280px] bg-card border-border">
             <SheetHeader>
               <SheetTitle className="text-sm">Adicionar bloco</SheetTitle>
             </SheetHeader>
@@ -422,7 +364,6 @@ export function SkillCanvasEditor({
         </Sheet>
       </div>
 
-      {/* Canvas */}
       <div className="absolute inset-0 pt-12">
         <ReactFlow
           nodes={nodes}
@@ -451,7 +392,6 @@ export function SkillCanvasEditor({
         </ReactFlow>
       </div>
 
-      {/* Inspector */}
       <SkillNodeInspector
         node={selectedNode}
         open={inspectorOpen}
