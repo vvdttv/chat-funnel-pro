@@ -25,14 +25,28 @@
 import { useMemo, useState } from 'react';
 import {
   History, Filter, Loader2, AlertTriangle, GitBranch, GitCompare, X,
-  ChevronDown, ChevronRight, User, Calendar,
+  ChevronDown, ChevronRight, User, Calendar, Layers, Download, Undo2,
+  FileText, FileJson,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { usePlaybookOverrideSnapshots, type OverrideSnapshot } from '@/hooks/usePlaybookOverrideSnapshots';
+import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
+import {
+  groupSnapshotsByBatch, buildRollbackPlan, buildRollbackNote,
+  type RollbackPlan,
+} from '@/lib/playbookSnapshotRollback';
+import {
+  exportSnapshotsCSV, exportSnapshotsJSON, summarizeAuditPeriod,
+  type AuditPeriodSummary,
+} from '@/lib/playbookOverrideAuditExport';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 type ScopeFilter = 'all' | PlaybookOverride['scopeType'];
