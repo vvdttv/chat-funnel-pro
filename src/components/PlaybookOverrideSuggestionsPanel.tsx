@@ -384,5 +384,167 @@ const PayloadPreview = ({ payload }: { payload: PlaybookOverride['payload'] }) =
   );
 };
 
+// ----------------------------------------------------------------------------
+// Sprint 19 — Dialog de preview composicional antes de aplicar.
+// ----------------------------------------------------------------------------
+
+interface SuggestionPreviewDialogProps {
+  suggestion: OverrideSuggestion | null;
+  snapshot: ReturnType<typeof usePlaybookRuntime>['snapshot'];
+  onClose: () => void;
+  onApply: (s: OverrideSuggestion) => Promise<void>;
+  applyingId: string | null;
+  appliedIds: Set<string>;
+}
+
+const FIELD_LABELS: Record<EffectiveFieldDiff['field'], string> = {
+  'identity.persona': 'Persona',
+  'identity.tone': 'Tom',
+  'identity.mission': 'Missão',
+  'identity.identityNotes': 'Notas',
+  goal: 'Objetivo',
+  successCriteria: 'Critérios de sucesso',
+  failureCriteria: 'Critérios de falha',
+  expectedBehaviors: 'LBs ativos',
+};
+
+const renderValue = (v: string | string[]): string => {
+  if (Array.isArray(v)) return v.length ? v.join(' · ') : '—';
+  return v?.trim() ? v : '—';
+};
+
+const SuggestionPreviewDialog = ({
+  suggestion, snapshot, onClose, onApply, applyingId, appliedIds,
+}: SuggestionPreviewDialogProps) => {
+  const open = !!suggestion;
+  const preview: SuggestionPreview | null = useMemo(() => {
+    if (!suggestion || !snapshot) return null;
+    return buildSuggestionPreview({ suggestion, snapshot });
+  }, [suggestion, snapshot]);
+
+  const effectiveDiff: EffectiveFieldDiff[] = useMemo(
+    () => preview ? buildEffectiveDiff(preview.before, preview.after) : [],
+    [preview],
+  );
+  const changedFields = effectiveDiff.filter(d => d.changed);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm flex items-center gap-2">
+            <Eye size={14} className="text-primary" />
+            Preview composicional
+          </DialogTitle>
+          <DialogDescription className="text-[11px]">
+            {suggestion?.title}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!preview && (
+          <div className="py-6 text-center text-xs text-muted-foreground">
+            Carregando runtime…
+          </div>
+        )}
+
+        {preview && (
+          <div className="space-y-3">
+            <div className="bg-secondary/40 border border-border rounded p-2 text-[11px] space-y-1">
+              <p>
+                <strong>{preview.affectedCount}</strong>{' '}
+                {preview.affectedCount === 1 ? 'etapa será afetada' : 'etapas serão afetadas'}
+                {preview.representative && preview.affectedCount > 1 && (
+                  <> · prévia mostrada na etapa <code className="font-mono">{preview.representative.stageId}</code></>
+                )}
+              </p>
+              <p className="text-muted-foreground">
+                {changedFields.length === 0
+                  ? 'Nenhum campo composto muda visivelmente — a sugestão apenas reforça notas internas.'
+                  : `${changedFields.length} campo(s) do playbook efetivo serão alterados.`}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                Diff do override
+              </p>
+              {preview.payloadDiff.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Override permanece idêntico (já cobre tudo o que a sugestão propunha).
+                </p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {preview.payloadDiff.map(d => (
+                    <li key={d.path} className="text-[10px] flex items-center gap-1">
+                      <span className={`px-1.5 py-0.5 rounded border font-mono uppercase tracking-wide ${
+                        d.kind === 'added' ? 'bg-success/15 text-success border-success/30'
+                        : d.kind === 'removed' ? 'bg-destructive/15 text-destructive border-destructive/30'
+                        : 'bg-warning/15 text-warning border-warning/30'
+                      }`}>{d.kind}</span>
+                      <span className="font-mono text-foreground">{d.path}</span>
+                      {d.arrayDelta && (
+                        <span className="text-muted-foreground">
+                          (+{d.arrayDelta.added.length} / −{d.arrayDelta.removed.length})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                Playbook efetivo — antes vs. depois
+              </p>
+              {preview.before && preview.after ? (
+                <div className="border border-border rounded divide-y divide-border">
+                  {effectiveDiff.map(d => (
+                    <div key={d.field} className="grid grid-cols-[120px_1fr_1fr] gap-2 p-2 text-[10px] items-start">
+                      <div className="text-muted-foreground font-medium flex items-center gap-1">
+                        {d.changed && <ArrowRight size={9} className="text-primary" />}
+                        {FIELD_LABELS[d.field]}
+                      </div>
+                      <div className={`leading-snug ${d.changed ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'}`}>
+                        {renderValue(d.before)}
+                      </div>
+                      <div className={`leading-snug ${d.changed ? 'text-foreground font-medium' : 'text-foreground'}`}>
+                        {renderValue(d.after)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Snapshot incompleto — sem etapa representativa para compor.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onClose}>
+                Cancelar
+              </Button>
+              {suggestion && !appliedIds.has(suggestion.id) && (
+                <Button
+                  size="sm"
+                  className="h-7 text-[11px] gap-1"
+                  disabled={applyingId === suggestion.id}
+                  onClick={() => onApply(suggestion)}
+                >
+                  {applyingId === suggestion.id
+                    ? <Loader2 size={11} className="animate-spin" />
+                    : <Plus size={11} />}
+                  Aplicar agora
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Re-export para compat caso outros componentes importem o ícone aqui.
 export { AlertTriangle };
