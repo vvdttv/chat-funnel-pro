@@ -23,9 +23,12 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus, type LucideIcon,
+  Target, Tag, Brain, Plus, Eye, ArrowRight, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useFunnels } from '@/hooks/useFunnels';
@@ -39,6 +42,10 @@ import {
   type OverrideSuggestion,
   type AnalyzeOptions,
 } from '@/lib/playbookOverrideSuggestions';
+import {
+  buildSuggestionPreview, buildEffectiveDiff,
+  type SuggestionPreview, type EffectiveFieldDiff,
+} from '@/lib/playbookSuggestionPreview';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 const WINDOW_OPTIONS = [
