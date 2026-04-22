@@ -319,6 +319,40 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         Aplicar apenas mescla com o existente — nunca apaga customizações.
       </p>
 
+      {/* Sprint 20 — barra de seleção em lote */}
+      {!loadingLogs && selectableSuggestions.length > 0 && (
+        <div className="bg-secondary/40 border border-border rounded-lg p-2 flex items-center justify-between gap-2 flex-wrap sticky top-0 z-10">
+          <div className="flex items-center gap-2 flex-wrap text-[11px]">
+            <Layers size={12} className="text-primary" />
+            <span className="font-medium text-foreground">
+              {selectedIds.size}/{selectableSuggestions.length} selecionada(s)
+            </span>
+            <button
+              onClick={selectAll}
+              className="text-[10px] underline text-muted-foreground hover:text-foreground"
+            >Todas</button>
+            <button
+              onClick={selectCritical}
+              className="text-[10px] underline text-destructive hover:opacity-80"
+            >Só críticas</button>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={clearSelection}
+                className="text-[10px] underline text-muted-foreground hover:text-foreground"
+              >Limpar</button>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={openBatchDialog}
+            disabled={selectedIds.size === 0}
+            className="h-7 text-[10px] gap-1"
+          >
+            <Layers size={11} /> Aplicar {selectedIds.size > 0 ? `${selectedIds.size}` : ''} em lote
+          </Button>
+        </div>
+      )}
+
       {loadingLogs && (
         <div className="flex items-center justify-center py-6 text-muted-foreground text-xs gap-1.5">
           <Loader2 size={12} className="animate-spin" /> analisando padrões…
