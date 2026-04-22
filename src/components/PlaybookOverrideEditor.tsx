@@ -324,15 +324,29 @@ export const PlaybookOverrideEditor = ({
     }
   }, [effectiveScope, layer, upsert, recordSnapshot, refresh, refreshSnaps, runtime, toast]);
 
+  const scopeTypeLabel = effectiveScope.type === 'stage'
+    ? 'Etapa' : effectiveScope.type === 'funnel' ? 'Funil' : 'Organização';
+  const scopeTone = effectiveScope.type === 'stage'
+    ? 'bg-secondary text-foreground border-border'
+    : effectiveScope.type === 'funnel'
+      ? 'bg-primary/15 text-primary border-primary/30'
+      : 'bg-warning/15 text-warning border-warning/30';
+
   return (
     <div className="space-y-3">
       {/* Header + seletor de layer */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <Layers size={14} className="text-primary" />
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Layers size={14} className="text-primary shrink-0" />
           <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
             Overrides composicionais
           </h3>
+          <span
+            className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${scopeTone}`}
+            title={`Escopo: ${scopeTypeLabel} — ${effectiveScope.id}`}
+          >
+            {scopeTypeLabel}: {effectiveScope.label}
+          </span>
         </div>
         <div className="flex gap-1">
           {(['stage', 'overlay'] as LayerKey[]).map(l => {
@@ -354,10 +368,32 @@ export const PlaybookOverrideEditor = ({
         </div>
       </div>
 
+      {/* Aviso de cascata — só aparece quando o escopo afeta mais de uma etapa */}
+      {cascade && cascade.affected > 1 && (
+        <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-md p-2">
+          <AlertTriangle size={13} className="text-warning shrink-0 mt-0.5" />
+          <div className="space-y-1 min-w-0">
+            <p className="text-[11px] text-warning font-semibold">
+              Este override em escopo <strong>{scopeTypeLabel.toLowerCase()}</strong> vai afetar
+              {' '}<strong>{cascade.affected}</strong> {cascade.affected === 1 ? 'etapa' : 'etapas'}
+              {' '}assim que for salvo.
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Em ordem de prioridade: arquétipo &lt; org &lt; funil &lt; etapa &lt; overlay. Overrides
+              de escopos mais específicos continuam vencendo este aqui.
+            </p>
+          </div>
+        </div>
+      )}
+
       <p className="text-[11px] text-muted-foreground leading-snug">
         {layer === 'stage'
-          ? `Sobrescreve o playbook desta etapa quando o deal está em andamento (open). A camada "${stageName}" entra após o arquétipo e antes do overlay de status.`
-          : `Sobrescreve a camada de overlay quando o deal vira won ou lost. Útil para ajustar tom de pós-venda ou linguagem de recuperação por etapa.`}
+          ? effectiveScope.type === 'stage'
+            ? `Sobrescreve o playbook desta etapa quando o deal está em andamento (open). A camada "${effectiveScope.label}" entra após o arquétipo e antes do overlay de status.`
+            : effectiveScope.type === 'funnel'
+              ? `Sobrescreve o playbook de TODAS as etapas do funil "${effectiveScope.label}" quando o deal está open. Etapas com override próprio têm prioridade.`
+              : `Sobrescreve o playbook base de TODAS as etapas da organização quando o deal está open. Funil/etapa específicos têm prioridade.`
+          : `Sobrescreve a camada de overlay quando o deal vira won ou lost. Útil para ajustar tom de pós-venda ou linguagem de recuperação.`}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -569,7 +605,7 @@ export const PlaybookOverrideEditor = ({
                       <span className="text-muted-foreground italic">nenhum</span>
                     ) : (
                       preview.provenance.overrideIds.map(id => {
-                        const isDraft = id === `stage:${stageScopeId}:${layer}`;
+                        const isDraft = id === `${effectiveScope.type}:${effectiveScope.id}:${layer}`;
                         return (
                           <span
                             key={id}
