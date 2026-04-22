@@ -706,5 +706,118 @@ const SuggestionPreviewDialog = ({
   );
 };
 
+// ----------------------------------------------------------------------------
+// Sprint 20 — Dialog de confirmação do lote.
+// ----------------------------------------------------------------------------
+
+interface BatchPlanDialogProps {
+  plan: BatchPlan | null;
+  running: boolean;
+  progress: { done: number; total: number };
+  funnels: ReturnType<typeof useFunnels>['funnels'];
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const BatchPlanDialog = ({
+  plan, running, progress, funnels, onClose, onConfirm,
+}: BatchPlanDialogProps) => {
+  const open = !!plan;
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm flex items-center gap-2">
+            <Layers size={14} className="text-primary" /> Aplicar lote de sugestões
+          </DialogTitle>
+          <DialogDescription className="text-[11px]">
+            {plan && (
+              <>
+                {plan.totalSuggestions} sugestão(ões) selecionada(s) →{' '}
+                <strong>{plan.totalWrites}</strong> gravação(ões) distintas
+                {plan.totalSuggestions !== plan.totalWrites && (
+                  <> (sugestões do mesmo escopo serão fundidas em um único override)</>
+                )}.
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {plan && (
+          <div className="space-y-3">
+            <div className="bg-secondary/40 border border-border rounded p-2 text-[10px] font-mono text-muted-foreground">
+              ID do lote: <span className="text-foreground">{plan.batchId}</span>
+              <p className="text-[10px] mt-1 font-sans not-italic">
+                Cada snapshot do histórico levará esse ID — assim você pode
+                reverter o lote inteiro depois localizando-o no browser de snapshots.
+              </p>
+            </div>
+
+            <ul className="border border-border rounded divide-y divide-border max-h-[40vh] overflow-y-auto">
+              {plan.items.map(item => {
+                const f = funnels.find(fn => fn.id === item.scopeId.split('::')[0]);
+                const stageId = item.scopeType === 'stage' ? item.scopeId.split('::')[1] : undefined;
+                const stageName = stageId ? f?.stages.find(s => s.id === stageId)?.name : undefined;
+                return (
+                  <li key={item.key} className="p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded border bg-secondary text-foreground border-border font-medium uppercase tracking-wide">
+                          {SCOPE_LABEL[item.scopeType]}
+                        </span>
+                        <span className="text-[10px] text-foreground font-medium">
+                          {item.scopeType === 'org'
+                            ? 'Organização'
+                            : item.scopeType === 'funnel'
+                              ? (f?.name ?? item.scopeId)
+                              : `${f?.name ?? item.scopeId.split('::')[0]} › ${stageName ?? stageId}`}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground font-mono">
+                        {item.suggestions.length}× sugestão{item.suggestions.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      {item.summaryTitle}
+                    </p>
+                    {item.existingPayload && Object.keys(item.existingPayload).length > 0 && (
+                      <p className="text-[9px] text-muted-foreground italic">
+                        ↳ override existente será preservado e mesclado com a sugestão.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {running && (
+              <div className="bg-primary/5 border border-primary/30 rounded p-2 text-[11px] text-primary flex items-center gap-2">
+                <Loader2 size={12} className="animate-spin" />
+                Aplicando {progress.done}/{progress.total}…
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline" size="sm" className="h-7 text-[11px]"
+                onClick={onClose} disabled={running}
+              >Cancelar</Button>
+              <Button
+                size="sm" className="h-7 text-[11px] gap-1"
+                onClick={onConfirm} disabled={running || plan.items.length === 0}
+              >
+                {running
+                  ? <Loader2 size={11} className="animate-spin" />
+                  : <Layers size={11} />}
+                Aplicar lote
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Re-export para compat caso outros componentes importem o ícone aqui.
 export { AlertTriangle };
