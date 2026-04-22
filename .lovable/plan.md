@@ -1,99 +1,117 @@
 
 
-# Plano consolidado — Atualização pós-6 fases (revisão 2 do Opus)
+# Plano consolidado — Sprints 21 a 26 em uma única execução
 
-Documento do Opus recebido e analisado integralmente (38 páginas). Ele **substitui** as instruções anteriores como fonte única e aplica **duas mudanças sobrepostas** sobre o que já foi entregue nas 6 fases:
+Você pediu para mapear **tudo o que ainda faz sentido construir sobre a fundação atual** (sprints 1–20 já entregues) e executar em lote. Abaixo está o conjunto fechado de 6 sprints adicionais que considero o "encerramento natural" do ciclo composicional + auto-sugestões + auditoria. Depois disto, novos sprints só fariam sentido com mudanças de produto (não mais melhorias incrementais).
 
-- **Mudança A — Desacoplamento do funil padrão**: introdução de `StageArchetype` (10 arquétipos canônicos) × `StatusArchetype` (open/won/lost) com playbook composicional de 4 camadas (seed → status overlay → funnel override → stage override).
-- **Mudança B — Renaming AIA → IA**: alinhar IDs (`AIA-DO-*` → `IA-DO-*`), constantes e strings residuais.
+## O que será entregue
 
-Tudo o que já foi entregue nas 6 fases permanece **base intacta**; nada é descartado.
+### Sprint 21 — Rollback de lote pelo `batchId`
+No `PlaybookOverrideSnapshotsBrowser`, snapshots criados pelo Sprint 20 já carregam `[batch_xxx]` no `note`. Vou:
+- Agrupar visualmente snapshots do mesmo `batchId` (header colapsável "Lote batch_xxx · N escopos · há 2h").
+- Botão **"Reverter lote inteiro"** que itera todos os itens do grupo, faz upsert do `payload` *anterior* ao lote (lookup do snapshot imediatamente anterior por scope+layer), e grava novos snapshots com `action='rollback'` + nota `"rollback do lote batch_xxx"`.
+- Confirmação modal listando exatamente o que será revertido.
 
-## Execução em 6 sprints
+### Sprint 22 — Diff agregado e exportação de auditoria
+- Botão **"Exportar histórico (CSV/JSON)"** no snapshots browser respeitando filtros ativos.
+- Nova visão **"Resumo de mudanças do período"**: agrega snapshots em uma janela (7/30/90 dias) e mostra contadores por escopo, autor e layer (ex.: "Funil Locação: 4 upserts, 1 rollback por João").
+- Reusa `iaDecisionLogsExport.ts` como referência de estrutura.
 
-### Sprint 1 — Renaming AIA → IA (curto e reversível)
-- Find/replace nos arquivos: `iaBehavior.ts`, `IABehaviorManager.tsx`, `StagePlaybookEditor.tsx`, `AIWorkflowBuilder.tsx`, testes.
-- Migration `01_rename_aia_to_ia.sql`: `UPDATE ia_rules SET code = REPLACE(code, 'AIA-', 'IA-') WHERE code LIKE 'AIA-%'`.
-- Bloquear botão de seed durante a janela.
-- Smoke test (codes IA-*, edição, criar nova regra, seed idempotente, painel de logs).
+### Sprint 23 — Telemetria de sugestões aplicadas (efetividade)
+Mede se as sugestões do Sprint 18/20 *funcionaram*:
+- Novo módulo puro `src/lib/playbookSuggestionEffectiveness.ts`: dado o `batchId` (ou snapshot avulso de auto-sugestão), compara `failureRate` dos logs **antes** vs. **depois** da aplicação no mesmo escopo.
+- Card "Efetividade" no `PlaybookOverrideSuggestionsPanel` listando sugestões aplicadas nos últimos 30d com delta (▼ 18% falha = verde; ▲ = vermelho/atenção).
+- Sugestões com efetividade negativa ganham botão **"Reverter"** rápido (atalho para o rollback do S21).
 
-### Sprint 2 — Schema + pendências da auditoria
-Migrations sequenciais:
-- `02_handoff_priority_enum.sql` — `CREATE TYPE handoff_priority AS ENUM ('P0','P1','P2','P3')` + ALTER coluna.
-- `03_fks_formais.sql` — FK `organization_id` em todas as 6 tabelas comportamentais.
-- `04_stage_archetypes` + `05_status_archetypes` + `06_playbook_overrides` + `07_deal_status_events` (criação + RLS).
-- `08_deals_add_status` (status NOT NULL DEFAULT 'open' + status_changed_at + status_reason + lost_substage + won_date + backfill).
-- `09_funnels_funnel_stages_cols` (stage_archetype_id, context_tags, purpose, is_default).
-- `10_stage_playbooks_cols` (archetype_id, kind, status_archetype_id).
-- `11_lead_behaviors_context_tags` (applicable_context_tags, applicable_statuses + backfill + deprecação de applicable_stages).
+### Sprint 24 — Heatmap funnel × status no IndicadoresPage
+Pendência da Parte 6 do plano original do Opus (métricas novas):
+- Componente `FunnelStatusHeatmap`: matriz funis (linhas) × status `open/won/lost` (colunas) com:
+  - cor de intensidade pela contagem de deals
+  - tooltip com taxa `open→won` por arquétipo
+  - barra inferior de fallbacks IA do período
+- Plugado como nova seção colapsável no `IndicadoresPage` ("Saúde composicional").
+- Reusa `useDeals`, `useFunnels`, `useIADecisionLogs`, `useArchetypes`.
 
-### Sprint 3 — Seeds + re-tagging
-- Seed dos **10 stage_archetypes** (first_contact, qualification, discovery_call, scheduling, appointment_followup, documentation, external_review, proposal, negotiation, closing) + **3 status_archetypes** (open/won/lost).
-- Atualizar `iaBehavior.ts` com `STAGE_ARCHETYPES`, `STATUS_ARCHETYPES`, 4 novos playbooks-seed (discovery_call, scheduling, appointment_followup, negotiation) e 2 overlays (won, lost).
-- Re-tagging dos **85 LBs** (mapeamento explícito do Opus, Parte 6.3).
-- 8 novos LBs de pós-venda (LB-086 a LB-093).
-- Migration `12_backfill_funnel_padrao.sql` atribuindo arquétipos às etapas E0–E4a; tratamento de E4b conforme decisão aberta.
-- Estender edge function `seed-ia-behavior` para popular tudo isso.
+### Sprint 25 — Sandbox composicional persistente (cenários salvos)
+Hoje o sandbox (Sprint 4) é volátil. Vou:
+- Tabela `playbook_sandbox_scenarios` (id, organization_id, name, funnel_id, stage_id, status, mock_overrides jsonb, created_by, created_at) + RLS admin-only.
+- Hook `useSandboxScenarios` (CRUD) e UI dentro do `PlaybookFourColumnEditor`: salvar cenário atual com nome, listar/recarregar cenários, "comparar com produção" (renderiza diff entre o playbook simulado e o efetivo real).
+- Permite responder perguntas do tipo: *"se eu desativar override X no funil Y, quem fica afetado?"*
 
-### Sprint 4 — UI atualizada
-- Wizard de 3 passos para criar funil novo (identidade → etapas/template → revisão).
-- Dropdown obrigatório de arquétipo no formulário de criar/editar etapa.
-- **Tela de 4 colunas** no `StagePlaybookEditor` (seed | overlay | funnel | stage) com célula efetiva destacada, "limpar override", "desativar item".
-- Toggle Aberto/Ganho/Perdido acima das colunas.
-- Sandbox de teste com seletor (funnel, stage, status) mostrando qual camada gerou cada decisão.
-- Warnings de UI (impacto em N etapas, troca de arquétipo, desativar regra universal).
+### Sprint 26 — Painel "Saúde do sistema IA" no IABehaviorManager
+Aba final de fechamento, agregando indicadores que hoje estão dispersos:
+- Contagem de regras ativas/inativas por kind (do/dont/ask/noask).
+- Cobertura de LBs por status (% LBs com `applicable_statuses` ≠ default).
+- Top 5 overrides mais "tocados" no período (via snapshots).
+- Lista de etapas SEM nenhum override + com `failureRate` alto (gap de configuração).
+- Botão "Ir para sugestões" prefiltrando essas etapas no painel S18.
 
-### Sprint 5 — Runtime composicional
-- `resolveEffectivePlaybook(funnelId, stageId, status)` no hook `useIABehavior` aplicando merge das 4 camadas (escalares: superior sobrescreve; listas: additions/disabled; conflito DO×DONT: mais restritivo vence).
-- Cache por chave `(funnel_id, stage_id, stage_archetype_id, status, overrides_version)` com invalidação em writes.
-- Pipeline de 10 passos com filtro de LBs por `context_tags ∩ stage.context_tags ≠ ∅` e `applicable_statuses CONTAINS deal.status`.
-- Transições de status (open↔won↔lost) registrando em `deal_status_events`.
+## Arquitetura técnica
 
-### Sprint 6 — Writer de logs + CRUD unificado
-- Adicionar colunas `stage_archetype_id`, `status_archetype_id`, `effective_playbook_layers`, `outcome` em `ia_decision_logs`.
-- Writer fire-and-forget na edge function `ai-chat-analysis` após cada resposta (resolve pendência da auditoria).
-- Eventos extras: `fallback_to_mock`, `status_transition`, `handoff` sem resposta direta.
-- Telemetria de fallback no `useIABehavior` (chama `logFallback(reason)` + console.warn).
-- Novas seções no `IABehaviorManager`: Escadas, Gatilhos, Playbooks de arquétipo (admin master), Overrides agregados, Arquétipos (read-only).
-- Métricas novas no `IndicadoresPage` (heatmap funnel×status, taxa open→won por arquétipo, NPS won, fallbacks, distribuição de outcomes).
+```text
+src/
+├── lib/
+│   ├── playbookSuggestionEffectiveness.ts   [novo – S23]
+│   ├── playbookSnapshotRollback.ts          [novo – S21, util pura]
+│   └── playbookOverrideAuditExport.ts       [novo – S22]
+├── hooks/
+│   └── useSandboxScenarios.ts               [novo – S25]
+├── components/
+│   ├── PlaybookOverrideSnapshotsBrowser.tsx [edit – S21+S22 grupos+export]
+│   ├── PlaybookOverrideSuggestionsPanel.tsx [edit – S23 efetividade]
+│   ├── PlaybookFourColumnEditor.tsx         [edit – S25 cenários]
+│   ├── IABehaviorManager.tsx                [edit – S26 saúde]
+│   ├── FunnelStatusHeatmap.tsx              [novo – S24]
+│   └── IASystemHealthPanel.tsx              [novo – S26]
+├── pages/
+│   └── IndicadoresPage.tsx                  [edit – S24]
+└── test/
+    ├── playbookSnapshotRollback.test.ts     [novo]
+    ├── playbookSuggestionEffectiveness.test.ts [novo]
+    ├── playbookOverrideAuditExport.test.ts  [novo]
+    └── funnelStatusHeatmap.test.ts          [novo]
+```
 
-## Decisões abertas (Opus, Parte 10.2) — preciso de confirmação
+## Mudanças de banco (uma migration consolidada)
 
-Adoto as **sugestões do Opus** como default, mas peço confirmação dos itens potencialmente disruptivos:
+```sql
+-- 13_sandbox_scenarios.sql
+CREATE TABLE public.playbook_sandbox_scenarios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  name text NOT NULL,
+  funnel_id text NOT NULL,
+  stage_id text NOT NULL,
+  status text NOT NULL DEFAULT 'open',
+  mock_overrides jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.playbook_sandbox_scenarios ENABLE ROW LEVEL SECURITY;
+-- policies admin-only (CRUD), members SELECT
+-- + trigger update_updated_at_column
+```
 
-| # | Decisão | Default proposto |
-|---|---------|------------------|
-| 1 | Etapa "E4b Fechamento Perdido" | **Remover** + migrar deals existentes para `status='lost'` + `lost_substage='closing'` |
-| 2 | Renaming AIA → IA nos IDs persistidos | **Sim**, aplicar tudo |
-| 3 | "AIA" como nome de persona em material externo | **Preservar** se for nome próprio (não há código a mudar) |
-| 4 | Empresas criam arquétipos próprios? | **Não** nos primeiros 6 meses |
-| 5 | Transição lost → open | **Manual** (corretor confirma) |
-| 6 | 8 novos LBs de pós-venda | **Incluir no S3** |
-| 7 | Indicação no overlay won | **Ativa por default**, override desativa |
-| 8 | Overrides de organização (acima do funil) | **Adiar** para release futuro |
-| 9 | Arquivamento automático de lost após 365d | **Ativo por default**, configurável |
+Apenas **uma** tabela nova. Tudo mais reutiliza tabelas existentes (`playbook_override_snapshots`, `ia_decision_logs`, `deals`).
 
-Se concordar com todos os defaults, basta responder "Sim, todos os defaults". Caso queira mudar algum, indique o número.
+## Validação
 
-## Critérios de pronto (resumo verificável)
-- `SELECT COUNT(*) FROM ia_rules WHERE code LIKE 'AIA-%'` retorna 0.
-- Busca por "AIA-" no TS retorna 0 ocorrências.
-- 10 arquétipos + 3 status + tabelas novas com RLS e FKs.
-- `funnel_stages.stage_archetype_id` NOT NULL; `deals.status` NOT NULL DEFAULT 'open'.
-- 85 LBs re-tagueados + 8 novos LBs de pós-venda.
-- Editor com 4 colunas funcionando; sandbox mostrando origem da decisão.
-- Writer de logs ativo gravando ao menos 1 log por resposta.
-- IABehaviorManager com seções de ladders, triggers, overrides.
+- Cada sprint vem com testes unitários do módulo puro respectivo.
+- Rodada final: `vitest run` + `tsc --noEmit`. Meta: manter 100% verde (atualmente 102/102).
+- QA manual via preview: rollback de lote, export CSV, abrir heatmap, salvar cenário, abrir saúde do sistema.
 
-## Riscos principais
-- **Renaming em produção com seed rodado** → janela de baixa atividade + bloqueio de seed durante migration.
-- **Cache stale** → invalidação eager em todos os writes + TTL curto.
-- **UI de 4 colunas em mobile** → accordion responsivo abaixo do breakpoint tablet.
-- **Race conditions em mudança de status** → transação SQL com `SELECT FOR UPDATE`.
+## Escopo explícito — o que NÃO entra
 
-## Observação sobre escopo
+- **Edge functions novas** (não há necessidade — toda a lógica é client-side sobre dados já carregados).
+- **Mudanças no `seed-ia-behavior`** ou `ai-chat-analysis` (já completos).
+- **Multi-org / overrides cross-organização** (item 8 das decisões abertas: adiado).
+- **Permitir empresas criarem arquétipos próprios** (item 4: não nos 6 primeiros meses).
+- Qualquer coisa fora do eixo "auditoria + auto-sugestão + observabilidade composicional".
 
-Este é um plano de **6 sprints sequenciais**. Em cada resposta de execução implementarei **um sprint por vez** (após sua aprovação), validando antes de avançar. Sprint 1 é o mais curto e seguro — recomendo começar por ele assim que confirmar os defaults das decisões abertas.
+## Nota sobre encerramento
 
-**Próximo passo aguardado:** confirmação dos 9 defaults (ou ajustes) + autorização para iniciar Sprint 1 (Renaming).
+Após o S26, os 6 sprints originais do Opus + 20 sprints de extensão + 6 de fechamento = **32 sprints entregues**. O sistema composicional fica completo de ponta a ponta: criação → sugestão → preview → aplicação em lote → rollback → medição de efetividade → simulação → saúde agregada. Próximas iterações seriam mudanças de produto (novos tipos de regra, integrações externas), não mais refinamentos da fundação.
+
+Confirme com **"Sim, executar S21–S26 em lote"** e eu implemento tudo na próxima mensagem.
 
