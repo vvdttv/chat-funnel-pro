@@ -24,8 +24,9 @@ import type {
 } from '@/data/iaBehavior';
 import { IASystemHealthPanel } from '@/components/IASystemHealthPanel';
 import { IASkillsManager } from '@/components/IASkillsManager';
+import { LBSuggestionsPanel } from '@/components/LBSuggestionsPanel';
 
-type Tab = 'rules' | 'behaviors' | 'skills' | 'health';
+type Tab = 'rules' | 'behaviors' | 'skills' | 'suggestions' | 'health';
 
 const KIND_META: Record<IARuleKind, { label: string; icon: typeof ShieldCheck; classes: string }> = {
   do:    { label: 'DO',    icon: ShieldCheck,  classes: 'bg-success/15 text-success border-success/30' },
