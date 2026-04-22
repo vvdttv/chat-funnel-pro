@@ -1,10 +1,11 @@
 import { formatCurrency } from '@/data/mockData';
 import { useDealsContext } from '@/hooks/useDeals';
-import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp, Bot } from 'lucide-react';
+import { TrendingUp, Users, Target, Clock, ChevronDown, ChevronUp, Bot, Layers } from 'lucide-react';
 import { useState } from 'react';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
+import { FunnelStatusHeatmap } from '@/components/FunnelStatusHeatmap';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
@@ -183,6 +184,22 @@ const IndicadoresPage = () => {
             {openSection === 'ia' && (
               <div className="px-4 pb-4">
                 <IADecisionLogsPanel />
+              </div>
+            )}
+          </div>
+
+          {/* Sprint 24 — Saúde composicional (heatmap funil × status) */}
+          <div className="bg-card rounded-xl overflow-hidden">
+            <button onClick={() => toggleSection('composicional')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Layers size={14} className="text-primary" />
+                Saúde composicional
+              </span>
+              {openSection === 'composicional' ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+            </button>
+            {openSection === 'composicional' && (
+              <div className="px-4 pb-4">
+                <FunnelStatusHeatmap />
               </div>
             )}
           </div>
