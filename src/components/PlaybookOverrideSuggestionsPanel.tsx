@@ -325,6 +325,15 @@ export const PlaybookOverrideSuggestionsPanel = () => {
           Heurísticas: {WINDOW_INFO}
         </p>
       )}
+
+      <SuggestionPreviewDialog
+        suggestion={previewing}
+        snapshot={runtime.snapshot}
+        onClose={() => setPreviewing(null)}
+        onApply={async (sug) => { await handleApply(sug); setPreviewing(null); }}
+        applyingId={applyingId}
+        appliedIds={appliedIds}
+      />
     </div>
   );
 };
