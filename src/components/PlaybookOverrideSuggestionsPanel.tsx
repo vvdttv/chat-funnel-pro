@@ -376,13 +376,24 @@ export const PlaybookOverrideSuggestionsPanel = () => {
           const scopeRes = resolveScope(sug.scope, funnels);
           const applied = appliedIds.has(sug.id);
           const applying = applyingId === sug.id;
+          const selected = selectedIds.has(sug.id);
           return (
             <li
               key={sug.id}
-              className="bg-card border border-border rounded-lg p-2.5 space-y-2"
+              className={`bg-card border rounded-lg p-2.5 space-y-2 transition-colors ${
+                selected ? 'border-primary/60 ring-1 ring-primary/30' : 'border-border'
+              }`}
             >
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                  {!applied && (
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => toggleSelect(sug.id)}
+                      aria-label="Selecionar para lote"
+                      className="h-3.5 w-3.5"
+                    />
+                  )}
                   <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${meta.tone}`}>
                     {meta.label}
                   </span>
