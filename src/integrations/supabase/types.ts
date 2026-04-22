@@ -385,6 +385,7 @@ export type Database = {
       ia_decision_logs: {
         Row: {
           action_taken: string
+          activated_skill_code: string | null
           applied_override_ids: Json
           applied_rule_codes: Json
           archetype_code: string | null
@@ -406,6 +407,7 @@ export type Database = {
         }
         Insert: {
           action_taken?: string
+          activated_skill_code?: string | null
           applied_override_ids?: Json
           applied_rule_codes?: Json
           archetype_code?: string | null
@@ -427,6 +429,7 @@ export type Database = {
         }
         Update: {
           action_taken?: string
+          activated_skill_code?: string | null
           applied_override_ids?: Json
           applied_rule_codes?: Json
           archetype_code?: string | null
@@ -505,6 +508,143 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ia_skill_guardrails: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          rule_code: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          rule_code: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          rule_code?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_skill_guardrails_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "ia_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_skill_nodes: {
+        Row: {
+          branch_label: string | null
+          config: Json
+          created_at: string
+          id: string
+          kind: string
+          organization_id: string
+          parent_node_id: string | null
+          position: number
+          position_x: number
+          position_y: number
+          skill_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_label?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          kind: string
+          organization_id: string
+          parent_node_id?: string | null
+          position?: number
+          position_x?: number
+          position_y?: number
+          skill_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_label?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          parent_node_id?: string | null
+          position?: number
+          position_x?: number
+          position_y?: number
+          skill_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_skill_nodes_parent_node_id_fkey"
+            columns: ["parent_node_id"]
+            isOneToOne: false
+            referencedRelation: "ia_skill_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_skill_nodes_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "ia_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_skills: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          is_auto_suggested: boolean
+          name: string
+          organization_id: string
+          position: number
+          scope_id: string | null
+          scope_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          is_auto_suggested?: boolean
+          name: string
+          organization_id: string
+          position?: number
+          scope_id?: string | null
+          scope_type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          is_auto_suggested?: boolean
+          name?: string
+          organization_id?: string
+          position?: number
+          scope_id?: string | null
+          scope_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       lead_behaviors: {
         Row: {
