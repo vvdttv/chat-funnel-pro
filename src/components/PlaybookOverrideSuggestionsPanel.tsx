@@ -920,5 +920,92 @@ const BatchPlanDialog = ({
   );
 };
 
+// ----------------------------------------------------------------------------
+// Sprint 23 — Card de efetividade
+// ----------------------------------------------------------------------------
+
+const STATUS_META: Record<EffectivenessResult['status'], { icon: LucideIcon; cls: string; label: string }> = {
+  improved:     { icon: TrendingDown, cls: 'bg-success/10 text-success border-success/30',         label: 'melhorou' },
+  worsened:     { icon: TrendingUp,   cls: 'bg-destructive/10 text-destructive border-destructive/30', label: 'piorou' },
+  neutral:      { icon: Minus,        cls: 'bg-secondary text-muted-foreground border-border',     label: 'estável' },
+  inconclusive: { icon: Activity,     cls: 'bg-secondary text-muted-foreground border-border',     label: 'sem dados' },
+};
+
+const EffectivenessCard = ({
+  results, funnels, revertingId, onRevert,
+}: {
+  results: EffectivenessResult[];
+  funnels: ReturnType<typeof useFunnels>['funnels'];
+  revertingId: string | null;
+  onRevert: (r: EffectivenessResult) => void;
+}) => {
+  if (results.length === 0) return null;
+  const resolveScopeName = (r: EffectivenessResult): string => {
+    if (r.scopeType === 'org') return 'Organização';
+    if (r.scopeType === 'funnel') {
+      return funnels.find(f => f.id === r.scopeId)?.name ?? r.scopeId;
+    }
+    const [funnelId, stageId] = r.scopeId.split('::');
+    const f = funnels.find(x => x.id === funnelId);
+    const s = f?.stages.find(x => x.id === stageId);
+    return s ? `${f?.name ?? funnelId} › ${s.name}` : r.scopeId;
+  };
+  return (
+    <div className="bg-card border border-border rounded-lg p-2.5 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Activity size={12} className="text-primary" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+          Efetividade das sugestões aplicadas (30d)
+        </span>
+        <span className="text-[10px] text-muted-foreground ml-auto">{results.length}</span>
+      </div>
+      <ul className="space-y-1">
+        {results.slice(0, 6).map(r => {
+          const meta = STATUS_META[r.status];
+          const Icon = meta.icon;
+          const canRevert = r.status === 'worsened';
+          const reverting = revertingId === r.snapshotId;
+          return (
+            <li
+              key={r.snapshotId}
+              className="flex items-center gap-2 bg-background/50 border border-border rounded p-1.5"
+            >
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono inline-flex items-center gap-1 shrink-0 ${meta.cls}`}>
+                <Icon size={9} /> {r.label}
+              </span>
+              <span className="text-[10px] text-foreground truncate flex-1" title={resolveScopeName(r)}>
+                {resolveScopeName(r)}
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono shrink-0">
+                n={r.before.sample}/{r.after.sample}
+              </span>
+              {canRevert && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRevert(r)}
+                  disabled={reverting}
+                  className="h-6 text-[10px] gap-1 px-1.5"
+                  title="Reverter aplicação ineficaz"
+                >
+                  {reverting
+                    ? <Loader2 size={10} className="animate-spin" />
+                    : <Undo2 size={10} />}
+                  Reverter
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {results.length > 6 && (
+        <p className="text-[9px] text-muted-foreground italic text-center">
+          mostrando 6 de {results.length} avaliações
+        </p>
+      )}
+    </div>
+  );
+};
+
 // Re-export para compat caso outros componentes importem o ícone aqui.
 export { AlertTriangle };
