@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, AlertTriangle, Check, RefreshCw, Lightbulb,
-  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, type LucideIcon,
+  Target, Tag, Brain, Plus, Eye, ArrowRight, Layers, TrendingDown, TrendingUp, Minus, Activity, Undo2, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -51,6 +51,11 @@ import {
   buildBatchPlan, buildBatchNote, generateBatchId,
   type BatchPlan,
 } from '@/lib/playbookSuggestionBatch';
+import {
+  evaluateRecentSuggestionEffectiveness,
+  type EffectivenessResult,
+} from '@/lib/playbookSuggestionEffectiveness';
+import { buildRollbackPlan } from '@/lib/playbookSnapshotRollback';
 import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 const WINDOW_OPTIONS = [
