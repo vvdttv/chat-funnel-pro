@@ -117,13 +117,101 @@ export const PlaybookOverrideSuggestionsPanel = () => {
     limit: 1000,
   });
   const { items: overrides, upsert, refresh: refreshOverrides } = usePlaybookOverrides();
-  const { recordSnapshot } = usePlaybookOverrideSnapshots({ limit: 1 });
+  const { items: allSnapshots, recordSnapshot, refresh: refreshSnapshots } = usePlaybookOverrideSnapshots({ limit: 200 });
   const runtime = usePlaybookRuntime();
 
   const suggestions = useMemo(
     () => analyzeDecisionLogs(logs, opts),
     [logs, opts],
   );
+
+  // Sprint 23 — efetividade das sugestões aplicadas nos últimos 30d
+  const effectiveness = useMemo<EffectivenessResult[]>(
+    () => evaluateRecentSuggestionEffectiveness(allSnapshots, logs, { lookbackDays: 30 }),
+    [allSnapshots, logs],
+  );
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+
+  const handleRevert = async (result: EffectivenessResult) => {
+    if (!orgId) return;
+    setRevertingId(result.snapshotId);
+    try {
+      // Plano: se vier de batch, reusa; senão monta um "plano" sintético com
+      // o snapshot anterior do mesmo escopo+layer.
+      const target = allSnapshots.find(s => s.id === result.snapshotId);
+      if (!target) throw new Error('snapshot_not_found');
+
+      const sameKey = allSnapshots
+        .filter(s => s.scopeType === target.scopeType
+          && s.scopeId === target.scopeId
+          && s.layer === target.layer)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      const targetTs = new Date(target.createdAt).getTime();
+      const previous = [...sameKey]
+        .reverse()
+        .find(s => new Date(s.createdAt).getTime() < targetTs) ?? null;
+
+      const targetPayload = previous?.payload ?? {};
+      const targetIsActive = previous?.isActive ?? false;
+
+      let overrideId = '';
+      if (targetIsActive && previous) {
+        overrideId = await upsert({
+          scopeType: target.scopeType,
+          scopeId: target.scopeId,
+          layer: target.layer,
+          payload: targetPayload,
+        });
+      } else {
+        // Sem prévio: desativar override existente (best effort)
+        const existing = overrides.find(o =>
+          o.scopeType === target.scopeType
+          && o.scopeId === target.scopeId
+          && o.layer === target.layer
+          && o.isActive,
+        );
+        if (existing) {
+          await upsert({
+            scopeType: target.scopeType,
+            scopeId: target.scopeId,
+            layer: target.layer,
+            payload: {},
+          });
+          overrideId = existing.id;
+        }
+      }
+
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: target.scopeType,
+        scopeId: target.scopeId,
+        layer: target.layer,
+        payload: targetPayload,
+        isActive: targetIsActive,
+        action: 'rollback',
+        note: `reverter sugestão ineficaz (${result.label}) · snapshot=${target.id}`,
+      });
+
+      await refreshOverrides();
+      await refreshSnapshots();
+      await runtime.refresh();
+      toast({
+        title: 'Sugestão revertida',
+        description: previous
+          ? 'Restaurado o estado anterior à aplicação.'
+          : 'Override desativado (não havia estado anterior).',
+      });
+    } catch (e) {
+      toast({
+        title: 'Erro ao reverter',
+        description: e instanceof Error ? e.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setRevertingId(null);
+    }
+  };
 
   // Substitui o placeholder 'org' pelo orgId real no scope das sugestões de tag tóxica.
   const resolvedSuggestions = useMemo(() => {
