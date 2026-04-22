@@ -19,16 +19,21 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch } from 'lucide-react';
+import {
+  Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch,
+  History, RotateCcw, ChevronDown, ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { usePlaybookRuntime } from '@/hooks/usePlaybookRuntime';
 import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
+import { usePlaybookOverrideSnapshots, type OverrideSnapshot } from '@/hooks/usePlaybookOverrideSnapshots';
 import { useIABehavior } from '@/hooks/useIABehavior';
 import {
   composeEffectivePlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
+import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
 
 interface Props {
   funnelId: string;
