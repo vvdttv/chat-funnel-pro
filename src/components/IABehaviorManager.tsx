@@ -22,6 +22,7 @@ import type {
   IABehaviorRule, IARuleKind, IARuleScope,
   LeadBehavior, LeadBehaviorCategory,
 } from '@/data/iaBehavior';
+import { IASystemHealthPanel } from '@/components/IASystemHealthPanel';
 
 type Tab = 'rules' | 'behaviors' | 'health';
 
