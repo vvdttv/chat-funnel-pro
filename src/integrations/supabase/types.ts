@@ -607,6 +607,51 @@ export type Database = {
         }
         Relationships: []
       }
+      playbook_override_snapshots: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          layer: string
+          note: string | null
+          organization_id: string
+          override_id: string | null
+          payload: Json
+          scope_id: string
+          scope_type: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          layer: string
+          note?: string | null
+          organization_id: string
+          override_id?: string | null
+          payload?: Json
+          scope_id: string
+          scope_type: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          layer?: string
+          note?: string | null
+          organization_id?: string
+          override_id?: string | null
+          payload?: Json
+          scope_id?: string
+          scope_type?: string
+        }
+        Relationships: []
+      }
       playbook_overrides: {
         Row: {
           created_at: string

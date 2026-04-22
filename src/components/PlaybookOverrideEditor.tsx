@@ -19,16 +19,21 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch } from 'lucide-react';
+import {
+  Layers, Save, Loader2, Plus, X, Trash2, Eye, GitBranch,
+  History, RotateCcw, ChevronDown, ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { usePlaybookRuntime } from '@/hooks/usePlaybookRuntime';
 import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
+import { usePlaybookOverrideSnapshots, type OverrideSnapshot } from '@/hooks/usePlaybookOverrideSnapshots';
 import { useIABehavior } from '@/hooks/useIABehavior';
 import {
   composeEffectivePlaybook, type PlaybookOverride, type StageIdentity,
 } from '@/lib/playbookComposer';
+import { buildPayloadDiff, summarizeDiff, type DiffEntry } from '@/lib/playbookOverrideDiff';
 
 interface Props {
   funnelId: string;
@@ -95,6 +100,17 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('open');
   const [draft, setDraft] = useState<DraftPayload>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [expandedSnap, setExpandedSnap] = useState<string | null>(null);
+
+  // Histórico versionado (filtrado por scope+layer ativo)
+  const { items: snapshots, loading: loadingSnaps, recordSnapshot, refresh: refreshSnaps } =
+    usePlaybookOverrideSnapshots({
+      scopeType: 'stage',
+      scopeId: stageScopeId,
+      layer,
+      limit: 30,
+    });
 
   // Carrega rascunho do override existente para o layer ativo
   const currentOverride = useMemo(
@@ -152,8 +168,18 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
         });
         return;
       }
-      await upsert({ scopeType: 'stage', scopeId: stageScopeId, layer, payload });
+      const overrideId = await upsert({ scopeType: 'stage', scopeId: stageScopeId, layer, payload });
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload,
+        isActive: true,
+        action: 'upsert',
+      });
       await refresh();
+      await refreshSnaps();
       await runtime.refresh();
       toast({
         title: 'Override salvo',
@@ -168,13 +194,24 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [draft, layer, stageScopeId, upsert, refresh, runtime, toast]);
+  }, [draft, layer, stageScopeId, upsert, refresh, refreshSnaps, recordSnapshot, runtime, toast]);
 
   const handleRemove = useCallback(async () => {
     if (!currentOverride) return;
     setSaving(true);
     try {
+      const previousPayload = currentOverride.payload;
       await deactivate(currentOverride.id);
+      await recordSnapshot({
+        overrideId: currentOverride.id,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: previousPayload,
+        isActive: false,
+        action: 'deactivate',
+      });
+      await refreshSnaps();
       await runtime.refresh();
       toast({
         title: 'Override removido',
@@ -190,7 +227,45 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [currentOverride, deactivate, runtime, toast]);
+  }, [currentOverride, deactivate, recordSnapshot, refreshSnaps, stageScopeId, layer, runtime, toast]);
+
+  const handleRollback = useCallback(async (snap: OverrideSnapshot) => {
+    setSaving(true);
+    try {
+      const overrideId = await upsert({
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: snap.payload,
+      });
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: snap.payload,
+        isActive: true,
+        action: 'rollback',
+        note: `rollback para snapshot ${snap.id.slice(0, 8)} de ${new Date(snap.createdAt).toLocaleString('pt-BR')}`,
+      });
+      await refresh();
+      await refreshSnaps();
+      await runtime.refresh();
+      setDraft(payloadToDraft(snap.payload));
+      toast({
+        title: 'Rollback aplicado',
+        description: `Override restaurado a partir de ${new Date(snap.createdAt).toLocaleString('pt-BR')}.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Erro no rollback',
+        description: e instanceof Error ? e.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [stageScopeId, layer, upsert, recordSnapshot, refresh, refreshSnaps, runtime, toast]);
 
   return (
     <div className="space-y-3">
@@ -468,6 +543,52 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
           )}
         </div>
       </div>
+
+      {/* Histórico versionado + diff visual + rollback */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setHistoryOpen(o => !o)}
+          className="w-full flex items-center justify-between px-3 py-2 active:bg-secondary/40 transition-colors"
+          aria-expanded={historyOpen}
+        >
+          <div className="flex items-center gap-1.5">
+            {historyOpen ? <ChevronDown size={13} className="text-primary" /> : <ChevronRight size={13} className="text-primary" />}
+            <History size={13} className="text-primary" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
+              Histórico ({snapshots.length})
+            </span>
+            <span className="text-[10px] text-muted-foreground ml-1">layer {layer}</span>
+          </div>
+          {loadingSnaps && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+        </button>
+
+        {historyOpen && (
+          <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-2">
+            {snapshots.length === 0 && !loadingSnaps && (
+              <p className="text-[11px] text-muted-foreground italic py-2">
+                Nenhuma versão registrada ainda. Salve um override para começar o histórico.
+              </p>
+            )}
+            {snapshots.map((snap, idx) => {
+              const previous = snapshots[idx + 1];
+              const diff = buildPayloadDiff(previous?.payload, snap.payload);
+              const expanded = expandedSnap === snap.id;
+              return (
+                <SnapshotRow
+                  key={snap.id}
+                  snap={snap}
+                  diff={diff}
+                  expanded={expanded}
+                  isLatest={idx === 0}
+                  onToggle={() => setExpandedSnap(expanded ? null : snap.id)}
+                  onRollback={() => handleRollback(snap)}
+                  saving={saving}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -602,6 +723,142 @@ const BehaviorPicker = ({
           );
         })}
       </div>
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------------
+// Snapshot row — versão + diff + rollback
+// ----------------------------------------------------------------------------
+
+const ACTION_META: Record<OverrideSnapshot['action'], { label: string; cls: string }> = {
+  upsert: { label: 'salvo', cls: 'bg-primary/15 text-primary border-primary/30' },
+  deactivate: { label: 'removido', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
+  rollback: { label: 'rollback', cls: 'bg-warning/15 text-warning border-warning/30' },
+};
+
+const DIFF_KIND_CLS: Record<DiffEntry['kind'], string> = {
+  added: 'bg-success/10 text-success border-success/30',
+  removed: 'bg-destructive/10 text-destructive border-destructive/30',
+  changed: 'bg-warning/10 text-warning border-warning/30',
+};
+
+const DIFF_KIND_SYMBOL: Record<DiffEntry['kind'], string> = {
+  added: '+',
+  removed: '−',
+  changed: '~',
+};
+
+const formatDate = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return iso; }
+};
+
+const renderValue = (v: unknown): string => {
+  if (v === null || v === undefined) return '∅';
+  if (Array.isArray(v)) return v.length === 0 ? '[]' : v.join(' • ');
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+};
+
+const SnapshotRow = ({
+  snap, diff, expanded, isLatest, onToggle, onRollback, saving,
+}: {
+  snap: OverrideSnapshot;
+  diff: DiffEntry[];
+  expanded: boolean;
+  isLatest: boolean;
+  onToggle: () => void;
+  onRollback: () => void;
+  saving: boolean;
+}) => {
+  const meta = ACTION_META[snap.action];
+  return (
+    <div className="bg-background border border-border rounded-md overflow-hidden">
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-1.5 flex-1 min-w-0 text-left active:opacity-70"
+          aria-expanded={expanded}
+        >
+          {expanded ? <ChevronDown size={11} className="text-muted-foreground shrink-0" /> : <ChevronRight size={11} className="text-muted-foreground shrink-0" />}
+          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide shrink-0 ${meta.cls}`}>
+            {meta.label}
+          </span>
+          {isLatest && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-primary/10 text-primary border-primary/30 font-medium uppercase tracking-wide shrink-0">
+              atual
+            </span>
+          )}
+          <span className="text-[10px] text-muted-foreground shrink-0">{formatDate(snap.createdAt)}</span>
+          <span className="text-[10px] text-muted-foreground truncate">· {summarizeDiff(diff)}</span>
+        </button>
+        {!isLatest && (
+          <button
+            onClick={onRollback}
+            disabled={saving}
+            className="text-[10px] px-1.5 py-1 rounded border bg-secondary text-foreground border-border active:scale-95 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+            title="Restaurar este payload como override ativo"
+          >
+            <RotateCcw size={10} />
+            <span>Rollback</span>
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="border-t border-border p-2 space-y-1.5 bg-card/50">
+          {diff.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground italic">
+              Sem diferenças em relação ao snapshot anterior.
+            </p>
+          ) : (
+            diff.map((entry, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[9px] px-1 rounded border font-mono font-bold ${DIFF_KIND_CLS[entry.kind]}`}>
+                    {DIFF_KIND_SYMBOL[entry.kind]}
+                  </span>
+                  <span className="text-[10px] font-mono text-foreground">{entry.path}</span>
+                </div>
+                {entry.arrayDelta ? (
+                  <div className="ml-4 space-y-0.5">
+                    {entry.arrayDelta.added.map((it, j) => (
+                      <p key={`a${j}`} className="text-[10px] text-success leading-snug">+ {it}</p>
+                    ))}
+                    {entry.arrayDelta.removed.map((it, j) => (
+                      <p key={`r${j}`} className="text-[10px] text-destructive leading-snug line-through">− {it}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ml-4 space-y-0.5">
+                    {entry.kind !== 'added' && (
+                      <p className="text-[10px] text-destructive leading-snug line-through">
+                        − {renderValue(entry.before)}
+                      </p>
+                    )}
+                    {entry.kind !== 'removed' && (
+                      <p className="text-[10px] text-success leading-snug">
+                        + {renderValue(entry.after)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          {snap.note && (
+            <p className="text-[10px] text-muted-foreground italic mt-1 pt-1 border-t border-border">
+              nota: {snap.note}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
