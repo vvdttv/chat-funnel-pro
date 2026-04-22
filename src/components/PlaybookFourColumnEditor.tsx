@@ -96,6 +96,13 @@ export const PlaybookFourColumnEditor = ({
   const [expectedBehaviorIds, setExpectedBehaviorIds] = useState<string[]>([]);
   const [archetypeId, setArchetypeId] = useState<string>('');
 
+  // Sprint 25 — Cenários do sandbox (persistência localStorage)
+  const sandbox = useSandboxScenarios({ funnelId, stageId: stage.id });
+  const [scenariosOpen, setScenariosOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  const [comparingId, setComparingId] = useState<string | null>(null);
+  const [productionPayload, setProductionPayload] = useState<PlaybookOverride['payload']>({});
+
   // Carrega funnel_stages row + override existente
   useEffect(() => {
     if (!open || !funnelId || !stage.id || !profile?.organization_id) return;
