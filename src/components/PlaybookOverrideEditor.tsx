@@ -168,8 +168,18 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
         });
         return;
       }
-      await upsert({ scopeType: 'stage', scopeId: stageScopeId, layer, payload });
+      const overrideId = await upsert({ scopeType: 'stage', scopeId: stageScopeId, layer, payload });
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload,
+        isActive: true,
+        action: 'upsert',
+      });
       await refresh();
+      await refreshSnaps();
       await runtime.refresh();
       toast({
         title: 'Override salvo',
@@ -184,13 +194,24 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [draft, layer, stageScopeId, upsert, refresh, runtime, toast]);
+  }, [draft, layer, stageScopeId, upsert, refresh, refreshSnaps, recordSnapshot, runtime, toast]);
 
   const handleRemove = useCallback(async () => {
     if (!currentOverride) return;
     setSaving(true);
     try {
+      const previousPayload = currentOverride.payload;
       await deactivate(currentOverride.id);
+      await recordSnapshot({
+        overrideId: currentOverride.id,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: previousPayload,
+        isActive: false,
+        action: 'deactivate',
+      });
+      await refreshSnaps();
       await runtime.refresh();
       toast({
         title: 'Override removido',
@@ -206,7 +227,45 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
     } finally {
       setSaving(false);
     }
-  }, [currentOverride, deactivate, runtime, toast]);
+  }, [currentOverride, deactivate, recordSnapshot, refreshSnaps, stageScopeId, layer, runtime, toast]);
+
+  const handleRollback = useCallback(async (snap: OverrideSnapshot) => {
+    setSaving(true);
+    try {
+      const overrideId = await upsert({
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: snap.payload,
+      });
+      await recordSnapshot({
+        overrideId: overrideId || null,
+        scopeType: 'stage',
+        scopeId: stageScopeId,
+        layer,
+        payload: snap.payload,
+        isActive: true,
+        action: 'rollback',
+        note: `rollback para snapshot ${snap.id.slice(0, 8)} de ${new Date(snap.createdAt).toLocaleString('pt-BR')}`,
+      });
+      await refresh();
+      await refreshSnaps();
+      await runtime.refresh();
+      setDraft(payloadToDraft(snap.payload));
+      toast({
+        title: 'Rollback aplicado',
+        description: `Override restaurado a partir de ${new Date(snap.createdAt).toLocaleString('pt-BR')}.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Erro no rollback',
+        description: e instanceof Error ? e.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [stageScopeId, layer, upsert, recordSnapshot, refresh, refreshSnaps, runtime, toast]);
 
   return (
     <div className="space-y-3">
