@@ -726,3 +726,139 @@ const BehaviorPicker = ({
     </div>
   );
 };
+
+// ----------------------------------------------------------------------------
+// Snapshot row — versão + diff + rollback
+// ----------------------------------------------------------------------------
+
+const ACTION_META: Record<OverrideSnapshot['action'], { label: string; cls: string }> = {
+  upsert: { label: 'salvo', cls: 'bg-primary/15 text-primary border-primary/30' },
+  deactivate: { label: 'removido', cls: 'bg-destructive/15 text-destructive border-destructive/30' },
+  rollback: { label: 'rollback', cls: 'bg-warning/15 text-warning border-warning/30' },
+};
+
+const DIFF_KIND_CLS: Record<DiffEntry['kind'], string> = {
+  added: 'bg-success/10 text-success border-success/30',
+  removed: 'bg-destructive/10 text-destructive border-destructive/30',
+  changed: 'bg-warning/10 text-warning border-warning/30',
+};
+
+const DIFF_KIND_SYMBOL: Record<DiffEntry['kind'], string> = {
+  added: '+',
+  removed: '−',
+  changed: '~',
+};
+
+const formatDate = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return iso; }
+};
+
+const renderValue = (v: unknown): string => {
+  if (v === null || v === undefined) return '∅';
+  if (Array.isArray(v)) return v.length === 0 ? '[]' : v.join(' • ');
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+};
+
+const SnapshotRow = ({
+  snap, diff, expanded, isLatest, onToggle, onRollback, saving,
+}: {
+  snap: OverrideSnapshot;
+  diff: DiffEntry[];
+  expanded: boolean;
+  isLatest: boolean;
+  onToggle: () => void;
+  onRollback: () => void;
+  saving: boolean;
+}) => {
+  const meta = ACTION_META[snap.action];
+  return (
+    <div className="bg-background border border-border rounded-md overflow-hidden">
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-1.5 flex-1 min-w-0 text-left active:opacity-70"
+          aria-expanded={expanded}
+        >
+          {expanded ? <ChevronDown size={11} className="text-muted-foreground shrink-0" /> : <ChevronRight size={11} className="text-muted-foreground shrink-0" />}
+          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide shrink-0 ${meta.cls}`}>
+            {meta.label}
+          </span>
+          {isLatest && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-primary/10 text-primary border-primary/30 font-medium uppercase tracking-wide shrink-0">
+              atual
+            </span>
+          )}
+          <span className="text-[10px] text-muted-foreground shrink-0">{formatDate(snap.createdAt)}</span>
+          <span className="text-[10px] text-muted-foreground truncate">· {summarizeDiff(diff)}</span>
+        </button>
+        {!isLatest && (
+          <button
+            onClick={onRollback}
+            disabled={saving}
+            className="text-[10px] px-1.5 py-1 rounded border bg-secondary text-foreground border-border active:scale-95 disabled:opacity-50 inline-flex items-center gap-1 shrink-0"
+            title="Restaurar este payload como override ativo"
+          >
+            <RotateCcw size={10} />
+            <span>Rollback</span>
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="border-t border-border p-2 space-y-1.5 bg-card/50">
+          {diff.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground italic">
+              Sem diferenças em relação ao snapshot anterior.
+            </p>
+          ) : (
+            diff.map((entry, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[9px] px-1 rounded border font-mono font-bold ${DIFF_KIND_CLS[entry.kind]}`}>
+                    {DIFF_KIND_SYMBOL[entry.kind]}
+                  </span>
+                  <span className="text-[10px] font-mono text-foreground">{entry.path}</span>
+                </div>
+                {entry.arrayDelta ? (
+                  <div className="ml-4 space-y-0.5">
+                    {entry.arrayDelta.added.map((it, j) => (
+                      <p key={`a${j}`} className="text-[10px] text-success leading-snug">+ {it}</p>
+                    ))}
+                    {entry.arrayDelta.removed.map((it, j) => (
+                      <p key={`r${j}`} className="text-[10px] text-destructive leading-snug line-through">− {it}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ml-4 space-y-0.5">
+                    {entry.kind !== 'added' && (
+                      <p className="text-[10px] text-destructive leading-snug line-through">
+                        − {renderValue(entry.before)}
+                      </p>
+                    )}
+                    {entry.kind !== 'removed' && (
+                      <p className="text-[10px] text-success leading-snug">
+                        + {renderValue(entry.after)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          {snap.note && (
+            <p className="text-[10px] text-muted-foreground italic mt-1 pt-1 border-t border-border">
+              nota: {snap.note}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
