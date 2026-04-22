@@ -19,6 +19,7 @@ import { IABehaviorManager } from '@/components/IABehaviorManager';
 import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGlobalList';
 import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideSnapshotsBrowser';
 import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
+import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
 
