@@ -106,11 +106,19 @@ const draftToPayload = (d: DraftPayload): PlaybookOverride['payload'] => {
   return payload;
 };
 
-export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) => {
+export const PlaybookOverrideEditor = ({
+  funnelId, stageId, stageName, scope, allowScopeSwitch = false,
+}: Props) => {
   const { toast } = useToast();
-  const stageScopeId = `${funnelId}::${stageId}`;
+
+  // Escopo efetivo — quando `scope` é informado, ele vence; senão usamos stage padrão.
+  const effectiveScope = useMemo<{ type: PlaybookOverride['scopeType']; id: string; label: string }>(() => {
+    if (scope) return scope;
+    return { type: 'stage', id: `${funnelId}::${stageId}`, label: stageName };
+  }, [scope, funnelId, stageId, stageName]);
+
   const { items: overrides, loading: loadingOv, upsert, deactivate, refresh } =
-    usePlaybookOverrides({ scopeType: 'stage', scopeId: stageScopeId });
+    usePlaybookOverrides({ scopeType: effectiveScope.type, scopeId: effectiveScope.id });
   const runtime = usePlaybookRuntime();
   const { behaviors } = useIABehavior();
 
@@ -124,11 +132,21 @@ export const PlaybookOverrideEditor = ({ funnelId, stageId, stageName }: Props) 
   // Histórico versionado (filtrado por scope+layer ativo)
   const { items: snapshots, loading: loadingSnaps, recordSnapshot, refresh: refreshSnaps } =
     usePlaybookOverrideSnapshots({
-      scopeType: 'stage',
-      scopeId: stageScopeId,
+      scopeType: effectiveScope.type,
+      scopeId: effectiveScope.id,
       layer,
       limit: 30,
     });
+
+  // Cascata: quantas etapas físicas serão impactadas por este escopo (Sprint 17).
+  const cascade = useMemo(() => {
+    if (!runtime.snapshot) return null;
+    return computeOverrideCascade({
+      scopeType: effectiveScope.type,
+      scopeId: effectiveScope.id,
+      physicalStages: runtime.snapshot.physicalStages,
+    });
+  }, [runtime.snapshot, effectiveScope.type, effectiveScope.id]);
 
   // Carrega rascunho do override existente para o layer ativo
   const currentOverride = useMemo(
