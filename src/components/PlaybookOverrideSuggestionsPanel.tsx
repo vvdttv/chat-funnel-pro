@@ -412,6 +412,14 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         Aplicar apenas mescla com o existente — nunca apaga customizações.
       </p>
 
+      {/* Sprint 23 — Efetividade das sugestões aplicadas (30d) */}
+      <EffectivenessCard
+        results={effectiveness}
+        funnels={funnels}
+        revertingId={revertingId}
+        onRevert={handleRevert}
+      />
+
       {/* Sprint 20 — barra de seleção em lote */}
       {!loadingLogs && selectableSuggestions.length > 0 && (
         <div className="bg-secondary/40 border border-border rounded-lg p-2 flex items-center justify-between gap-2 flex-wrap sticky top-0 z-10">
