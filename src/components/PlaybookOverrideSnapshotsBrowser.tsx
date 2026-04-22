@@ -844,3 +844,31 @@ function FilterPills<T extends string>({
     </div>
   );
 }
+
+function SummaryBlock({
+  label,
+  rows,
+}: {
+  label: string;
+  rows: Array<[string, number]>;
+}) {
+  return (
+    <div className="bg-secondary/40 rounded p-1.5">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+        {label}
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-[10px] text-muted-foreground italic">—</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {rows.map(([k, n]) => (
+            <li key={k} className="flex items-center justify-between gap-2 text-[10px]">
+              <span className="text-foreground truncate">{k}</span>
+              <span className="text-muted-foreground font-mono shrink-0">{n}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
