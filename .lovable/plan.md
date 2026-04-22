@@ -1,94 +1,56 @@
-` para que a aprovação dispare a troca para default mode. Isso é o que o sistema espera quando o usuário diz "execute o plano, cancelei sem querer" — recriar o ponto de aprovação.
 
-<lov-plan>
 
-# Plano consolidado — Sprints 21 a 26 em uma única execução
+# Wiring final dos Sprints 21–26
 
-Esta é a re-confirmação do plano já discutido. Aprove para Lovable trocar para modo de implementação e eu codo todos os 6 sprints na próxima mensagem (já tenho cada arquivo desenhado em detalhe; só falta gravar).
+A lógica pura e os componentes standalone já foram entregues na mensagem anterior (6 módulos + 30 testes verdes). Falta plugar tudo nas UIs existentes. Esta execução fecha o ciclo sem criar arquivos novos — apenas edições.
 
-## O que será entregue
+## O que será plugado
 
-### Sprint 21 — Rollback de lote pelo `batchId`
-No `PlaybookOverrideSnapshotsBrowser`, snapshots criados pelo Sprint 20 já carregam `[batch_xxx]` no `note`. Vou:
-- Agrupar visualmente snapshots do mesmo `batchId` (header colapsável "Lote batch_xxx · N escopos · há 2h").
-- Botão **"Reverter lote inteiro"** que itera todos os itens do grupo, faz upsert do `payload` *anterior* ao lote (lookup do snapshot imediatamente anterior por scope+layer) e grava novos snapshots com `action='rollback'` + nota `"[rollback de batch_xxx]"`.
-- Confirmação modal listando exatamente o que será revertido, com aviso "dirty" quando alguém editou depois do lote.
+### 1. `PlaybookOverrideSnapshotsBrowser.tsx` — S21 + S22
+- **Toggle "Agrupar por lote"** no topo dos filtros. Quando ligado, snapshots com `[batch_xxx]` no `note` são agrupados em headers colapsáveis ("Lote batch_xxx · N escopos · há 2h"), reusando `groupSnapshotsByBatch` de `playbookSnapshotRollback.ts`.
+- **Botão "Reverter lote inteiro"** em cada header. Abre confirm modal listando o que será revertido (via `buildRollbackPlan`). Executa upserts encadeados + `recordSnapshot` com `action='rollback'` e nota `[rollback de batch_xxx]`. Avisa "dirty" quando há snapshot posterior ao lote no mesmo escopo.
+- **Botões "Exportar CSV" e "Exportar JSON"** no header da lista. Respeitam filtros ativos (`visible`). Usam `buildSnapshotsCSV` / `buildSnapshotsJSON` + download via Blob (mesmo padrão de `iaDecisionLogsExport.ts`).
+- **Card "Resumo do período"** colapsável acima da lista, alimentado por `summarizeAuditPeriod(visible)` — mostra totais por escopo, layer, ação, autor e contagem de batches.
 
-### Sprint 22 — Diff agregado e exportação de auditoria
-- Botão **"Exportar histórico (CSV/JSON)"** no snapshots browser respeitando filtros ativos.
-- Nova visão **"Resumo do período"**: agrega snapshots filtrados (7/30/90 dias) e mostra contadores por escopo, autor, layer, ação e funil + total de batches.
-- Reusa o padrão de download via Blob do `iaDecisionLogsExport.ts`.
+### 2. `PlaybookOverrideSuggestionsPanel.tsx` — S23
+- Nova seção **"Efetividade das sugestões aplicadas (30d)"** acima da lista de sugestões pendentes, visível só quando há snapshots `auto-sugestão`.
+- Para cada sugestão aplicada nos últimos 30d, renderiza linha com: título, escopo, delta de `failureRate` (▼ verde / ▲ vermelho / ~ neutro / "sem dados"), via `evaluateSnapshotEffectiveness(snapshot, logs)`.
+- Sugestões com delta positivo (piora ≥ 5pp) ganham botão **"Reverter"** que faz upsert do payload anterior + snapshot `action='rollback'` com nota `"reverter sugestão ineficaz"`.
 
-### Sprint 23 — Telemetria de sugestões aplicadas (efetividade)
-Mede se as sugestões do Sprint 18/20 *funcionaram*:
-- Novo módulo puro `src/lib/playbookSuggestionEffectiveness.ts`: dado um snapshot de auto-sugestão, compara `failureRate` dos logs **antes** vs **depois** da aplicação no mesmo escopo (janela de 14 dias cada lado).
-- Card "Efetividade" no `PlaybookOverrideSuggestionsPanel` listando sugestões aplicadas nos últimos 30d com delta (▼ verde, ▲ vermelho, ~ neutro, "sem dados" quando insuficiente).
-- Sugestões com efetividade negativa ganham botão **"Reverter"** rápido.
+### 3. `PlaybookFourColumnEditor.tsx` — S25
+- Nova seção colapsável **"Cenários do sandbox"** abaixo do `SandboxPreview` e acima de "Overrides composicionais".
+- Usa `useSandboxScenarios({ funnelId, stageId })`.
+- UI: input "nome do cenário" + botão "Salvar cenário atual" (snapshot do `{ identity, successCriteria, failureCriteria, expectedBehaviorIds }` no formato `payload`).
+- Lista de cenários salvos com botões "Carregar" (preenche os 4 estados do editor), "Comparar com produção" (renderiza diff via `buildPayloadDiff` entre o cenário e o payload em `playbook_overrides` salvo), "Excluir".
+- Botão "Exportar JSON" usa `exportAll()` + Blob download.
 
-### Sprint 24 — Heatmap funnel × status no IndicadoresPage
-- Novo componente `FunnelStatusHeatmap`: matriz funis (linhas) × status `open/won/lost` (colunas) com intensidade pela contagem de deals + tooltip de taxa `open→won` por arquétipo + linha de fallbacks IA.
-- Plugado como nova seção colapsável no `IndicadoresPage` ("Saúde composicional").
-- Reusa `useDeals`, `useFunnels`, `useIADecisionLogs`, `useArchetypes`.
+### 4. `IABehaviorManager.tsx` — S26
+- Adicionar terceira aba **"Saúde"** ao tabset existente (`'rules' | 'behaviors' | 'health'`).
+- Quando ativa, renderiza `<IASystemHealthPanel />` direto (componente já criado).
+- Tab fica com ícone `Activity` e contador omitido (não é CRUD).
 
-### Sprint 25 — Sandbox composicional persistente (cenários salvos)
-**Ajuste vs. plano original:** sem migration disponível neste ambiente, vou armazenar cenários em **localStorage por `org+user`** (chave determinística), mantendo o objetivo intacto:
-- Hook `useSandboxScenarios` (CRUD em localStorage).
-- UI dentro do `PlaybookFourColumnEditor`: salvar cenário atual com nome, listar/recarregar cenários, "comparar com produção" (renderiza diff entre o playbook simulado e o efetivo real via `buildPayloadDiff`).
-- Cenários ficam disponíveis offline e podem ser exportados como JSON para portar entre máquinas.
+### 5. `IndicadoresPage.tsx` — S24
+- Nova seção colapsável **"Saúde composicional"** após "Decisões da IA", com chave `'composicional'` no accordion.
+- Renderiza `<FunnelStatusHeatmap />` (componente já criado).
+- Ícone `Layers`, mesmo padrão visual das outras seções.
 
-### Sprint 26 — Painel "Saúde do sistema IA" no IABehaviorManager
-Aba final agregando indicadores hoje dispersos:
-- Contagem de regras ativas/inativas por kind (do/dont/ask/noask).
-- Cobertura de LBs por status (% LBs com `applicable_statuses` ≠ default).
-- Top 5 overrides mais "tocados" no período (via snapshots).
-- Lista de etapas SEM nenhum override + com `failureRate` alto (gap de configuração).
-- Botão "Ir para sugestões" prefiltrando essas etapas no painel S18.
-
-## Arquivos
+## Arquivos editados
 
 ```text
-src/lib/                                 (núcleos puros + 100% cobertos por testes)
-├── playbookSnapshotRollback.ts          [novo – S21]
-├── playbookOverrideAuditExport.ts       [novo – S22]
-├── playbookSuggestionEffectiveness.ts   [novo – S23]
-└── (sandbox storage util inline no hook)
-
-src/hooks/
-└── useSandboxScenarios.ts               [novo – S25]
-
-src/components/
-├── PlaybookOverrideSnapshotsBrowser.tsx [edit – S21+S22 grupos+export+resumo]
-├── PlaybookOverrideSuggestionsPanel.tsx [edit – S23 card de efetividade]
-├── PlaybookFourColumnEditor.tsx         [edit – S25 cenários integrados]
-├── IABehaviorManager.tsx                [edit – S26 nova aba "Saúde"]
-├── FunnelStatusHeatmap.tsx              [novo – S24]
-└── IASystemHealthPanel.tsx              [novo – S26]
-
-src/pages/
-└── IndicadoresPage.tsx                  [edit – S24 nova seção]
-
-src/test/
-├── playbookSnapshotRollback.test.ts     [novo]
-├── playbookOverrideAuditExport.test.ts  [novo]
-├── playbookSuggestionEffectiveness.test.ts [novo]
-└── (componentes UI sem testes — padrão do projeto)
+src/components/PlaybookOverrideSnapshotsBrowser.tsx   [+ agrupamento, rollback, exports, resumo]
+src/components/PlaybookOverrideSuggestionsPanel.tsx   [+ card de efetividade + reverter]
+src/components/PlaybookFourColumnEditor.tsx           [+ seção cenários sandbox]
+src/components/IABehaviorManager.tsx                  [+ aba Saúde]
+src/pages/IndicadoresPage.tsx                         [+ seção Saúde composicional]
 ```
 
-## Banco de dados
-
-**Nenhuma migration nova.** Tudo reusa tabelas existentes (`playbook_override_snapshots`, `ia_decision_logs`, `deals`). Cenários do sandbox vão para localStorage.
+Nenhum arquivo novo. Nenhuma migration. Nenhum hook novo. Apenas integração visual da lógica já testada.
 
 ## Validação
 
-- Cada módulo puro vem com 5+ testes unitários.
-- Meta final: `vitest run` 100% verde + `tsc --noEmit` sem erros (atualmente 102/102).
+- `tsc --noEmit` deve continuar sem erros.
+- `vitest run` deve manter 132/132 verdes (nenhum teste de UI alterado, nenhum módulo puro tocado).
+- Smoke manual: abrir Snapshots Browser → ativar agrupamento → reverter um lote dummy; abrir Sugestões → ver card efetividade; abrir editor da etapa → salvar/carregar cenário; abrir IABehaviorManager → aba Saúde; abrir Indicadores → expandir nova seção.
 
-## Escopo explícito — o que NÃO entra
-
-- Edge functions novas (toda lógica é client-side).
-- Mudanças no `seed-ia-behavior` ou `ai-chat-analysis`.
-- Multi-org / overrides cross-organização (item 8 das decisões abertas).
-- Permitir empresas criarem arquétipos próprios (item 4).
-
-Aprovando, na próxima mensagem entrego os 6 sprints completos.
+Aprovando, entrego os 5 arquivos editados na próxima mensagem.
 
