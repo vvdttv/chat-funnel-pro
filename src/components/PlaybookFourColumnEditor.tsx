@@ -149,6 +149,7 @@ export const PlaybookFourColumnEditor = ({
         .maybeSingle();
       if (cancelled) return;
       const payload = (ov?.payload as Record<string, unknown> | null) ?? {};
+      setProductionPayload(payload as PlaybookOverride['payload']);
       setSuccessCriteria((payload.successCriteria as string[]) ?? stage.playbookOverride?.successCriteria ?? []);
       setFailureCriteria((payload.failureCriteria as string[]) ?? stage.playbookOverride?.failureCriteria ?? []);
       setExpectedBehaviorIds(
