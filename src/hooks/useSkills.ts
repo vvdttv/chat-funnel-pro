@@ -181,7 +181,7 @@ export function useSkills(): UseSkillsState {
     if (patch.isAutoSuggested !== undefined) dbPatch.is_auto_suggested = patch.isAutoSuggested;
     if (patch.position !== undefined) dbPatch.position = patch.position;
 
-    const { error } = await supabase.from('ia_skills').update(dbPatch).eq('id', id);
+    const { error } = await supabase.from('ia_skills').update(dbPatch as never).eq('id', id);
     if (error) return { error: error.message };
     await fetchAll();
     return { error: null };
