@@ -101,6 +101,11 @@ export const PlaybookOverrideSuggestionsPanel = () => {
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<OverrideSuggestion | null>(null);
   const [opts] = useState<AnalyzeOptions>({});
+  // Sprint 20 — seleção em lote
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchPlan, setBatchPlan] = useState<BatchPlan | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const { logs, loading: loadingLogs, refresh: refreshLogs } = useIADecisionLogs({
     sinceDays: windowDays,
@@ -123,6 +128,102 @@ export const PlaybookOverrideSuggestionsPanel = () => {
         : s,
     );
   }, [suggestions, orgId]);
+
+  const selectableSuggestions = useMemo(
+    () => resolvedSuggestions.filter(s => !appliedIds.has(s.id)),
+    [resolvedSuggestions, appliedIds],
+  );
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(selectableSuggestions.map(s => s.id)));
+  };
+
+  const selectCritical = () => {
+    setSelectedIds(new Set(
+      selectableSuggestions.filter(s => s.severity === 'critical').map(s => s.id),
+    ));
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const openBatchDialog = () => {
+    const chosen = resolvedSuggestions.filter(s => selectedIds.has(s.id));
+    if (chosen.length === 0) return;
+    const plan = buildBatchPlan({
+      suggestions: chosen,
+      existingOverrides: overrides,
+      batchId: generateBatchId(),
+    });
+    setBatchPlan(plan);
+  };
+
+  const closeBatchDialog = () => {
+    if (batchRunning) return;
+    setBatchPlan(null);
+  };
+
+  const runBatch = async () => {
+    if (!batchPlan || !orgId) return;
+    setBatchRunning(true);
+    setBatchProgress({ done: 0, total: batchPlan.items.length });
+    const newApplied = new Set(appliedIds);
+    let failures = 0;
+    try {
+      for (let i = 0; i < batchPlan.items.length; i++) {
+        const item = batchPlan.items[i];
+        try {
+          const overrideId = await upsert({
+            scopeType: item.scopeType,
+            scopeId: item.scopeId,
+            layer: item.layer,
+            payload: item.mergedPayload,
+          });
+          await recordSnapshot({
+            overrideId: overrideId || null,
+            scopeType: item.scopeType,
+            scopeId: item.scopeId,
+            layer: item.layer,
+            payload: item.mergedPayload,
+            isActive: true,
+            action: 'upsert',
+            note: buildBatchNote(batchPlan.batchId, item, batchPlan.totalWrites),
+          });
+          for (const s of item.suggestions) newApplied.add(s.id);
+        } catch (e) {
+          console.error('[batch] item falhou', item.key, e);
+          failures += 1;
+        }
+        setBatchProgress({ done: i + 1, total: batchPlan.items.length });
+      }
+      await refreshOverrides();
+      await runtime.refresh();
+      setAppliedIds(newApplied);
+      clearSelection();
+      if (failures === 0) {
+        toast({
+          title: 'Lote aplicado',
+          description: `${batchPlan.totalSuggestions} sugestões consolidadas em ${batchPlan.totalWrites} gravação(ões). Histórico marcado com ${batchPlan.batchId}.`,
+        });
+      } else {
+        toast({
+          title: 'Lote aplicado com falhas',
+          description: `${failures} de ${batchPlan.totalWrites} gravações falharam. Veja o console.`,
+          variant: 'destructive',
+        });
+      }
+      setBatchPlan(null);
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   const handleApply = async (sug: OverrideSuggestion) => {
     if (!orgId) {
