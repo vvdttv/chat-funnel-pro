@@ -881,3 +881,122 @@ function SummaryBlock({
     </div>
   );
 }
+
+// ----------------------------------------------------------------------------
+// Sprint 21 — Dialog de confirmação de rollback de lote
+// ----------------------------------------------------------------------------
+
+function RollbackPlanDialog({
+  plan,
+  funnels,
+  running,
+  progress,
+  onClose,
+  onConfirm,
+}: {
+  plan: RollbackPlan | null;
+  funnels: ReturnType<typeof useFunnels>['funnels'];
+  running: boolean;
+  progress: { done: number; total: number };
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const open = !!plan;
+  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm flex items-center gap-1.5">
+            <Undo2 size={13} className="text-primary" />
+            Reverter lote
+            {plan && <span className="font-mono text-[11px] text-muted-foreground">{plan.batchId}</span>}
+          </DialogTitle>
+          <DialogDescription className="text-[11px]">
+            {plan && (
+              <>
+                {plan.items.length} escopo(s) serão restaurados ao estado anterior ao lote.
+                {plan.dirtyCount > 0 && (
+                  <span className="block mt-1 text-warning">
+                    ⚠ {plan.dirtyCount} escopo(s) tiveram alterações posteriores que serão sobrescritas.
+                  </span>
+                )}
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {plan && (
+          <ul className="max-h-[40vh] overflow-y-auto space-y-1 -mx-1 px-1">
+            {plan.items.map(it => {
+              const sc = resolveScope(it.scopeType, it.scopeId, funnels);
+              const label = sc.stage
+                ? `${sc.funnel ?? '?'} › ${sc.stage}`
+                : sc.funnel ?? sc.raw ?? it.scopeId;
+              return (
+                <li
+                  key={it.key}
+                  className="bg-secondary/40 border border-border rounded px-2 py-1.5 flex items-center gap-2"
+                >
+                  <span className="text-[11px] text-foreground flex-1 min-w-0 truncate">{label}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground border border-border rounded px-1 py-px">
+                    {it.layer}
+                  </span>
+                  <span
+                    className={`text-[9px] uppercase tracking-wider border rounded px-1 py-px font-semibold ${
+                      it.action === 'rollback'
+                        ? 'text-primary border-primary/30 bg-primary/10'
+                        : 'text-warning border-warning/30 bg-warning/10'
+                    }`}
+                  >
+                    {it.action === 'rollback' ? 'restaurar' : 'desativar'}
+                  </span>
+                  {it.dirty && (
+                    <AlertTriangle size={11} className="text-warning shrink-0" aria-label="mudança posterior" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {running && (
+          <div className="space-y-1">
+            <div className="h-1.5 bg-secondary rounded overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              {progress.done} / {progress.total}
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onClose}
+            disabled={running}
+            className="h-8 text-[11px]"
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={running || !plan || plan.items.length === 0}
+            className="h-8 text-[11px] gap-1"
+          >
+            {running ? <Loader2 size={11} className="animate-spin" /> : <Undo2 size={11} />}
+            Reverter lote
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
