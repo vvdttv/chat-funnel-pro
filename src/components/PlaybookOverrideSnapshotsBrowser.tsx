@@ -210,6 +210,93 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
 
   const clearCompare = () => { setCompareA(null); setCompareB(null); };
 
+  // Sprint 22 — resumo agregado dos snapshots VISÍVEIS
+  const summary = useMemo<AuditPeriodSummary>(
+    () => summarizeAuditPeriod(visible, memberMap),
+    [visible, memberMap],
+  );
+
+  // Sprint 21 — agrupamento por lote (sobre os visíveis)
+  const batchGroups = useMemo(() => groupSnapshotsByBatch(visible), [visible]);
+
+  const toggleBatchOpen = (id: string) => {
+    setExpandedBatch(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const openRollback = (batchId: string) => {
+    setRollbackPlan(buildRollbackPlan(items, batchId));
+  };
+
+  const closeRollback = () => {
+    if (rollbackRunning) return;
+    setRollbackPlan(null);
+  };
+
+  const runRollback = async () => {
+    if (!rollbackPlan) return;
+    setRollbackRunning(true);
+    setRollbackProgress({ done: 0, total: rollbackPlan.items.length });
+    let failures = 0;
+    try {
+      for (let i = 0; i < rollbackPlan.items.length; i++) {
+        const it = rollbackPlan.items[i];
+        try {
+          let overrideId = '';
+          if (it.action === 'rollback') {
+            overrideId = await upsert({
+              scopeType: it.scopeType,
+              scopeId: it.scopeId,
+              layer: it.layer,
+              payload: it.targetPayload,
+            });
+          } else if (it.batchSnapshot.overrideId) {
+            await deactivate(it.batchSnapshot.overrideId);
+            overrideId = it.batchSnapshot.overrideId;
+          }
+          await recordSnapshot({
+            overrideId: overrideId || it.batchSnapshot.overrideId,
+            scopeType: it.scopeType,
+            scopeId: it.scopeId,
+            layer: it.layer,
+            payload: it.targetPayload,
+            isActive: it.targetIsActive,
+            action: 'rollback',
+            note: buildRollbackNote(rollbackPlan.batchId, it),
+          });
+        } catch (e) {
+          console.error('[rollback] item falhou', it.key, e);
+          failures += 1;
+        }
+        setRollbackProgress({ done: i + 1, total: rollbackPlan.items.length });
+      }
+      await refreshOverrides();
+      await refresh();
+      if (failures === 0) {
+        toast({
+          title: 'Lote revertido',
+          description: `${rollbackPlan.items.length} escopo(s) restaurados (${rollbackPlan.batchId}).`,
+        });
+      } else {
+        toast({
+          title: 'Rollback parcial',
+          description: `${failures} de ${rollbackPlan.items.length} reversões falharam.`,
+          variant: 'destructive',
+        });
+      }
+      setRollbackPlan(null);
+    } finally {
+      setRollbackRunning(false);
+    }
+  };
+
+  const handleExportCSV = () => exportSnapshotsCSV(visible, memberMap);
+  const handleExportJSON = () => exportSnapshotsJSON(visible);
+
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
