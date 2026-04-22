@@ -126,9 +126,11 @@ const resolveScope = (
 export const PlaybookOverrideSnapshotsBrowser = () => {
   // Snapshots: pegamos tudo (sem filtro server-side) e filtramos client-side
   // para permitir filtros cruzados (autor, data, ação) sem N round-trips.
-  const { items, loading, error, refresh } = usePlaybookOverrideSnapshots({ limit: 200 });
+  const { items, loading, error, refresh, recordSnapshot } = usePlaybookOverrideSnapshots({ limit: 200 });
   const { funnels } = useFunnels();
   const { members } = useOrgMembers();
+  const { upsert, deactivate, refresh: refreshOverrides } = usePlaybookOverrides();
+  const { toast } = useToast();
 
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
   const [layerFilter, setLayerFilter] = useState<LayerFilter>('all');
@@ -142,6 +144,14 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
   // Comparação: A e B (ids dos snapshots selecionados, na ordem em que foram clicados)
   const [compareA, setCompareA] = useState<string | null>(null);
   const [compareB, setCompareB] = useState<string | null>(null);
+
+  // Sprint 21+22 — agrupamento por lote, resumo, rollback
+  const [groupByBatch, setGroupByBatch] = useState<boolean>(false);
+  const [showSummary, setShowSummary] = useState<boolean>(false);
+  const [expandedBatch, setExpandedBatch] = useState<Set<string>>(new Set());
+  const [rollbackPlan, setRollbackPlan] = useState<RollbackPlan | null>(null);
+  const [rollbackRunning, setRollbackRunning] = useState(false);
+  const [rollbackProgress, setRollbackProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const memberMap = useMemo(() => {
     const m = new Map<string, string>();
