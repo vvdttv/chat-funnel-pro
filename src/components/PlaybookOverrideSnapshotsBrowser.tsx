@@ -317,6 +317,105 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
         payloads lado a lado, mesmo entre escopos diferentes.
       </p>
 
+      {/* Sprint 21+22 — toolbar de ações */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Button
+          size="sm" variant="outline"
+          onClick={() => setGroupByBatch(v => !v)}
+          className="h-7 text-[10px] gap-1"
+        >
+          <Layers size={11} /> {groupByBatch ? 'Lista plana' : `Agrupar por lote (${batchGroups.size})`}
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => setShowSummary(v => !v)}
+          className="h-7 text-[10px] gap-1"
+        >
+          <FileText size={11} /> {showSummary ? 'Ocultar resumo' : 'Resumo do período'}
+        </Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={handleExportCSV}
+          disabled={visible.length === 0}
+          className="h-7 text-[10px] gap-1"
+        ><Download size={11} /> CSV</Button>
+        <Button
+          size="sm" variant="outline"
+          onClick={handleExportJSON}
+          disabled={visible.length === 0}
+          className="h-7 text-[10px] gap-1"
+        ><FileJson size={11} /> JSON</Button>
+      </div>
+
+      {showSummary && (
+        <div className="bg-card border border-border rounded-lg p-2.5 space-y-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Resumo · {summary.total} snapshot(s) · {summary.batchCount} lote(s)
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <SummaryBlock label="Por escopo" rows={summary.byScope.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por ação" rows={summary.byAction.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por layer" rows={summary.byLayer.map(([k, n]) => [k, n])} />
+            <SummaryBlock label="Por autor (top)" rows={summary.byAuthor.slice(0, 5).map(([k, n]) => [k, n])} />
+          </div>
+        </div>
+      )}
+
+      {groupByBatch && batchGroups.size > 0 && (
+        <ul className="space-y-1.5">
+          {Array.from(batchGroups.entries()).map(([batchId, snaps]) => {
+            const isOpenB = expandedBatch.has(batchId);
+            const newest = snaps.reduce((acc, s) =>
+              new Date(s.createdAt).getTime() > new Date(acc.createdAt).getTime() ? s : acc, snaps[0]);
+            const distinctScopes = new Set(snaps.map(s => `${s.scopeType}::${s.scopeId}::${s.layer}`)).size;
+            return (
+              <li key={batchId} className="bg-card border border-primary/30 rounded-md overflow-hidden">
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <button
+                    onClick={() => toggleBatchOpen(batchId)}
+                    className="flex items-center gap-1.5 flex-1 min-w-0 text-left active:opacity-70"
+                  >
+                    {isOpenB
+                      ? <ChevronDown size={11} className="text-muted-foreground shrink-0" />
+                      : <ChevronRight size={11} className="text-muted-foreground shrink-0" />}
+                    <Layers size={11} className="text-primary shrink-0" />
+                    <span className="text-[11px] font-mono text-foreground truncate">{batchId}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      · {distinctScopes} escopo(s) · {formatDate(newest.createdAt)}
+                    </span>
+                  </button>
+                  <Button
+                    size="sm" variant="outline"
+                    onClick={() => openRollback(batchId)}
+                    className="h-6 text-[10px] gap-1 px-1.5"
+                  >
+                    <Undo2 size={10} /> Reverter lote
+                  </Button>
+                </div>
+                {isOpenB && (
+                  <ul className="border-t border-border divide-y divide-border">
+                    {snaps.map(s => {
+                      const sc = resolveScope(s.scopeType, s.scopeId, funnels);
+                      return (
+                        <li key={s.id} className="px-3 py-1.5 text-[10px] text-muted-foreground flex items-center gap-2">
+                          <span className={`px-1 rounded border text-[9px] ${SCOPE_TONE[s.scopeType]}`}>
+                            {SCOPE_LABEL[s.scopeType]}
+                          </span>
+                          <span className="text-foreground truncate flex-1">
+                            {sc.funnel ?? sc.raw}{sc.stage && ` › ${sc.stage}`}
+                          </span>
+                          <span className="font-mono shrink-0">{ACTION_META[s.action].label}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       {/* Filtros */}
       <div className="bg-card border border-border rounded-lg p-2 space-y-2">
         <div className="flex items-center justify-between">
