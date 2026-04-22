@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import {
   User, Check, X, Brain, Plus, Play, Loader2, Save, Sparkles, Search,
   Layers, ChevronDown, ChevronUp,
+  FolderOpen, Trash2, GitCompare, Download,
 } from 'lucide-react';
 import type { FunnelStage } from '@/data/mockData';
 import { useArchetypes } from '@/hooks/useArchetypes';
@@ -33,6 +34,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { LeadBehaviorCategory } from '@/data/iaBehavior';
 import { PlaybookOverrideEditor } from '@/components/PlaybookOverrideEditor';
+import { useSandboxScenarios } from '@/hooks/useSandboxScenarios';
+import { buildPayloadDiff, summarizeDiff } from '@/lib/playbookOverrideDiff';
+import type { PlaybookOverride } from '@/lib/playbookComposer';
 
 interface Props {
   open: boolean;
@@ -92,6 +96,13 @@ export const PlaybookFourColumnEditor = ({
   const [expectedBehaviorIds, setExpectedBehaviorIds] = useState<string[]>([]);
   const [archetypeId, setArchetypeId] = useState<string>('');
 
+  // Sprint 25 — Cenários do sandbox (persistência localStorage)
+  const sandbox = useSandboxScenarios({ funnelId, stageId: stage.id });
+  const [scenariosOpen, setScenariosOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  const [comparingId, setComparingId] = useState<string | null>(null);
+  const [productionPayload, setProductionPayload] = useState<PlaybookOverride['payload']>({});
+
   // Carrega funnel_stages row + override existente
   useEffect(() => {
     if (!open || !funnelId || !stage.id || !profile?.organization_id) return;
@@ -138,6 +149,7 @@ export const PlaybookFourColumnEditor = ({
         .maybeSingle();
       if (cancelled) return;
       const payload = (ov?.payload as Record<string, unknown> | null) ?? {};
+      setProductionPayload(payload as PlaybookOverride['payload']);
       setSuccessCriteria((payload.successCriteria as string[]) ?? stage.playbookOverride?.successCriteria ?? []);
       setFailureCriteria((payload.failureCriteria as string[]) ?? stage.playbookOverride?.failureCriteria ?? []);
       setExpectedBehaviorIds(
@@ -364,6 +376,184 @@ export const PlaybookFourColumnEditor = ({
               stageName={stage.name}
               archetypeCode={archetype?.code}
             />
+          </div>
+
+          {/* Sprint 25 — Cenários do sandbox (persistência local) */}
+          <div className="mt-4 border border-border rounded-xl bg-card/40">
+            <button
+              onClick={() => setScenariosOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-1.5">
+                <FolderOpen size={13} className="text-primary" />
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-foreground">
+                  Cenários do sandbox
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  · {sandbox.items.length} salvo(s)
+                </span>
+              </span>
+              {scenariosOpen
+                ? <ChevronUp size={14} className="text-muted-foreground" />
+                : <ChevronDown size={14} className="text-muted-foreground" />}
+            </button>
+            {scenariosOpen && (
+              <div className="border-t border-border p-3 space-y-2.5">
+                <div className="flex gap-2">
+                  <Input
+                    value={scenarioName}
+                    onChange={e => setScenarioName(e.target.value)}
+                    placeholder="nome do cenário (ex.: lead frio agressivo)"
+                    className="h-8 text-[11px]"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const sc = sandbox.save({
+                        name: scenarioName,
+                        funnelId,
+                        stageId: stage.id,
+                        status: 'open',
+                        payload: {
+                          identity,
+                          successCriteria,
+                          failureCriteria,
+                          expectedBehaviorIds,
+                        },
+                      });
+                      setScenarioName('');
+                      toast({ title: 'Cenário salvo', description: sc.name });
+                    }}
+                    className="h-8 text-[11px] gap-1"
+                  >
+                    <Save size={11} /> Salvar
+                  </Button>
+                </div>
+
+                {sandbox.items.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic text-center py-2">
+                    Nenhum cenário salvo para esta etapa.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {sandbox.items.map(sc => {
+                      const isComparing = comparingId === sc.id;
+                      const diff = isComparing
+                        ? buildPayloadDiff(productionPayload, sc.payload)
+                        : [];
+                      return (
+                        <li
+                          key={sc.id}
+                          className="bg-secondary/40 border border-border rounded p-2 space-y-1.5"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-foreground flex-1 min-w-0 truncate">
+                              {sc.name}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-mono shrink-0">
+                              {new Date(sc.updatedAt).toLocaleString('pt-BR', {
+                                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => {
+                                const p = sc.payload;
+                                if (p.identity) {
+                                  setIdentity({
+                                    persona: p.identity.persona ?? '',
+                                    tone: p.identity.tone ?? '',
+                                    mission: p.identity.mission ?? '',
+                                  });
+                                }
+                                setSuccessCriteria(p.successCriteria ?? []);
+                                setFailureCriteria(p.failureCriteria ?? []);
+                                setExpectedBehaviorIds(p.expectedBehaviorIds ?? []);
+                                toast({ title: 'Cenário carregado', description: sc.name });
+                              }}
+                              className="h-7 text-[10px] gap-1 px-2"
+                            >
+                              <Play size={10} /> Carregar
+                            </Button>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => setComparingId(isComparing ? null : sc.id)}
+                              className="h-7 text-[10px] gap-1 px-2"
+                            >
+                              <GitCompare size={10} />
+                              {isComparing ? 'Ocultar diff' : 'Comparar com produção'}
+                            </Button>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => {
+                                if (window.confirm(`Excluir cenário "${sc.name}"?`)) {
+                                  if (comparingId === sc.id) setComparingId(null);
+                                  sandbox.remove(sc.id);
+                                }
+                              }}
+                              className="h-7 text-[10px] gap-1 px-2 text-destructive"
+                            >
+                              <Trash2 size={10} />
+                            </Button>
+                          </div>
+                          {isComparing && (
+                            <div className="mt-1 pt-1.5 border-t border-border space-y-1">
+                              <p className="text-[10px] text-muted-foreground">
+                                {summarizeDiff(diff)}
+                              </p>
+                              {diff.length > 0 && (
+                                <ul className="text-[10px] font-mono text-foreground space-y-0.5">
+                                  {diff.map(d => (
+                                    <li key={d.path} className="flex items-center gap-1.5">
+                                      <span
+                                        className={`text-[9px] uppercase border rounded px-1 ${
+                                          d.kind === 'added'
+                                            ? 'text-success border-success/30 bg-success/10'
+                                            : d.kind === 'removed'
+                                              ? 'text-destructive border-destructive/30 bg-destructive/10'
+                                              : 'text-warning border-warning/30 bg-warning/10'
+                                        }`}
+                                      >
+                                        {d.kind}
+                                      </span>
+                                      <span className="truncate">{d.path}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {sandbox.items.length > 0 && (
+                  <Button
+                    size="sm" variant="outline"
+                    onClick={() => {
+                      const json = sandbox.exportAll();
+                      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
+                      a.href = url;
+                      a.download = `sandbox_scenarios_${ts}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="h-7 text-[10px] gap-1 w-full"
+                  >
+                    <Download size={11} /> Exportar JSON
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Sprint 11 — Overrides composicionais (avançado, colapsável) */}
