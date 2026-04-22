@@ -12,9 +12,11 @@ import { useMemo, useState } from 'react';
 import {
   Bot, Filter, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles,
   AlertTriangle, Layers, Tag, Activity, Search, X, Workflow, Target,
+  FileJson, FileSpreadsheet, Clock,
 } from 'lucide-react';
 import { useIADecisionLogs, type IADecisionLog } from '@/hooks/useIADecisionLogs';
 import { useFunnels } from '@/hooks/useFunnels';
+import { exportLogsCSV, exportLogsJSON, buildHeatmap, WEEKDAY_LABELS } from '@/lib/iaDecisionLogsExport';
 
 const WINDOW_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 1, label: 'Últimas 24h' },
@@ -294,6 +296,7 @@ export const IADecisionLogsPanel = () => {
   }, [selectedFunnel]);
 
   const topIntents = useMemo(() => stats.byIntent.slice(0, 4), [stats.byIntent]);
+  const heatmap = useMemo(() => buildHeatmap(logs), [logs]);
   const activeFilters = [funnelId, stageId, dealStatus, archetypeCode, overlayCode, outcome, contextTag, search]
     .filter(Boolean).length;
 
@@ -301,6 +304,9 @@ export const IADecisionLogsPanel = () => {
     setFunnelId(''); setStageId(''); setDealStatus(''); setArchetypeCode('');
     setOverlayCode(''); setOutcome(''); setContextTag(''); setSearch('');
   };
+
+  const handleExportCSV = () => exportLogsCSV(logs);
+  const handleExportJSON = () => exportLogsJSON(logs);
 
   return (
     <div className="space-y-3">
@@ -376,6 +382,22 @@ export const IADecisionLogsPanel = () => {
           {loading
             ? <Loader2 size={11} className="animate-spin text-muted-foreground" />
             : <RefreshCw size={11} className="text-muted-foreground" />}
+        </button>
+        <button
+          onClick={handleExportCSV}
+          disabled={logs.length === 0}
+          className="p-1.5 rounded-md bg-secondary border border-border active:bg-card disabled:opacity-40 flex items-center gap-1 text-[10px] text-muted-foreground"
+          title="Exportar CSV"
+        >
+          <FileSpreadsheet size={11} /> CSV
+        </button>
+        <button
+          onClick={handleExportJSON}
+          disabled={logs.length === 0}
+          className="p-1.5 rounded-md bg-secondary border border-border active:bg-card disabled:opacity-40 flex items-center gap-1 text-[10px] text-muted-foreground"
+          title="Exportar JSON"
+        >
+          <FileJson size={11} /> JSON
         </button>
       </div>
 
@@ -650,6 +672,61 @@ export const IADecisionLogsPanel = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Heatmap temporal (dia × hora) */}
+      {heatmap.total > 0 && (
+        <div className="bg-secondary/50 rounded-lg p-3 border border-border/50">
+          <p className="text-[10px] uppercase text-muted-foreground mb-2 flex items-center gap-1">
+            <Clock size={10} /> Heatmap dia × hora
+            <span className="ml-auto text-muted-foreground/70 normal-case">
+              pico: {heatmap.max} · total: {heatmap.total}
+            </span>
+          </p>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <div className="min-w-[480px]">
+              <div className="flex items-end gap-[1px] pl-7 mb-0.5">
+                {Array.from({ length: 24 }).map((_, h) => (
+                  <div key={h} className="flex-1 text-center text-[7px] text-muted-foreground/70">
+                    {h % 3 === 0 ? h : ''}
+                  </div>
+                ))}
+              </div>
+              {heatmap.matrix.map((row, w) => (
+                <div key={w} className="flex items-center gap-[1px]">
+                  <div className="w-7 text-[8px] text-muted-foreground text-right pr-1">
+                    {WEEKDAY_LABELS[w]}
+                  </div>
+                  {row.map((n, h) => {
+                    const intensity = heatmap.max > 0 ? n / heatmap.max : 0;
+                    const bg = n === 0
+                      ? 'bg-card/40'
+                      : intensity > 0.66
+                        ? 'bg-primary'
+                        : intensity > 0.33
+                          ? 'bg-primary/60'
+                          : 'bg-primary/25';
+                    return (
+                      <div
+                        key={h}
+                        className={`flex-1 aspect-square rounded-[2px] border border-border/40 ${bg}`}
+                        title={`${WEEKDAY_LABELS[w]} ${String(h).padStart(2, '0')}h · ${n} decisões`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+              <div className="flex items-center gap-1 mt-1.5 pl-7 text-[8px] text-muted-foreground">
+                <span>0</span>
+                <div className="w-3 h-2 bg-card/40 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary/25 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary/60 border border-border/40 rounded-[2px]" />
+                <div className="w-3 h-2 bg-primary border border-border/40 rounded-[2px]" />
+                <span>{heatmap.max}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
