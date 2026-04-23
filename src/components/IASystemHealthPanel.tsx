@@ -27,6 +27,7 @@ export const IASystemHealthPanel = () => {
   const { items: overrides } = usePlaybookOverrides();
   const { items: snapshots } = usePlaybookOverrideSnapshots({ limit: 200 });
   const { funnels } = useFunnels();
+  const { skills } = useSkills();
 
   const ruleStats = useMemo(() => {
     const byKind = new Map<string, number>();
