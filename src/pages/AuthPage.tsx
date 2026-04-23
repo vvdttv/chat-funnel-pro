@@ -198,7 +198,7 @@ const AuthPage = () => {
   const StepIcon = stepMeta.icon;
 
   return (
-    <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col justify-center px-6">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-background text-foreground flex flex-col justify-center px-6">
       {mode === 'login' && (
         <>
           <div className="text-center mb-8">
