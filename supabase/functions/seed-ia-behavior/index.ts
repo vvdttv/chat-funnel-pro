@@ -62,6 +62,30 @@ interface SeedPayload {
     disabledRuleIds?: string[];
     followUpLadderId?: string | null;
   }>;
+  /** Sprint 32 — skills (gatilho LB → ações + guardrails) com nós em formato linearizado. */
+  skills?: Array<{
+    skill: {
+      code: string;
+      name: string;
+      description: string;
+      scopeType: 'universal' | 'stage' | 'context';
+      scopeId: string | null;
+      isActive: boolean;
+      isAutoSuggested: boolean;
+      position: number;
+    };
+    nodes: Array<{
+      kind: string;
+      branchLabel: string | null;
+      positionX: number;
+      positionY: number;
+      position: number;
+      config: Record<string, unknown>;
+      /** Índice do nó-pai dentro do mesmo array (-1 = raiz). */
+      parentIdx: number;
+    }>;
+    guardrailRuleCodes: string[];
+  }>;
   /** Quando true, faz upsert sobrescrevendo. Default false: pula se code já existe. */
   overwrite?: boolean;
 }
