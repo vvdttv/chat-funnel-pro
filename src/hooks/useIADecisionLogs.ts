@@ -31,7 +31,7 @@ export interface IADecisionLog {
   context_tags: string[];
   deal_status: 'open' | 'won' | 'lost' | null;
   // ----- Sprint 32: skill ativada -----
-  activated_skill_code: string | null;
+  activated_skill_code?: string | null;
 }
 
 export interface IALogFilters {
