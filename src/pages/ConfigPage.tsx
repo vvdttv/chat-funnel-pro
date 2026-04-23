@@ -1122,6 +1122,7 @@ const ConfigPage = () => {
             {aiFlows.map(f => <FlowCard key={f.id} flow={f} />)}
           </>
         )}
+        </div>
       </div>
       <FunnelWizard
         open={funnelWizardOpen}
