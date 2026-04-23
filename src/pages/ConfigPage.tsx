@@ -951,7 +951,7 @@ const ConfigPage = () => {
 
   return (
     <div className="flex flex-col h-full pb-16">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 lg:px-8 pt-4 pb-2 lg:max-w-7xl lg:mx-auto w-full">
         {/* Header da conta */}
         <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-2 mb-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -971,7 +971,8 @@ const ConfigPage = () => {
           </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4">
+        {/* Tabs horizontais (mobile/tablet) */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 lg:hidden">
           {visibleTabs.map(tab => {
             const Icon = tab.icon;
             return (
@@ -990,7 +991,30 @@ const ConfigPage = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-24">
+      <div className="flex-1 overflow-y-auto scrollbar-hide lg:max-w-7xl lg:mx-auto w-full lg:flex lg:flex-row lg:gap-6 lg:px-8">
+        {/* Sidebar de tabs (desktop) */}
+        <aside className="hidden lg:block lg:w-56 lg:shrink-0">
+          <nav className="flex flex-col gap-1 sticky top-0">
+            {visibleTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                    isActive ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-secondary'
+                  }`}
+                >
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <div className="flex-1 px-4 lg:px-0 pb-24 min-w-0">
         {activeTab === 'funis' && (
           <>
             {funnelsLoading ? (
