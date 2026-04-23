@@ -40,7 +40,7 @@ const Index = () => {
   return (
     <FunnelsProvider value={funnelsState}>
       <DealsProvider value={dealsState}>
-        <div className="max-w-md mx-auto h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+        <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
           <div className="flex-1 overflow-hidden">
             {renderPage()}
           </div>
