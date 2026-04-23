@@ -82,6 +82,21 @@ export const IASystemHealthPanel = () => {
     return gaps.sort((a, b) => b.failureRate - a.failureRate).slice(0, 5);
   }, [logs, overrides, funnels]);
 
+  // Sprint 32 — Top 5 skills mais ativadas (lê activated_skill_code dos logs)
+  const topSkills = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of logs) {
+      const code = l.activated_skill_code;
+      if (!code) continue;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    const skillByCode = new Map(skills.map(s => [s.skill.code, s.skill]));
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([code, n]) => ({ code, count: n, name: skillByCode.get(code)?.name ?? code }));
+  }, [logs, skills]);
+
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-1.5">
