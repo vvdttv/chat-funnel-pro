@@ -24,6 +24,7 @@ import {
   type FollowUpLadder, type HandoffTrigger, type HandoffPriority,
   type StagePlaybook,
 } from '@/data/iaBehavior';
+import { SKILL_SEEDS } from '@/data/iaSkills';
 
 // ----------------------------------------------------------------------------
 // Linhas brutas do banco -> tipos de domínio
@@ -203,6 +204,7 @@ export function useIABehavior(): IABehaviorState {
         ladders: FOLLOWUP_LADDERS,
         triggers: HANDOFF_TRIGGERS,
         playbooks: STAGE_PLAYBOOKS,
+        skills: SKILL_SEEDS,
       };
       const { data, error } = await supabase.functions.invoke('seed-ia-behavior', {
         body: payload,

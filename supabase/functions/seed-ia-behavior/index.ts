@@ -62,6 +62,30 @@ interface SeedPayload {
     disabledRuleIds?: string[];
     followUpLadderId?: string | null;
   }>;
+  /** Sprint 32 — skills (gatilho LB → ações + guardrails) com nós em formato linearizado. */
+  skills?: Array<{
+    skill: {
+      code: string;
+      name: string;
+      description: string;
+      scopeType: 'universal' | 'stage' | 'context';
+      scopeId: string | null;
+      isActive: boolean;
+      isAutoSuggested: boolean;
+      position: number;
+    };
+    nodes: Array<{
+      kind: string;
+      branchLabel: string | null;
+      positionX: number;
+      positionY: number;
+      position: number;
+      config: Record<string, unknown>;
+      /** Índice do nó-pai dentro do mesmo array (-1 = raiz). */
+      parentIdx: number;
+    }>;
+    guardrailRuleCodes: string[];
+  }>;
   /** Quando true, faz upsert sobrescrevendo. Default false: pula se code já existe. */
   overwrite?: boolean;
 }
@@ -231,6 +255,102 @@ serve(async (req) => {
       const { error, count } = await upsertOrSkip(admin, "stage_playbooks", rows, onConflict, overwrite);
       if (error) return json({ error: `stage_playbooks (overlays): ${error.message}` }, 500);
       result.statusOverlays = count ?? rows.length;
+    }
+
+    // Sprint 32 — skills + nodes + guardrails. Como skills não têm restrição
+    // unique global por code (mantemos por org), pulamos quando já existe um
+    // skill com (organization_id, code), salvo overwrite=true.
+    if (payload.skills?.length) {
+      let skillsInserted = 0;
+      let nodesInserted = 0;
+      let guardsInserted = 0;
+
+      for (const sk of payload.skills) {
+        // Verifica se já existe
+        const { data: existing } = await admin
+          .from("ia_skills")
+          .select("id")
+          .eq("organization_id", orgId)
+          .eq("code", sk.skill.code)
+          .maybeSingle();
+
+        let skillId: string | null = existing?.id ?? null;
+
+        if (existing && !overwrite) {
+          continue; // pula skill já presente
+        }
+
+        if (existing && overwrite) {
+          // Limpa nodes e guardrails antigos para reconstruir
+          await admin.from("ia_skill_nodes").delete().eq("skill_id", existing.id);
+          await admin.from("ia_skill_guardrails").delete().eq("skill_id", existing.id);
+          await admin.from("ia_skills").update({
+            name: sk.skill.name,
+            description: sk.skill.description,
+            scope_type: sk.skill.scopeType,
+            scope_id: sk.skill.scopeId,
+            is_active: sk.skill.isActive,
+            is_auto_suggested: sk.skill.isAutoSuggested,
+            position: sk.skill.position,
+          }).eq("id", existing.id);
+        } else {
+          const { data: created, error: cErr } = await admin.from("ia_skills").insert([{
+            organization_id: orgId,
+            code: sk.skill.code,
+            name: sk.skill.name,
+            description: sk.skill.description,
+            scope_type: sk.skill.scopeType,
+            scope_id: sk.skill.scopeId,
+            is_active: sk.skill.isActive,
+            is_auto_suggested: sk.skill.isAutoSuggested,
+            position: sk.skill.position,
+          }]).select("id").single();
+          if (cErr || !created) {
+            return json({ error: `ia_skills (${sk.skill.code}): ${cErr?.message ?? 'sem id'}` }, 500);
+          }
+          skillId = created.id as string;
+          skillsInserted += 1;
+        }
+
+        if (!skillId) continue;
+
+        // Insere nodes em ordem; resolve parentIdx → uuid
+        const idMap = new Map<number, string>();
+        for (let i = 0; i < sk.nodes.length; i++) {
+          const n = sk.nodes[i];
+          const parentNodeId = n.parentIdx >= 0 ? (idMap.get(n.parentIdx) ?? null) : null;
+          const { data: nodeRow, error: nErr } = await admin.from("ia_skill_nodes").insert([{
+            skill_id: skillId,
+            organization_id: orgId,
+            kind: n.kind,
+            parent_node_id: parentNodeId,
+            branch_label: n.branchLabel,
+            position_x: n.positionX,
+            position_y: n.positionY,
+            position: n.position,
+            config: n.config,
+          }]).select("id").single();
+          if (nErr || !nodeRow) {
+            return json({ error: `ia_skill_nodes (${sk.skill.code}#${i}): ${nErr?.message ?? 'sem id'}` }, 500);
+          }
+          idMap.set(i, nodeRow.id as string);
+          nodesInserted += 1;
+        }
+
+        // Insere guardrails
+        if (sk.guardrailRuleCodes.length > 0) {
+          const grows = sk.guardrailRuleCodes.map(rc => ({
+            skill_id: skillId, organization_id: orgId, rule_code: rc,
+          }));
+          const { error: gErr } = await admin.from("ia_skill_guardrails").insert(grows);
+          if (gErr) return json({ error: `ia_skill_guardrails (${sk.skill.code}): ${gErr.message}` }, 500);
+          guardsInserted += grows.length;
+        }
+      }
+
+      result.skills = skillsInserted;
+      result.skill_nodes = nodesInserted;
+      result.skill_guardrails = guardsInserted;
     }
 
     return json({ ok: true, organization_id: orgId, inserted: result });

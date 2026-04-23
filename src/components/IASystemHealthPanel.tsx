@@ -11,12 +11,13 @@
  */
 
 import { useMemo } from 'react';
-import { Activity, ShieldCheck, Layers, AlertTriangle } from 'lucide-react';
+import { Activity, ShieldCheck, Layers, AlertTriangle, Sparkles } from 'lucide-react';
 import { useIABehavior } from '@/hooks/useIABehavior';
 import { useIADecisionLogs } from '@/hooks/useIADecisionLogs';
 import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
 import { usePlaybookOverrideSnapshots } from '@/hooks/usePlaybookOverrideSnapshots';
 import { useFunnels } from '@/hooks/useFunnels';
+import { useSkills } from '@/hooks/useSkills';
 
 const FAILURE = new Set(['failure', 'lost', 'abandoned', 'fallback']);
 
@@ -26,6 +27,7 @@ export const IASystemHealthPanel = () => {
   const { items: overrides } = usePlaybookOverrides();
   const { items: snapshots } = usePlaybookOverrideSnapshots({ limit: 200 });
   const { funnels } = useFunnels();
+  const { skills } = useSkills();
 
   const ruleStats = useMemo(() => {
     const byKind = new Map<string, number>();
@@ -80,6 +82,21 @@ export const IASystemHealthPanel = () => {
     return gaps.sort((a, b) => b.failureRate - a.failureRate).slice(0, 5);
   }, [logs, overrides, funnels]);
 
+  // Sprint 32 — Top 5 skills mais ativadas (lê activated_skill_code dos logs)
+  const topSkills = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of logs) {
+      const code = l.activated_skill_code;
+      if (!code) continue;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    const skillByCode = new Map(skills.map(s => [s.skill.code, s.skill]));
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([code, n]) => ({ code, count: n, name: skillByCode.get(code)?.name ?? code }));
+  }, [logs, skills]);
+
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-1.5">
@@ -122,6 +139,26 @@ export const IASystemHealthPanel = () => {
               <li key={k} className="flex justify-between text-[11px]">
                 <span className="font-mono text-muted-foreground truncate" title={k}>{k}</span>
                 <span className="text-foreground font-semibold shrink-0 ml-2">{n}×</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="Top 5 skills mais ativadas (30d)" icon={Sparkles}>
+        {topSkills.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground italic">
+            Nenhuma skill ativada ainda — registros aparecem quando o runtime grava activated_skill_code.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {topSkills.map(s => (
+              <li key={s.code} className="flex justify-between text-[11px] gap-2">
+                <span className="text-foreground truncate" title={s.code}>
+                  {s.name}
+                  <span className="font-mono text-muted-foreground ml-1.5 text-[9px]">{s.code}</span>
+                </span>
+                <span className="text-primary font-semibold shrink-0">{s.count}×</span>
               </li>
             ))}
           </ul>

@@ -30,6 +30,8 @@ export interface IADecisionLog {
   applied_override_ids: string[];
   context_tags: string[];
   deal_status: 'open' | 'won' | 'lost' | null;
+  // ----- Sprint 32: skill ativada -----
+  activated_skill_code?: string | null;
 }
 
 export interface IALogFilters {
@@ -76,7 +78,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
     try {
       let q = supabase
         .from('ia_decision_logs')
-        .select('id,created_at,deal_id,funnel_id,stage_id,playbook_code,detected_behavior_codes,applied_rule_codes,intent,tone,action_taken,outcome,context,archetype_code,status_overlay_code,applied_override_ids,context_tags,deal_status')
+        .select('id,created_at,deal_id,funnel_id,stage_id,playbook_code,detected_behavior_codes,applied_rule_codes,intent,tone,action_taken,outcome,context,archetype_code,status_overlay_code,applied_override_ids,context_tags,deal_status,activated_skill_code')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -116,6 +118,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
         applied_override_ids: asArray<string>((r as { applied_override_ids?: unknown }).applied_override_ids),
         context_tags: asArray<string>((r as { context_tags?: unknown }).context_tags),
         deal_status: ((r as { deal_status?: string | null }).deal_status ?? null) as IADecisionLog['deal_status'],
+        activated_skill_code: (r as { activated_skill_code?: string | null }).activated_skill_code ?? null,
       }));
       // Busca textual client-side (action_taken, intent, tone, playbook_code)
       const filtered = search && search.trim()
