@@ -40,12 +40,15 @@ export interface LogIADecisionInput {
   outcome?: string | null;
   /** Contexto livre — payload analisado pela IA, prompts, etc. */
   context?: Record<string, unknown>;
+  /** Sprint 32 — código da skill que efetivamente ativou esta resposta. */
+  activatedSkillCode?: string | null;
 }
 
 export async function logIADecision(input: LogIADecisionInput): Promise<{ error: string | null }> {
   const {
     organizationId, dealId, funnelId, stageId, playbook, playbookCode,
     actionTaken, intent, tone, detectedBehaviorCodes = [], outcome, context = {},
+    activatedSkillCode,
   } = input;
 
   const appliedRuleCodes = playbook.applicableRules.map(r => r.id);
@@ -68,6 +71,7 @@ export async function logIADecision(input: LogIADecisionInput): Promise<{ error:
     applied_override_ids: playbook.provenance.overrideIds,
     context_tags: playbook.provenance.contextTags,
     deal_status: playbook.provenance.dealStatus,
+    activated_skill_code: activatedSkillCode ?? null,
   }]);
 
   if (error) {
