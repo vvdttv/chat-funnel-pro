@@ -165,8 +165,8 @@ export const IASystemHealthPanel = () => {
         )}
       </Card>
 
-
-        <Card title="Etapas com gap de configuração" icon={AlertTriangle} tone="warning">
+      <Card title="Etapas com gap de configuração" icon={AlertTriangle} tone="warning">
+        {configGaps.length === 0 ? (
           <p className="text-[10px] text-muted-foreground italic">
             Sem etapas críticas sem override. ✓
           </p>
