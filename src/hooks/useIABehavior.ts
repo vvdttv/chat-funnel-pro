@@ -24,6 +24,7 @@ import {
   type FollowUpLadder, type HandoffTrigger, type HandoffPriority,
   type StagePlaybook,
 } from '@/data/iaBehavior';
+import { SKILL_SEEDS } from '@/data/iaSkills';
 
 // ----------------------------------------------------------------------------
 // Linhas brutas do banco -> tipos de domínio
