@@ -145,7 +145,27 @@ export const IASystemHealthPanel = () => {
         )}
       </Card>
 
-      <Card title="Etapas com gap de configuração" icon={AlertTriangle} tone="warning">
+      <Card title="Top 5 skills mais ativadas (30d)" icon={Sparkles}>
+        {topSkills.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground italic">
+            Nenhuma skill ativada ainda — registros aparecem quando o runtime grava activated_skill_code.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {topSkills.map(s => (
+              <li key={s.code} className="flex justify-between text-[11px] gap-2">
+                <span className="text-foreground truncate" title={s.code}>
+                  {s.name}
+                  <span className="font-mono text-muted-foreground ml-1.5 text-[9px]">{s.code}</span>
+                </span>
+                <span className="text-primary font-semibold shrink-0">{s.count}×</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+
         {configGaps.length === 0 ? (
           <p className="text-[10px] text-muted-foreground italic">
             Sem etapas críticas sem override. ✓
