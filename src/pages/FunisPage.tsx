@@ -1730,31 +1730,33 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} onClose={() => setFiltersOpen(false)} />}
       <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
-      {/* Stage Navigator */}
-      <StageNavigator
-        stages={stages}
-        activeIndex={activeStageIdx}
-        onPrev={() => handleStageNav('prev')}
-        onNext={() => handleStageNav('next')}
-        dealCount={currentDeals.length}
-        subtitle={`${activeStageIdx + 1}/${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'} · ${formatCurrency(stageTotal)}`}
-      />
+      <div className="lg:max-w-5xl lg:mx-auto w-full">
+        {/* Stage Navigator */}
+        <StageNavigator
+          stages={stages}
+          activeIndex={activeStageIdx}
+          onPrev={() => handleStageNav('prev')}
+          onNext={() => handleStageNav('next')}
+          dealCount={currentDeals.length}
+          subtitle={`${activeStageIdx + 1}/${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'} · ${formatCurrency(stageTotal)}`}
+        />
 
-      {/* Card Navigator */}
-      <CardNavigator
-        deals={currentDeals}
-        activeIndex={Math.min(activeCardIdx, Math.max(0, currentDeals.length - 1))}
-        onPrev={() => {
-          if (viewMode === 'funnel') setCardIndex(i => Math.max(0, i - 1));
-          else setLeadCardIndex(i => Math.max(0, i - 1));
-        }}
-        onNext={() => {
-          if (viewMode === 'funnel') setCardIndex(i => Math.min(funnelStageDeals.length - 1, i + 1));
-          else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
-        }}
-        onCardClick={(deal) => setSelectedDeal(deal)}
-        widgets={cardWidgets}
-      />
+        {/* Card Navigator */}
+        <CardNavigator
+          deals={currentDeals}
+          activeIndex={Math.min(activeCardIdx, Math.max(0, currentDeals.length - 1))}
+          onPrev={() => {
+            if (viewMode === 'funnel') setCardIndex(i => Math.max(0, i - 1));
+            else setLeadCardIndex(i => Math.max(0, i - 1));
+          }}
+          onNext={() => {
+            if (viewMode === 'funnel') setCardIndex(i => Math.min(funnelStageDeals.length - 1, i + 1));
+            else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
+          }}
+          onCardClick={(deal) => setSelectedDeal(deal)}
+          widgets={cardWidgets}
+        />
+      </div>
 
       <LossBottomSheet
         open={lossDeal !== null}
