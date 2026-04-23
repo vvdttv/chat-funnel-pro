@@ -124,7 +124,7 @@ const AtividadesPage = () => {
 
   return (
     <div className="flex flex-col h-full pb-16">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 lg:px-8 pt-4 pb-2 lg:max-w-5xl lg:mx-auto w-full">
         <div className="flex items-center justify-end mb-4">
           <button onClick={() => setCalendarOpen(true)} className="p-2 rounded-lg bg-secondary text-primary active:scale-95 transition-transform">
             <Calendar size={18} />
@@ -147,7 +147,7 @@ const AtividadesPage = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-24">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 lg:px-8 pb-24 lg:max-w-5xl lg:mx-auto w-full">
         {filteredActivities.length === 0 ? (
           <div className="text-center text-muted-foreground mt-12">
             <Check size={48} className="mx-auto mb-3 opacity-30" />
@@ -155,10 +155,12 @@ const AtividadesPage = () => {
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground mb-3 px-1">← Deslize para concluir/adiar →</p>
-            {filteredActivities.map(a => (
-              <ActivityCard key={a.id} activity={a} onDone={handleDone} onPostpone={handlePostpone} />
-            ))}
+            <p className="text-xs text-muted-foreground mb-3 px-1 lg:hidden">← Deslize para concluir/adiar →</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-3">
+              {filteredActivities.map(a => (
+                <ActivityCard key={a.id} activity={a} onDone={handleDone} onPostpone={handlePostpone} />
+              ))}
+            </div>
           </>
         )}
       </div>

@@ -35,7 +35,7 @@ const IndicadoresPage = () => {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto scrollbar-hide pb-16">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 lg:px-8 pt-4 pb-2 lg:max-w-7xl lg:mx-auto w-full">
 
         {/* Forecast Card */}
         <div className="bg-card rounded-2xl p-5 mb-4">
@@ -60,7 +60,7 @@ const IndicadoresPage = () => {
         </div>
 
         {/* KPI Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {[
             { label: 'Total Leads', value: '8', icon: Users, color: 'text-primary' },
             { label: 'Conversão', value: '15.4%', icon: Target, color: 'text-primary' },
@@ -76,7 +76,7 @@ const IndicadoresPage = () => {
         </div>
 
         {/* Accordion Sections */}
-        <div className="space-y-2 pb-24">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 pb-24">
           {/* Funnel Breakdown — per funnel */}
           <div className="bg-card rounded-xl overflow-hidden">
             <button onClick={() => toggleSection('funnel')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">

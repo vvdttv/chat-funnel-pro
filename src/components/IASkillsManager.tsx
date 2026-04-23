@@ -152,7 +152,7 @@ function NewSkillDialog({ onCreate, nextPosition }: NewSkillDialogProps) {
           <Plus className="w-4 h-4 mr-1" /> Nova skill
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="h-auto bg-card border-border md:max-w-md md:mx-auto rounded-t-2xl">
+      <SheetContent side="bottom" className="h-auto bg-card border-border md:max-w-md lg:max-w-2xl md:mx-auto rounded-t-2xl">
         <SheetHeader className="text-left">
           <SheetTitle>Nova skill</SheetTitle>
         </SheetHeader>
