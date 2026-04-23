@@ -118,6 +118,7 @@ export function useIADecisionLogs(filters: IALogFilters = {}) {
         applied_override_ids: asArray<string>((r as { applied_override_ids?: unknown }).applied_override_ids),
         context_tags: asArray<string>((r as { context_tags?: unknown }).context_tags),
         deal_status: ((r as { deal_status?: string | null }).deal_status ?? null) as IADecisionLog['deal_status'],
+        activated_skill_code: (r as { activated_skill_code?: string | null }).activated_skill_code ?? null,
       }));
       // Busca textual client-side (action_taken, intent, tone, playbook_code)
       const filtered = search && search.trim()
