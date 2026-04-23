@@ -55,7 +55,7 @@ export function SkillNodeInspector({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="h-[80vh] overflow-y-auto bg-card border-border md:max-w-md md:mx-auto rounded-t-2xl"
+        className="h-[80vh] overflow-y-auto bg-card border-border md:max-w-md lg:max-w-2xl md:mx-auto rounded-t-2xl"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2">

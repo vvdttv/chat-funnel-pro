@@ -198,7 +198,7 @@ const TouchpointCard = ({ tp, onUpdate, onDelete, stagePlaybookCode }: { tp: Tou
 
         {/* AI workflow sheet */}
         <Sheet open={aiSheetOpen} onOpenChange={setAiSheetOpen}>
-          <SheetContent side="bottom" className="h-[92vh] flex flex-col p-0 max-w-md mx-auto">
+          <SheetContent side="bottom" className="h-[92vh] flex flex-col p-0 max-w-md lg:max-w-3xl mx-auto">
             <SheetHeader className="p-4 border-b border-border">
               <SheetTitle className="text-base flex items-center gap-2">
                 <Bot size={16} className="text-[hsl(270,60%,70%)]" />
