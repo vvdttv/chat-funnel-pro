@@ -11,12 +11,13 @@
  */
 
 import { useMemo } from 'react';
-import { Activity, ShieldCheck, Layers, AlertTriangle } from 'lucide-react';
+import { Activity, ShieldCheck, Layers, AlertTriangle, Sparkles } from 'lucide-react';
 import { useIABehavior } from '@/hooks/useIABehavior';
 import { useIADecisionLogs } from '@/hooks/useIADecisionLogs';
 import { usePlaybookOverrides } from '@/hooks/usePlaybookOverrides';
 import { usePlaybookOverrideSnapshots } from '@/hooks/usePlaybookOverrideSnapshots';
 import { useFunnels } from '@/hooks/useFunnels';
+import { useSkills } from '@/hooks/useSkills';
 
 const FAILURE = new Set(['failure', 'lost', 'abandoned', 'fallback']);
 
