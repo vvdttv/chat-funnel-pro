@@ -204,6 +204,7 @@ export function useIABehavior(): IABehaviorState {
         ladders: FOLLOWUP_LADDERS,
         triggers: HANDOFF_TRIGGERS,
         playbooks: STAGE_PLAYBOOKS,
+        skills: SKILL_SEEDS,
       };
       const { data, error } = await supabase.functions.invoke('seed-ia-behavior', {
         body: payload,
