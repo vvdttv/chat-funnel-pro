@@ -10,6 +10,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useToast } from '@/hooks/use-toast';
 import type { CardWidget } from '@/components/CardWidgetConfig';
+import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
+import { DealActivityOverlay } from '@/components/DealActivityOverlay';
+import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -1078,7 +1081,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
           </div>
         </div>
       </div>
-      {showNextStep && <NextStepPopup deal={deal} onConfirm={handleNextStepConfirm} />}
+      {showNextStep && <RegisterActivityPopup deal={deal} onClose={() => setShowNextStep(false)} onConfirm={handleNextStepConfirm} />}
     </>
   );
 };
