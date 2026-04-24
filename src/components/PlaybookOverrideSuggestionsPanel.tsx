@@ -71,9 +71,9 @@ const SEVERITY_META: Record<OverrideSuggestion['severity'], { tone: string; labe
 };
 
 const KIND_META: Record<OverrideSuggestion['kind'], { icon: LucideIcon; label: string }> = {
-  lb_problematic: { icon: Brain, label: 'LB problemático' },
-  stage_chronic_loss: { icon: Target, label: 'Etapa crônica' },
-  context_tag_toxic: { icon: Tag, label: 'Tag tóxica' },
+  lb_problematic: { icon: Brain, label: 'Comportamento problemático' },
+  stage_chronic_loss: { icon: Target, label: 'Etapa cronicamente perdida' },
+  context_tag_toxic: { icon: Tag, label: 'Marcador problemático' },
 };
 
 const SCOPE_LABEL: Record<PlaybookOverride['scopeType'], string> = {
@@ -715,23 +715,23 @@ const SuggestionPreviewDialog = ({
                 <strong>{preview.affectedCount}</strong>{' '}
                 {preview.affectedCount === 1 ? 'etapa será afetada' : 'etapas serão afetadas'}
                 {preview.representative && preview.affectedCount > 1 && (
-                  <> · prévia mostrada na etapa <code className="font-mono">{preview.representative.stageId}</code></>
+                  <> · pré-visualização mostrada na etapa <code className="font-mono">{preview.representative.stageId}</code></>
                 )}
               </p>
               <p className="text-muted-foreground">
                 {changedFields.length === 0
                   ? 'Nenhum campo composto muda visivelmente — a sugestão apenas reforça notas internas.'
-                  : `${changedFields.length} campo(s) do playbook efetivo serão alterados.`}
+                  : `${changedFields.length} campo(s) do roteiro efetivo serão alterados.`}
               </p>
             </div>
 
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
-                Diff do override
+                Diferenças do ajuste
               </p>
               {preview.payloadDiff.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground italic">
-                  Override permanece idêntico (já cobre tudo o que a sugestão propunha).
+                  O ajuste permanece idêntico (já cobre tudo o que a sugestão propunha).
                 </p>
               ) : (
                 <ul className="space-y-0.5">
@@ -756,7 +756,7 @@ const SuggestionPreviewDialog = ({
 
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
-                Playbook efetivo — antes vs. depois
+                Roteiro efetivo — antes vs. depois
               </p>
               {preview.before && preview.after ? (
                 <div className="border border-border rounded divide-y divide-border">
@@ -777,7 +777,7 @@ const SuggestionPreviewDialog = ({
                 </div>
               ) : (
                 <p className="text-[11px] text-muted-foreground italic">
-                  Snapshot incompleto — sem etapa representativa para compor.
+                  Versão salva incompleta — sem etapa representativa para compor.
                 </p>
               )}
             </div>
@@ -837,7 +837,7 @@ const BatchPlanDialog = ({
                 {plan.totalSuggestions} sugestão(ões) selecionada(s) →{' '}
                 <strong>{plan.totalWrites}</strong> gravação(ões) distintas
                 {plan.totalSuggestions !== plan.totalWrites && (
-                  <> (sugestões do mesmo escopo serão fundidas em um único override)</>
+                  <> (sugestões da mesma abrangência serão unidas em um único ajuste)</>
                 )}.
               </>
             )}

@@ -790,7 +790,7 @@ const HandoffSection = ({
 
       <div>
         <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5 block">
-          Handoff para corretor humano
+          Transferir para corretor humano
         </span>
         <p className="text-[10px] text-muted-foreground mb-2">
           Quando a IA detectar uma destas condições, transfere o atendimento.

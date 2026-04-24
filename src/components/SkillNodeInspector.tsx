@@ -327,7 +327,7 @@ function ApplyLadderFields({ value, onChange }: FieldProps) {
 function CallSkillFields({ value, onChange }: FieldProps) {
   return (
     <div>
-      <Label className="text-sm">Código da skill a chamar</Label>
+      <Label className="text-sm">Código da habilidade a chamar</Label>
       <Input
         value={(value.skillCode as string) ?? ''}
         onChange={(e) => onChange({ skillCode: e.target.value })}

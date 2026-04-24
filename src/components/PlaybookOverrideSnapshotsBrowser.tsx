@@ -616,7 +616,7 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
                     isB ? 'bg-warning/15 text-warning border-warning/40' :
                     'bg-secondary text-muted-foreground border-border'
                   }`}
-                  title={isA ? 'Snapshot A — clique para remover' : isB ? 'Snapshot B — clique para remover' : 'Marcar para comparar'}
+                  title={isA ? 'Versão A — clique para remover' : isB ? 'Versão B — clique para remover' : 'Marcar para comparar'}
                 >
                   <GitCompare size={9} />
                   {isA ? 'A' : isB ? 'B' : ''}
@@ -627,7 +627,7 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
                 <div className="border-t border-border p-2 bg-card/50 space-y-1">
                   {snap.payload.goal && (
                     <p className="text-[10px] text-foreground">
-                      <span className="text-muted-foreground">goal:</span> {snap.payload.goal}
+                      <span className="text-muted-foreground">objetivo:</span> {snap.payload.goal}
                     </p>
                   )}
                   {snap.payload.identity?.persona && (
@@ -637,7 +637,7 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
                   )}
                   {snap.payload.identity?.tone && (
                     <p className="text-[10px] text-foreground">
-                      <span className="text-muted-foreground">tom:</span> {snap.payload.identity.tone}
+                      <span className="text-muted-foreground">tom de voz:</span> {snap.payload.identity.tone}
                     </p>
                   )}
                   {(snap.payload.successCriteria?.length ?? 0) > 0 && (
@@ -659,7 +659,7 @@ export const PlaybookOverrideSnapshotsBrowser = () => {
                     <p className="text-[10px] text-muted-foreground italic">nota: {snap.note}</p>
                   )}
                   {!snap.isActive && (
-                    <p className="text-[9px] text-warning">snapshot capturado em estado INATIVO</p>
+                    <p className="text-[9px] text-warning">versão salva enquanto o ajuste estava INATIVO</p>
                   )}
                 </div>
               )}
