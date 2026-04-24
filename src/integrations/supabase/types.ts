@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_types: {
+        Row: {
+          code: string
+          color: string
+          created_at: string
+          default_duration_min: number
+          icon: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          label: string
+          organization_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          color?: string
+          created_at?: string
+          default_duration_min?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          label: string
+          organization_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          color?: string
+          created_at?: string
+          default_duration_min?: number
+          icon?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          label?: string
+          organization_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deal_activities: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string
+          done_at: string | null
+          id: string
+          next_action_required: boolean
+          organization_id: string
+          outcome_summary: string
+          scheduled_at: string | null
+          title: string
+          type_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string
+          done_at?: string | null
+          id?: string
+          next_action_required?: boolean
+          organization_id: string
+          outcome_summary?: string
+          scheduled_at?: string | null
+          title?: string
+          type_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string
+          done_at?: string | null
+          id?: string
+          next_action_required?: boolean
+          organization_id?: string
+          outcome_summary?: string
+          scheduled_at?: string | null
+          title?: string
+          type_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_stage_events: {
         Row: {
           deal_id: string
@@ -109,9 +202,14 @@ export type Database = {
           created_at: string
           funnel_id: string
           id: string
+          last_activity_at: string | null
+          last_activity_summary: string
           lead_id: string
           lead_name: string
           lost_substage: string | null
+          next_action_at: string | null
+          next_action_description: string
+          next_action_type: string | null
           organization_id: string
           property: string
           property_code: string
@@ -129,9 +227,14 @@ export type Database = {
           created_at?: string
           funnel_id: string
           id: string
+          last_activity_at?: string | null
+          last_activity_summary?: string
           lead_id: string
           lead_name: string
           lost_substage?: string | null
+          next_action_at?: string | null
+          next_action_description?: string
+          next_action_type?: string | null
           organization_id: string
           property?: string
           property_code?: string
@@ -149,9 +252,14 @@ export type Database = {
           created_at?: string
           funnel_id?: string
           id?: string
+          last_activity_at?: string | null
+          last_activity_summary?: string
           lead_id?: string
           lead_name?: string
           lost_substage?: string | null
+          next_action_at?: string | null
+          next_action_description?: string
+          next_action_type?: string | null
           organization_id?: string
           property?: string
           property_code?: string
@@ -1107,6 +1215,21 @@ export type Database = {
           moved_at: string
           to_stage_id: string
         }[]
+      }
+      resolve_deal_activity: {
+        Args: {
+          p_archive?: boolean
+          p_deal_id: string
+          p_done_activity_id: string
+          p_loss_reason?: string
+          p_new_stage_id?: string
+          p_new_status?: string
+          p_next_description: string
+          p_next_scheduled_at: string
+          p_next_type_code: string
+          p_outcome_summary: string
+        }
+        Returns: string
       }
     }
     Enums: {
