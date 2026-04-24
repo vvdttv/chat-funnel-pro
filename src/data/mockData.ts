@@ -343,6 +343,11 @@ export const LOSS_REASONS = [
   'Imóvel não atendeu expectativa',
 ];
 
+/**
+ * @deprecated Use o hook `useActivityTypes()` para obter tipos customizáveis
+ * por organização (tabela `activity_types`). Mantido apenas como fallback
+ * para code-paths antigos não migrados.
+ */
 export const ACTIVITY_TYPES = {
   call: { label: 'Ligar', icon: 'Phone' },
   proposal: { label: 'Enviar Proposta', icon: 'FileText' },
