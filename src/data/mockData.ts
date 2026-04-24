@@ -171,9 +171,38 @@ export interface AIFlow {
 // ========== CUSTOM FIELDS (GoHighLevel model) ==========
 
 export type FieldType =
-  | 'text' | 'textarea' | 'number' | 'monetary' | 'phone' | 'email'
-  | 'date' | 'datetime' | 'dropdown' | 'multiselect' | 'checkbox'
-  | 'radio' | 'url' | 'file' | 'signature' | 'toggle';
+  // Texto
+  | 'text' | 'textarea' | 'large_text'
+  // Numérico
+  | 'number' | 'monetary' | 'currency_multi' | 'percentage' | 'rating'
+  // Comunicação
+  | 'phone' | 'email' | 'url'
+  // Data/Hora
+  | 'date' | 'datetime' | 'time' | 'date_range' | 'timezone'
+  // Seleção
+  | 'dropdown' | 'multiselect' | 'checkbox' | 'radio' | 'toggle' | 'tags'
+  // Mídia
+  | 'file' | 'image' | 'video' | 'audio' | 'signature'
+  // Localização
+  | 'address' | 'country' | 'state'
+  // Referência
+  | 'user' | 'org' | 'person' | 'lookup'
+  // Avançado
+  | 'formula' | 'hidden';
+
+export type FieldTypeCategory = 'text' | 'number' | 'comm' | 'datetime' | 'choice' | 'media' | 'location' | 'reference' | 'advanced';
+
+export const FIELD_TYPE_CATEGORIES: { id: FieldTypeCategory; label: string; types: FieldType[] }[] = [
+  { id: 'text',      label: 'Texto',       types: ['text', 'textarea', 'large_text'] },
+  { id: 'number',    label: 'Numérico',    types: ['number', 'monetary', 'currency_multi', 'percentage', 'rating'] },
+  { id: 'comm',      label: 'Comunicação', types: ['phone', 'email', 'url'] },
+  { id: 'datetime',  label: 'Data e Hora', types: ['date', 'datetime', 'time', 'date_range', 'timezone'] },
+  { id: 'choice',    label: 'Seleção',     types: ['dropdown', 'multiselect', 'checkbox', 'radio', 'toggle', 'tags'] },
+  { id: 'media',     label: 'Mídia',       types: ['file', 'image', 'video', 'audio', 'signature'] },
+  { id: 'location',  label: 'Localização', types: ['address', 'country', 'state'] },
+  { id: 'reference', label: 'Referência',  types: ['user', 'org', 'person', 'lookup'] },
+  { id: 'advanced',  label: 'Avançado',    types: ['formula', 'hidden'] },
+];
 
 export type FieldObject = 'lead' | 'deal' | 'property';
 
