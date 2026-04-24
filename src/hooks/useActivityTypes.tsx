@@ -62,6 +62,31 @@ export const ActivityTypesProvider = ({ children }: { children: ReactNode }) => 
 
   useEffect(() => { fetchTypes(); }, [fetchTypes]);
 
+  // Auto-seed dos 4 tipos system para organizações novas (idempotente)
+  useEffect(() => {
+    if (loading || !profile?.organization_id || types.length > 0) return;
+    const seed = [
+      { code: 'call', label: 'Ligação', icon: 'Phone', color: 'hsl(210,80%,55%)' },
+      { code: 'proposal', label: 'Proposta', icon: 'FileText', color: 'hsl(38,92%,50%)' },
+      { code: 'visit', label: 'Visita', icon: 'MapPin', color: 'hsl(145,63%,49%)' },
+      { code: 'followup', label: 'Follow-up', icon: 'MessageCircle', color: 'hsl(270,60%,65%)' },
+    ];
+    (async () => {
+      const rows = seed.map((s, i) => ({
+        organization_id: profile.organization_id,
+        code: s.code,
+        label: s.label,
+        icon: s.icon,
+        color: s.color,
+        default_duration_min: 30,
+        is_system: true,
+        position: i,
+      }));
+      const { error: e } = await supabase.from('activity_types').insert(rows);
+      if (!e) await fetchTypes();
+    })();
+  }, [loading, types.length, profile?.organization_id, fetchTypes]);
+
   const createType = async (input: ActivityTypeInput) => {
     if (!profile?.organization_id) return { error: 'sem organização' };
     const maxPos = types.reduce((m, t) => Math.max(m, t.position), -1);
