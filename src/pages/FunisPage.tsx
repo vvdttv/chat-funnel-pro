@@ -1139,6 +1139,7 @@ const CardNavigator = ({
   onNext,
   onCardClick,
   widgets,
+  onForcedAction,
 }: {
   deals: Deal[];
   activeIndex: number;
@@ -1146,6 +1147,7 @@ const CardNavigator = ({
   onNext: () => void;
   onCardClick: (deal: Deal) => void;
   widgets: CardWidget[];
+  onForcedAction?: (deal: Deal, step: Exclude<ForcedStep, null>) => void;
 }) => {
   if (deals.length === 0) {
     return (
@@ -1159,6 +1161,12 @@ const CardNavigator = ({
   }
 
   const deal = deals[activeIndex];
+  const forcedStep = inferForcedStep({
+    status: deal.status,
+    lostSubstage: deal.lostSubstage,
+    nextActionAt: deal.nextActionAt,
+    lastActivityAt: deal.lastActivityAt,
+  });
 
   return (
     <div className="flex-1 flex flex-col px-4 pb-3 min-h-0">
@@ -1183,8 +1191,13 @@ const CardNavigator = ({
         </button>
       </div>
 
-      {/* Card */}
-      <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
+      {/* Card + overlay */}
+      <div className="relative">
+        <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
+        {forcedStep && onForcedAction && (
+          <DealActivityOverlay step={forcedStep} onAction={() => onForcedAction(deal, forcedStep)} />
+        )}
+      </div>
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
