@@ -21,7 +21,7 @@ import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideS
 import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
 import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
@@ -29,6 +29,7 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
+  { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
   { id: 'fluxos', label: 'Fluxos IA', icon: Bot },
