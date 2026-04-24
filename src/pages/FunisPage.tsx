@@ -1586,6 +1586,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [lossDeal, setLossDeal] = useState<Deal | null>(null);
+  const [forcedDeal, setForcedDeal] = useState<{ deal: Deal; step: Exclude<ForcedStep, null> } | null>(null);
   const { setDealStatus } = useDealsContext();
   const { toast } = useToast();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
@@ -1771,6 +1772,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
           }}
           onCardClick={(deal) => setSelectedDeal(deal)}
           widgets={cardWidgets}
+          onForcedAction={(deal, step) => setForcedDeal({ deal, step })}
         />
       </div>
 
@@ -1795,6 +1797,14 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
         onPendingStepChange={onPendingStepChange}
         onLost={(d) => setLossDeal(d)}
       />
+      {forcedDeal && (
+        <RegisterActivityPopup
+          deal={forcedDeal.deal}
+          initialStep={forcedDeal.step}
+          onClose={() => setForcedDeal(null)}
+          onConfirm={() => setForcedDeal(null)}
+        />
+      )}
     </div>
   );
 };
