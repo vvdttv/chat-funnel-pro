@@ -88,7 +88,7 @@ const ActivityCard = ({
             className={`p-2 rounded-lg flex items-center justify-center ${isOverdue ? 'bg-destructive/20 text-destructive' : 'bg-primary/15'}`}
             style={isOverdue ? undefined : { color: typeColor }}
           >
-            {renderActivityIcon(typeIcon, 18)}
+            {renderActivityIcon(typeIcon, { size: 18 })}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
