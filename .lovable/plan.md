@@ -1,88 +1,176 @@
 
 
-# Manual detalhado do sistema CRM imobiliário
+# Plano de melhorias — CRM imobiliário (Sprint 1)
 
-Vou montar um manual completo (PDF + DOCX) explicando cada parte do sistema, com prints reais de cada tela. O conteúdo cobrirá toda a lógica do CRM, da autenticação à composição de IA.
-
-## Estrutura do manual
-
-### 1. Visão geral
-- O que o sistema faz: CRM imobiliário multi-funil com IA composicional
-- Arquitetura: mobile-first com adaptação real para desktop
-- 4 abas principais (Funis, Atividades, Indicadores, Config) + autenticação por usuário/senha + recuperação por pergunta de segurança
-
-### 2. Autenticação (AuthPage)
-- Login por usuário/senha
-- Recuperação de senha em 3 passos (usuário → pergunta de segurança → nova senha)
-- Limite de tentativas configurável (3 tentativas em janela de 15min)
-
-### 3. Aba Leads / Funis (FunisPage)
-- Dois modos de visualização: por **Lead** (4 status de conversa) e por **Funil**
-- Status de leitura: não lidas pelo corretor, não lidas pelo cliente, lidas sem resposta dos dois lados
-- Card customizável (widgets configuráveis)
-- Sheet de detalhe do deal com abas: Conversa, Dados, Atividades, Histórico
-- Chat integrado com modo IA (perguntar à IA sobre o lead, anexar imagem/áudio/arquivo)
-- Indicadores de "atrasado" e "sem dono" no card
-- Bottom sheet de motivo da perda
-
-### 4. Aba Atividades
-- Filtros rápidos: Hoje, Atrasadas, Semana
-- Cards com swipe (mobile): direita = concluir, esquerda = adiar
-- Tipos: ligação, visita, proposta, follow-up
-- Indicador de tarefa recorrente
-- Botão calendário (Google/Outlook/Apple)
-
-### 5. Aba Indicadores
-- Card "Previsão de Receita" com barra de progresso ganho/meta
-- 4 KPIs: Total Leads, Conversão, Ticket Médio, Ciclo Médio
-- Acordeões: Funis de Vendas, Motivos de Perda (gráfico de pizza), Origem/Canal, Decisões da IA, Saúde Composicional (heatmap funil × status)
-
-### 6. Aba Config (8 sub-abas)
-- **Funis**: editar funis, etapas, probabilidades, dias máximos, touchpoints (corretor / IA / ambos), playbook 4 colunas
-- **Equipe** (admin): gestão de usuários e papéis (admin / corretor)
-- **Segurança**: pergunta de segurança para recuperação
-- **Card**: configurar widgets visíveis no card do deal
-- **Campos**: campos personalizados (lead/deal/imóvel)
-- **Imóveis**: catálogo
-- **Números WA**: WhatsApp oficial e QR
-- **Fluxos IA**: workflows da IA (gestor de comportamento, skills com canvas drag-and-drop, sugestões automáticas de LBs)
-
-### 7. Camada de IA composicional
-- Comportamentos do lead (LB-xxx) detectados automaticamente
-- Skills (gatilho LB → ações) editáveis em canvas visual
-- Guardrails (regras DO / DONT / ASK / NOASK)
-- Playbooks por etapa com overrides em vários escopos
-- Logs de decisão + painel de saúde do sistema
-
-### 8. Fluxos típicos passo a passo
-- Como criar um novo funil do zero
-- Como configurar um touchpoint da IA
-- Como aprovar uma sugestão de comportamento detectada pela IA
-- Como personalizar o card do deal
-- Como recuperar a senha
-
-## Como vou capturar os prints
-
-Aqui preciso da sua decisão. O ambiente onde gero documentos não consegue ler arquivos da sessão do navegador remoto (limitação técnica), e o login do app exige usuário/senha real. Tenho **três caminhos**:
-
-**Opção A — você fornece um login de teste** (preferível): você me passa um par usuário/senha de uma conta de demonstração. Eu rodo um script que loga via Supabase, navega por todas as telas no Chromium local em viewports mobile (390px) e desktop (1280px), captura ~25 prints reais e embute todos no PDF.
-
-**Opção B — eu monto o manual sem prints, só com diagramas ASCII** das telas (caixas, posições, fluxos) + PDF com layout limpo. Mais rápido, mas sem fidelidade visual.
-
-**Opção C — eu gero o manual com prints "mock"**: capturo a tela de login (única acessível sem auth) e desenho as outras telas como wireframes estilizados gerados via SVG/Pillow, mantendo fielmente cores, posições e textos do código. Não é o app rodando, é uma reconstrução visual a partir do código.
-
-## Entregáveis
-
-- `/mnt/documents/manual_crm.pdf` — manual ilustrado completo (~30 páginas)
-- `/mnt/documents/manual_crm.docx` — versão editável
-
-## Detalhes técnicos
-- PDF gerado com ReportLab (Platypus), Letter, fontes Helvetica/Helvetica-Bold, paleta dark (#0a0a0a, #25D366) nos blocos de destaque
-- DOCX gerado com docx-js (Arial, headings com outlineLevel para TOC)
-- QA visual obrigatório: converter cada página em JPG e revisar antes de entregar
-- Em A/C: imagens embutidas como base64 (PDF) e ImageRun (DOCX)
+Vou implementar as 5 melhorias funcionais + a correção do PDF do manual. Cada melhoria tem entrega isolada e testável.
 
 ---
 
-Qual opção você prefere — **A**, **B** ou **C**? Se for A, me mande as credenciais de teste numa mensagem separada.
+## Melhoria 1 — Tipos de atividade customizáveis
+
+**Onde:** novo `useActivityTypes` (Lovable Cloud) + novo bloco em `ConfigPage` (sub-aba "Atividades").
+
+**Modelo de dados (nova tabela `activity_types`):**
+- `id`, `organization_id`, `code` (slug), `label`, `icon` (nome lucide), `color`, `default_duration_min`, `is_system` (bool, bloqueia delete), `position`, `is_active`.
+- Seed: `call`, `proposal`, `visit`, `followup` (system=true, não-deletáveis mas editáveis em label/cor/ícone).
+- RLS: select para membros da org; insert/update/delete só admin.
+
+**UI nova sub-aba "Atividades" em Config:**
+- Lista cards com ícone + label + cor + ações (editar / excluir / toggle ativo).
+- Botão "Novo tipo" abre `Sheet` com: nome, ícone (picker dos lucide-icons usados no app), cor (paleta), duração padrão.
+- Reordenação por drag (igual etapas).
+
+**Refatoração:** `ACTIVITY_TYPES` (constante em `mockData.ts`) vira hook `useActivityTypes()`. Atualizo `AtividadesPage`, `FunisPage` (NextStepSheet) e `ChatThread` para consumir do hook em vez do `Record` estático.
+
+---
+
+## Melhoria 2 — Registro de atividades estilo Enermac (com bloqueio)
+
+**Padrão a replicar (vindo do projeto Enermac):**
+
+Para cada deal existem 3 estados de "próximo passo" e o sistema bloqueia o avanço quando faltam dados:
+
+```text
+┌─ Atividade agendada (futura)         ─┐
+│  • Tipo, data/hora, descrição          │
+│  • Botão "Resolver agora" / "Adiar"    │
+└────────────────────────────────────────┘
+┌─ Resultado da última atividade        ─┐
+│  • Resumo (texto)                       │
+│  • Mudança opcional de etapa/status     │
+│  • Motivo se status=perdido/arquivado   │
+│  • Checkbox "Arquivar oportunidade"     │
+└────────────────────────────────────────┘
+┌─ Próxima atividade                    ─┐
+│  • Tipo, data/hora, descrição           │
+│  • OU "Marcar sem próxima ação"         │
+└────────────────────────────────────────┘
+```
+
+**Regras de bloqueio (overlay no card do deal, modo "forçar resolução"):**
+- `arquivado` → nunca bloqueia.
+- `ganho`/`perdido` SEM atividade futura → nunca bloqueia.
+- `ganho`/`perdido` COM atividade futura → bloqueia normalmente.
+- Status aberto + (sem atividade agendada **OU** atividade vencida sem resultado registrado **OU** sem próxima atividade) → bloqueia até o usuário registrar via NextStepSheet.
+
+**Implementação:**
+- Nova tabela `deal_activities`: `id`, `deal_id`, `org_id`, `type_code`, `scheduled_at`, `done_at`, `outcome_summary`, `created_by`. Trigger atualiza `deals.next_action`, `deals.next_action_date`, `deals.last_activity_at`.
+- Reescrita do `NextStepSheet` (em `FunisPage`) em 3 blocos colapsáveis (acima), com checkbox de mudança de etapa/status (mesmo visual dos checkboxes que já existem no app — `Checkbox` do shadcn).
+- Novo `lib/activityBlocking.ts` com `inferForcedStep(deal)` que calcula qual bloco precisa ser preenchido.
+- Componente `DealActivityOverlay` exibido sobre o card no `FunisPage` quando `inferForcedStep` retorna não-null.
+- Edge function `resolve-deal-activity` que aceita `{ action: 'concluir'|'agendar'|'arquivar', funnel_stage?, lead_status?, loss_reason?, archive? }` e grava no histórico.
+
+---
+
+## Melhoria 3 — Bloco "O que você gostaria de saber?" em Indicadores
+
+**Localização:** topo da `IndicadoresPage`, antes do card de Previsão de Receita.
+
+**UI:**
+```text
+┌─ ✨ O que você gostaria de saber? ────────┐
+│  [textarea grande]                          │
+│  [🎤 gravar áudio]   [🔄 resetar]   [Enviar]│
+└─────────────────────────────────────────────┘
+
+(após resposta:)
+┌─ Resultado da análise ──────────────────────┐
+│  [gráfico escolhido pela IA: bar/line/pie]  │
+│  ───────                                     │
+│  Resumo: texto explicativo curto             │
+│  ───────                                     │
+│  [textarea: "refine esta análise..."]        │
+│  [🎤]  [🔄 nova análise]   [Refinar]        │
+└─────────────────────────────────────────────┘
+```
+
+**Implementação:**
+- Novo componente `IndicatorAIPanel` com estado: `prompt`, `chartSpec`, `summary`, `conversationHistory`.
+- Edge function `analyze-indicators`:
+  - Recebe pergunta + histórico + snapshot agregado dos KPIs/funis/deals/loss reasons da org.
+  - Chama Lovable AI (`google/gemini-3-flash-preview`) com **tool calling** que retorna JSON estruturado: `{ chart_type: 'bar'|'line'|'pie'|'area'|'kpi', data: [...], x_key, y_key, title, summary }`.
+  - Renderização dinâmica via `recharts` (já usado no projeto).
+- Áudio: `MediaRecorder` no client → upload → `transcribe-audio` (Lovable AI Gemini) → texto preenche o input.
+- Botão "Resetar" zera estado e histórico.
+
+---
+
+## Melhoria 4 — Pontos de contato customizados por etapa (já parcial)
+
+**Status atual:** o `StageEditor` em `ConfigPage` já permite **adicionar/editar/excluir** touchpoints via `addTouchpoint` (linha 299) + `TouchpointCard`. O que falta é só visibilidade — o botão "+ Adicionar ponto de contato" hoje fica dentro do acordeão da etapa quando expandida.
+
+**Pequeno ajuste:** garantir que o botão "+ Novo ponto de contato" apareça com label claro e CTA visualmente destacado dentro de cada etapa (atualmente é texto pequeno). Sem mudança estrutural.
+
+> Se você confirmar no manual que isso já está documentado, esta melhoria fica como ajuste cosmético apenas.
+
+---
+
+## Melhoria 5 — Ampliação de tipos de campo (Pipedrive + GoHighLevel)
+
+**Tipos atuais (16):** text, textarea, number, monetary, phone, email, date, datetime, dropdown, multiselect, checkbox, radio, url, file, signature, toggle.
+
+**Tipos a adicionar (sem duplicar, mesclando Pipedrive + GoHighLevel):**
+
+| Tipo novo | Fonte | Descrição |
+|---|---|---|
+| `time` | GHL | Hora isolada |
+| `date_range` | Pipedrive | Intervalo de datas |
+| `address` | Pipedrive/GHL | Endereço estruturado (rua/cidade/CEP) |
+| `user` | Pipedrive | Referência a usuário da org |
+| `org` | Pipedrive | Referência a organização |
+| `person` | Pipedrive | Referência a contato |
+| `rating` | GHL | Estrela 1–5 |
+| `currency_multi` | Pipedrive | Valor + seletor de moeda |
+| `percentage` | GHL | Número 0–100 com sufixo % |
+| `large_text` | GHL | Texto longo com toolbar (rich text) |
+| `image` | GHL | Upload restrito a imagens |
+| `video` | GHL | Upload restrito a vídeo / link |
+| `audio` | GHL | Upload restrito a áudio |
+| `country` | GHL | Dropdown ISO de países |
+| `state` | GHL | Estado/UF (depende de country) |
+| `timezone` | GHL | Lista de timezones IANA |
+| `hidden` | GHL | Campo oculto (preenchido por automação) |
+| `formula` | Pipedrive | Calculado a partir de outros campos |
+| `lookup` | Pipedrive | Auto-complete contra outra tabela |
+| `tags` | Pipedrive | Lista de tags livres |
+
+**Implementação:**
+- Atualizar `FieldType` em `mockData.ts` + `FIELD_TYPE_LABELS` + `FIELD_TYPE_ICONS`.
+- Agrupar tipos em categorias no `<Select>` do `FieldForm`: **Texto**, **Numérico**, **Data/Hora**, **Seleção**, **Mídia**, **Localização**, **Referência**, **Avançado**.
+- Cada tipo novo recebe configuração específica (`address`: subcampos; `formula`: editor de expressão; `lookup`: tabela alvo + chave).
+
+---
+
+## Melhoria final — Corrigir manual PDF (quebra de linha + margens)
+
+**Problema atual:** o PDF foi gerado usando `canvas.drawString()` (texto sem wrap), por isso o lado direito vaza e tabelas/colunas não respeitam largura.
+
+**Correção:**
+- Reescrever `build_pdf.py` usando **ReportLab Platypus** (`SimpleDocTemplate` + `Paragraph` + `Table` + `Spacer`) em vez de canvas.
+- `Paragraph` faz wrap automático respeitando o `frame` (margem 1in em todos os lados, A4 ou Letter).
+- Tabelas usam `Table` com `colWidths` proporcionais à largura útil (`A4_width - 2*inch`).
+- Imagens (wireframes) inseridas via `Image(path, width=usable_width)` com aspect-ratio preservado.
+- QA obrigatório: converter cada página para JPG (`pdftoppm -jpeg -r 150`) e inspecionar visualmente antes de entregar.
+- Atualizar conteúdo do manual para refletir Melhorias 1, 2, 3 e 5.
+- Salvar como `manual_crm_v2.pdf` em `/mnt/documents/`.
+
+---
+
+## Ordem de execução
+
+1. **Backend** (migrations + edge functions): tabelas `activity_types`, `deal_activities`, RLS, triggers, edge functions `resolve-deal-activity` e `analyze-indicators`.
+2. **Melhoria 5** (campos): refactor de tipos — base para qualquer formulário futuro.
+3. **Melhoria 1** (tipos de atividade customizáveis): hook + sub-aba Config.
+4. **Melhoria 2** (NextStepSheet 3-blocos + bloqueio): overlay + reescrita do sheet.
+5. **Melhoria 3** (IA Indicadores): edge function + componente.
+6. **Melhoria 4** (touchpoints): ajuste cosmético do botão.
+7. **Manual PDF v2**: regerar com Platypus + QA visual.
+
+## Detalhes técnicos
+
+- **Stack:** mantém React 18 + Vite + Tailwind + shadcn + Supabase (Lovable Cloud) + Lovable AI Gateway.
+- **IA:** `google/gemini-3-flash-preview` com tool calling para extrair `chart_spec` estruturado em Melhoria 3; Whisper-equivalent (Gemini multimodal) para transcrição de áudio.
+- **RLS:** todas as novas tabelas seguem o padrão da org (membros leem; admins escrevem) — exceto `deal_activities` onde corretor pode escrever nos próprios deals.
+- **Testes:** vitest para `inferForcedStep`, `activityBlocking` e o composer de chartSpec.
+- **Memória:** atualizar `mem://index.md` com regras de bloqueio + tipos de campo expandidos.
 
