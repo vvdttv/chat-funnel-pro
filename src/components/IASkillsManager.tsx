@@ -137,10 +137,10 @@ function NewSkillDialog({ onCreate, nextPosition }: NewSkillDialogProps) {
     });
     setSaving(false);
     if (result.error) {
-      toast({ title: 'Erro ao criar skill', description: result.error, variant: 'destructive' });
+      toast({ title: 'Erro ao criar habilidade', description: result.error, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Skill criada' });
+    toast({ title: 'Habilidade criada' });
     reset();
     setOpen(false);
   };
@@ -149,12 +149,12 @@ function NewSkillDialog({ onCreate, nextPosition }: NewSkillDialogProps) {
     <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <SheetTrigger asChild>
         <Button size="sm" className="w-full">
-          <Plus className="w-4 h-4 mr-1" /> Nova skill
+          <Plus className="w-4 h-4 mr-1" /> Nova habilidade
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-auto bg-card border-border md:max-w-md lg:max-w-2xl md:mx-auto rounded-t-2xl">
         <SheetHeader className="text-left">
-          <SheetTitle>Nova skill</SheetTitle>
+          <SheetTitle>Nova habilidade da IA</SheetTitle>
         </SheetHeader>
         <div className="space-y-3 mt-4 pb-6">
           <div>
@@ -176,13 +176,13 @@ function NewSkillDialog({ onCreate, nextPosition }: NewSkillDialogProps) {
             />
           </div>
           <div>
-            <Label className="text-sm">Escopo</Label>
+            <Label className="text-sm">Abrangência</Label>
             <Select value={scopeType} onValueChange={(v) => setScopeType(v as SkillScopeType)}>
               <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="universal">Universal — qualquer etapa</SelectItem>
                 <SelectItem value="stage">Por etapa</SelectItem>
-                <SelectItem value="context">Por contexto (tag)</SelectItem>
+                <SelectItem value="context">Por marcador de contexto</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -199,17 +199,17 @@ function NewSkillDialog({ onCreate, nextPosition }: NewSkillDialogProps) {
           )}
           {scopeType === 'context' && (
             <div>
-              <Label className="text-sm">Tag de contexto</Label>
+              <Label className="text-sm">Marcador de contexto</Label>
               <Input
                 value={scopeId}
                 onChange={(e) => setScopeId(e.target.value)}
-                placeholder="ex.: real-estate"
+                placeholder="ex.: imobiliária"
                 className="bg-secondary border-border"
               />
             </div>
           )}
           <Button onClick={handleCreate} disabled={saving} className="w-full mt-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Criar skill'}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Criar habilidade'}
           </Button>
         </div>
       </SheetContent>
@@ -417,13 +417,13 @@ export function IASkillsManager() {
           <SheetTrigger asChild>
             <Button size="sm" variant="outline" className="flex-1">
               <ListTree className="w-4 h-4 mr-1.5" />
-              {selected ? selected.skill.name : 'Skills'}
+              {selected ? selected.skill.name : 'Habilidades'}
               <ChevronLeft className="w-3 h-3 ml-auto rotate-90" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[300px] bg-card border-border overflow-y-auto">
             <SheetHeader>
-              <SheetTitle className="text-sm">Skills da org ({skills.length})</SheetTitle>
+              <SheetTitle className="text-sm">Habilidades da organização ({skills.length})</SheetTitle>
             </SheetHeader>
             <div className="mt-4">{renderList()}</div>
           </SheetContent>
@@ -445,9 +445,9 @@ export function IASkillsManager() {
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-card border-border">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir esta skill?</AlertDialogTitle>
+                  <AlertDialogTitle>Excluir esta habilidade?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação remove a skill "{selected.skill.name}" e todos os seus blocos.
+                    Esta ação remove a habilidade "{selected.skill.name}" e todos os seus blocos.
                     Não pode ser desfeita.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -488,9 +488,9 @@ export function IASkillsManager() {
                 </AlertDialogTrigger>
                 <AlertDialogContent className="bg-card border-border">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir esta skill?</AlertDialogTitle>
+                    <AlertDialogTitle>Excluir esta habilidade?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta ação remove a skill "{selected.skill.name}" e todos os seus blocos.
+                      Esta ação remove a habilidade "{selected.skill.name}" e todos os seus blocos.
                       Não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>

@@ -501,16 +501,16 @@ export const IABehaviorManager = () => {
         >Comportamentos ({behaviors.length})</button>
         <button
           onClick={() => setTab('skills')}
-          className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
+          className={`flex-1 min-w-[100px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
             tab === 'skills' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
-        ><Sparkles size={11} /> Skills</button>
+        ><Sparkles size={11} /> Habilidades</button>
         <button
           onClick={() => setTab('suggestions')}
           className={`flex-1 min-w-[100px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
             tab === 'suggestions' ? 'bg-card text-foreground' : 'text-muted-foreground'
           }`}
-        ><Sparkles size={11} className="text-primary" /> Sugestões IA</button>
+        ><Sparkles size={11} className="text-primary" /> Sugestões da IA</button>
         <button
           onClick={() => setTab('health')}
           className={`flex-1 min-w-[80px] py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
@@ -550,7 +550,7 @@ export const IABehaviorManager = () => {
               onChange={e => setRuleScopeFilter(e.target.value)}
               className="text-[11px] bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
             >
-              <option value="">Todos os escopos</option>
+              <option value="">Todas as abrangências</option>
               {SCOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <select

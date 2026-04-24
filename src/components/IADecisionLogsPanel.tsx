@@ -160,7 +160,7 @@ const LogRow = ({
           {(log.archetype_code || log.status_overlay_code || log.context_tags.length > 0 || log.applied_override_ids.length > 0) && (
             <div className="bg-card border border-border rounded-md p-2 space-y-1.5">
               <p className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
-                <Layers size={10} /> Proveniência composicional
+                <Layers size={10} /> Origem da resposta
               </p>
               <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                 <div>
@@ -168,7 +168,7 @@ const LogRow = ({
                   <span className="text-foreground font-mono">{log.archetype_code ?? '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">overlay:</span>{' '}
+                  <span className="text-muted-foreground">camada de status:</span>{' '}
                   <span className="text-foreground font-mono">{log.status_overlay_code ?? '—'}</span>
                 </div>
                 <div>
@@ -419,7 +419,7 @@ export const IADecisionLogsPanel = () => {
               </select>
             </div>
             <div>
-              <label className="text-[9px] uppercase text-muted-foreground">Overlay de status</label>
+              <label className="text-[9px] uppercase text-muted-foreground">Camada de status</label>
               <select
                 value={overlayCode}
                 onChange={e => setOverlayCode(e.target.value)}
@@ -432,7 +432,7 @@ export const IADecisionLogsPanel = () => {
               </select>
             </div>
             <div>
-              <label className="text-[9px] uppercase text-muted-foreground">Outcome</label>
+              <label className="text-[9px] uppercase text-muted-foreground">Resultado</label>
               <select
                 value={outcome}
                 onChange={e => setOutcome(e.target.value)}
@@ -445,7 +445,7 @@ export const IADecisionLogsPanel = () => {
               </select>
             </div>
             <div>
-              <label className="text-[9px] uppercase text-muted-foreground">Context tag</label>
+              <label className="text-[9px] uppercase text-muted-foreground">Marcador de contexto</label>
               <select
                 value={contextTag}
                 onChange={e => setContextTag(e.target.value)}
@@ -656,7 +656,7 @@ export const IADecisionLogsPanel = () => {
       {/* Distribuição por playbook */}
       {stats.byPlaybook.length > 0 && (
         <div className="bg-secondary/50 rounded-lg p-3 border border-border/50">
-          <p className="text-[10px] uppercase text-muted-foreground mb-2">Decisões por playbook</p>
+          <p className="text-[10px] uppercase text-muted-foreground mb-2">Decisões por roteiro</p>
           <div className="space-y-1.5">
             {stats.byPlaybook.slice(0, 6).map(([code, n]) => {
               const pct = stats.total > 0 ? (n / stats.total) * 100 : 0;
