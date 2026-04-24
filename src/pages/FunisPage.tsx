@@ -10,6 +10,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useToast } from '@/hooks/use-toast';
 import type { CardWidget } from '@/components/CardWidgetConfig';
+import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
+import { DealActivityOverlay } from '@/components/DealActivityOverlay';
+import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -1078,7 +1081,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
           </div>
         </div>
       </div>
-      {showNextStep && <NextStepPopup deal={deal} onConfirm={handleNextStepConfirm} />}
+      {showNextStep && <RegisterActivityPopup deal={deal} onClose={() => setShowNextStep(false)} onConfirm={handleNextStepConfirm} />}
     </>
   );
 };
@@ -1136,6 +1139,7 @@ const CardNavigator = ({
   onNext,
   onCardClick,
   widgets,
+  onForcedAction,
 }: {
   deals: Deal[];
   activeIndex: number;
@@ -1143,6 +1147,7 @@ const CardNavigator = ({
   onNext: () => void;
   onCardClick: (deal: Deal) => void;
   widgets: CardWidget[];
+  onForcedAction?: (deal: Deal, step: Exclude<ForcedStep, null>) => void;
 }) => {
   if (deals.length === 0) {
     return (
@@ -1156,6 +1161,12 @@ const CardNavigator = ({
   }
 
   const deal = deals[activeIndex];
+  const forcedStep = inferForcedStep({
+    status: deal.status,
+    lostSubstage: deal.lostSubstage,
+    nextActionAt: deal.nextActionAt,
+    lastActivityAt: deal.lastActivityAt,
+  });
 
   return (
     <div className="flex-1 flex flex-col px-4 pb-3 min-h-0">
@@ -1180,8 +1191,13 @@ const CardNavigator = ({
         </button>
       </div>
 
-      {/* Card */}
-      <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
+      {/* Card + overlay */}
+      <div className="relative">
+        <DealCard deal={deal} onClick={() => onCardClick(deal)} widgets={widgets} />
+        {forcedStep && onForcedAction && (
+          <DealActivityOverlay step={forcedStep} onAction={() => onForcedAction(deal, forcedStep)} />
+        )}
+      </div>
 
       {/* Dots indicator */}
       {deals.length > 1 && deals.length <= 10 && (
@@ -1570,6 +1586,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const [stageIndex, setStageIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [lossDeal, setLossDeal] = useState<Deal | null>(null);
+  const [forcedDeal, setForcedDeal] = useState<{ deal: Deal; step: Exclude<ForcedStep, null> } | null>(null);
   const { setDealStatus } = useDealsContext();
   const { toast } = useToast();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
@@ -1755,6 +1772,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
           }}
           onCardClick={(deal) => setSelectedDeal(deal)}
           widgets={cardWidgets}
+          onForcedAction={(deal, step) => setForcedDeal({ deal, step })}
         />
       </div>
 
@@ -1779,6 +1797,14 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
         onPendingStepChange={onPendingStepChange}
         onLost={(d) => setLossDeal(d)}
       />
+      {forcedDeal && (
+        <RegisterActivityPopup
+          deal={forcedDeal.deal}
+          initialStep={forcedDeal.step}
+          onClose={() => setForcedDeal(null)}
+          onConfirm={() => setForcedDeal(null)}
+        />
+      )}
     </div>
   );
 };

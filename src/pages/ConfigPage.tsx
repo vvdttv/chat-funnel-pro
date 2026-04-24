@@ -20,6 +20,7 @@ import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGloba
 import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideSnapshotsBrowser';
 import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
 import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
+import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
@@ -1118,6 +1119,8 @@ const ConfigPage = () => {
         {activeTab === 'seguranca' && <SecurityQuestionManager />}
 
         {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
+
+        {activeTab === 'atividades' && <ActivityTypesManager />}
 
         {activeTab === 'card_layout' && (
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />

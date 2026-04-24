@@ -102,10 +102,19 @@ export interface Deal {
   propertyCode: string;
   value: number;
   stage: string;
+  stageId?: string;
   probability: number;
   createdAt: string;
   secondaryContacts?: { name: string; role: string }[];
   assignedTo?: string | null;
+  // Shortcuts mantidos pelo trigger sync_deal_next_action
+  status?: 'open' | 'won' | 'lost';
+  lostSubstage?: string | null;
+  nextActionType?: string | null;
+  nextActionAt?: string | null;
+  nextActionDescription?: string;
+  lastActivityAt?: string | null;
+  lastActivitySummary?: string;
 }
 
 export interface Activity {

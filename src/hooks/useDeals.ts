@@ -20,6 +20,12 @@ type DBDealRow = {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  lost_substage?: string | null;
+  next_action_type?: string | null;
+  next_action_at?: string | null;
+  next_action_description?: string | null;
+  last_activity_at?: string | null;
+  last_activity_summary?: string | null;
 };
 
 /**
@@ -50,12 +56,20 @@ function rowToDeal(row: DBDealRow, funnels: Funnel[]): Deal {
     propertyCode: row.property_code,
     value: Number(row.value) || 0,
     stage: stage?.name || row.stage_id,
+    stageId: row.stage_id,
     probability: stage?.probability ?? 0,
     createdAt: row.created_at,
     assignedTo: row.assigned_to,
     secondaryContacts: Array.isArray(row.secondary_contacts)
       ? (row.secondary_contacts as { name: string; role: string }[])
       : [],
+    status: (row.status as 'open' | 'won' | 'lost') || 'open',
+    lostSubstage: row.lost_substage ?? null,
+    nextActionType: row.next_action_type ?? null,
+    nextActionAt: row.next_action_at ?? null,
+    nextActionDescription: row.next_action_description ?? '',
+    lastActivityAt: row.last_activity_at ?? null,
+    lastActivitySummary: row.last_activity_summary ?? '',
   };
 }
 
