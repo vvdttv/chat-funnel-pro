@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, ACTIVITY_TYPES, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { useActivityTypes } from '@/hooks/useActivityTypes';
 import { useDealsContext } from '@/hooks/useDeals';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus, UserCog } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -752,22 +753,8 @@ const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void 
           </div>
 
           {/* Activity type */}
-          <div>
-            <label className="text-xs font-semibold text-foreground mb-1.5 block">Tipo de atividade *</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.entries(ACTIVITY_TYPES) as [string, { label: string }][]).map(([key, val]) => (
-                <button
-                  key={key}
-                  onClick={() => setActivityType(key)}
-                  className={`py-2.5 rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] ${
-                    activityType === key ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground'
-                  }`}
-                >
-                  {val.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ActivityTypePicker value={activityType} onChange={setActivityType} />
+
 
           {/* Date and time */}
           <div className="flex gap-3">
