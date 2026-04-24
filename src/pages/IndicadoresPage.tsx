@@ -7,6 +7,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
 import { FunnelStatusHeatmap } from '@/components/FunnelStatusHeatmap';
 import { useIADecisionLogs } from '@/hooks/useIADecisionLogs';
+import { AIIndicatorsBlock } from '@/components/AIIndicatorsBlock';
+import { Sparkles } from 'lucide-react';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
@@ -16,7 +18,7 @@ const lossData = [
 ];
 
 const IndicadoresPage = () => {
-  const [openSection, setOpenSection] = useState<string | null>('funnel');
+  const [openSection, setOpenSection] = useState<string | null>('ia_ask');
   const { funnels } = useFunnelsContext();
   const { deals } = useDealsContext();
   const { logs: iaLogs } = useIADecisionLogs({ sinceDays: 30, limit: 1000 });
@@ -77,6 +79,22 @@ const IndicadoresPage = () => {
 
         {/* Accordion Sections */}
         <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 pb-24">
+          {/* IA — O que você gostaria de saber? */}
+          <div className="bg-card rounded-xl overflow-hidden lg:col-span-2">
+            <button onClick={() => toggleSection('ia_ask')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Sparkles size={14} className="text-[hsl(270,60%,70%)]" />
+                Pergunte à IA
+              </span>
+              {openSection === 'ia_ask' ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+            </button>
+            {openSection === 'ia_ask' && (
+              <div className="px-4 pb-4">
+                <AIIndicatorsBlock />
+              </div>
+            )}
+          </div>
+
           {/* Funnel Breakdown — per funnel */}
           <div className="bg-card rounded-xl overflow-hidden">
             <button onClick={() => toggleSection('funnel')} className="w-full flex items-center justify-between p-4 active:bg-secondary transition-colors">
