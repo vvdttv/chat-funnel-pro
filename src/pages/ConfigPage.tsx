@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,7 +21,7 @@ import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideS
 import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
 import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
@@ -29,6 +29,7 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
+  { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
   { id: 'fluxos', label: 'Fluxos IA', icon: Bot },
@@ -597,9 +598,24 @@ const FlowCard = ({ flow }: { flow: AIFlow }) => (
 // ========== FIELD TYPE ICON ==========
 
 const FIELD_TYPE_ICONS: Record<FieldType, string> = {
-  text: 'Aa', textarea: '¶', number: '#', monetary: 'R$', phone: '📱', email: '@',
-  date: '📅', datetime: '🕐', dropdown: '▾', multiselect: '☰', checkbox: '☑',
-  radio: '◉', url: '🔗', file: '📎', signature: '✍', toggle: '⊘',
+  // Texto
+  text: 'Aa', textarea: '¶', large_text: '✎',
+  // Numérico
+  number: '#', monetary: 'R$', currency_multi: '€', percentage: '%', rating: '★',
+  // Comunicação
+  phone: '📱', email: '@', url: '🔗',
+  // Data/Hora
+  date: '📅', datetime: '🕐', time: '⏰', date_range: '📆', timezone: '🌐',
+  // Seleção
+  dropdown: '▾', multiselect: '☰', checkbox: '☑', radio: '◉', toggle: '⊘', tags: '🏷',
+  // Mídia
+  file: '📎', image: '🖼', video: '🎬', audio: '🎵', signature: '✍',
+  // Localização
+  address: '📍', country: '🌎', state: '🗺',
+  // Referência
+  user: '👤', org: '🏢', person: '👥', lookup: '🔍',
+  // Avançado
+  formula: 'ƒ', hidden: '🚫',
 };
 
 // ========== FIELD CARD ==========
@@ -716,18 +732,25 @@ const FieldForm = ({ field, onSave, onCancel }: { field?: CustomField; onSave: (
           </div>
         </div>
 
-        {/* Type */}
+        {/* Type (grouped by category) */}
         <div>
           <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Tipo do Campo</label>
           <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
             <SelectTrigger className="w-full h-9 text-xs bg-secondary border-border">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map(t => (
-                <SelectItem key={t} value={t}>
-                  <span className="mr-2">{FIELD_TYPE_ICONS[t]}</span> {FIELD_TYPE_LABELS[t]}
-                </SelectItem>
+            <SelectContent className="max-h-[60vh]">
+              {FIELD_TYPE_CATEGORIES.map(cat => (
+                <div key={cat.id}>
+                  <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+                    {cat.label}
+                  </div>
+                  {cat.types.map(t => (
+                    <SelectItem key={t} value={t}>
+                      <span className="mr-2">{FIELD_TYPE_ICONS[t]}</span> {FIELD_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </div>
               ))}
             </SelectContent>
           </Select>

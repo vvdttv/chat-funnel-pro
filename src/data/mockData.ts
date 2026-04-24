@@ -171,9 +171,38 @@ export interface AIFlow {
 // ========== CUSTOM FIELDS (GoHighLevel model) ==========
 
 export type FieldType =
-  | 'text' | 'textarea' | 'number' | 'monetary' | 'phone' | 'email'
-  | 'date' | 'datetime' | 'dropdown' | 'multiselect' | 'checkbox'
-  | 'radio' | 'url' | 'file' | 'signature' | 'toggle';
+  // Texto
+  | 'text' | 'textarea' | 'large_text'
+  // Numérico
+  | 'number' | 'monetary' | 'currency_multi' | 'percentage' | 'rating'
+  // Comunicação
+  | 'phone' | 'email' | 'url'
+  // Data/Hora
+  | 'date' | 'datetime' | 'time' | 'date_range' | 'timezone'
+  // Seleção
+  | 'dropdown' | 'multiselect' | 'checkbox' | 'radio' | 'toggle' | 'tags'
+  // Mídia
+  | 'file' | 'image' | 'video' | 'audio' | 'signature'
+  // Localização
+  | 'address' | 'country' | 'state'
+  // Referência
+  | 'user' | 'org' | 'person' | 'lookup'
+  // Avançado
+  | 'formula' | 'hidden';
+
+export type FieldTypeCategory = 'text' | 'number' | 'comm' | 'datetime' | 'choice' | 'media' | 'location' | 'reference' | 'advanced';
+
+export const FIELD_TYPE_CATEGORIES: { id: FieldTypeCategory; label: string; types: FieldType[] }[] = [
+  { id: 'text',      label: 'Texto',       types: ['text', 'textarea', 'large_text'] },
+  { id: 'number',    label: 'Numérico',    types: ['number', 'monetary', 'currency_multi', 'percentage', 'rating'] },
+  { id: 'comm',      label: 'Comunicação', types: ['phone', 'email', 'url'] },
+  { id: 'datetime',  label: 'Data e Hora', types: ['date', 'datetime', 'time', 'date_range', 'timezone'] },
+  { id: 'choice',    label: 'Seleção',     types: ['dropdown', 'multiselect', 'checkbox', 'radio', 'toggle', 'tags'] },
+  { id: 'media',     label: 'Mídia',       types: ['file', 'image', 'video', 'audio', 'signature'] },
+  { id: 'location',  label: 'Localização', types: ['address', 'country', 'state'] },
+  { id: 'reference', label: 'Referência',  types: ['user', 'org', 'person', 'lookup'] },
+  { id: 'advanced',  label: 'Avançado',    types: ['formula', 'hidden'] },
+];
 
 export type FieldObject = 'lead' | 'deal' | 'property';
 
@@ -191,22 +220,51 @@ export interface CustomField {
 }
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  // Texto
   text: 'Texto',
   textarea: 'Texto Longo',
+  large_text: 'Texto Rico',
+  // Numérico
   number: 'Número',
   monetary: 'Monetário',
+  currency_multi: 'Valor Multi-Moeda',
+  percentage: 'Percentual',
+  rating: 'Avaliação (estrelas)',
+  // Comunicação
   phone: 'Telefone',
   email: 'E-mail',
+  url: 'URL',
+  // Data/Hora
   date: 'Data',
   datetime: 'Data e Hora',
+  time: 'Hora',
+  date_range: 'Intervalo de Datas',
+  timezone: 'Fuso Horário',
+  // Seleção
   dropdown: 'Lista Suspensa',
   multiselect: 'Seleção Múltipla',
   checkbox: 'Caixa de Seleção',
   radio: 'Opção Única',
-  url: 'URL',
-  file: 'Arquivo',
-  signature: 'Assinatura',
   toggle: 'Liga/Desliga',
+  tags: 'Tags Livres',
+  // Mídia
+  file: 'Arquivo',
+  image: 'Imagem',
+  video: 'Vídeo',
+  audio: 'Áudio',
+  signature: 'Assinatura',
+  // Localização
+  address: 'Endereço',
+  country: 'País',
+  state: 'Estado / UF',
+  // Referência
+  user: 'Usuário',
+  org: 'Organização',
+  person: 'Contato',
+  lookup: 'Auto-complete',
+  // Avançado
+  formula: 'Fórmula Calculada',
+  hidden: 'Campo Oculto',
 };
 
 export const FIELD_OBJECT_LABELS: Record<FieldObject, string> = {

@@ -7,6 +7,7 @@ import ConfigPage from '@/pages/ConfigPage';
 import { useToast } from '@/hooks/use-toast';
 import { FunnelsProvider, useFunnels } from '@/hooks/useFunnels';
 import { DealsProvider, useDeals } from '@/hooks/useDeals';
+import { ActivityTypesProvider } from '@/hooks/useActivityTypes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
@@ -40,12 +41,14 @@ const Index = () => {
   return (
     <FunnelsProvider value={funnelsState}>
       <DealsProvider value={dealsState}>
-        <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            {renderPage()}
+        <ActivityTypesProvider>
+          <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              {renderPage()}
+            </div>
+            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-        </div>
+        </ActivityTypesProvider>
       </DealsProvider>
     </FunnelsProvider>
   );
