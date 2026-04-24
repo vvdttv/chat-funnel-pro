@@ -7,6 +7,7 @@ import ConfigPage from '@/pages/ConfigPage';
 import { useToast } from '@/hooks/use-toast';
 import { FunnelsProvider, useFunnels } from '@/hooks/useFunnels';
 import { DealsProvider, useDeals } from '@/hooks/useDeals';
+import { ActivityTypesProvider } from '@/hooks/useActivityTypes';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
