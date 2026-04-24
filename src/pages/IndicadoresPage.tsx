@@ -18,7 +18,7 @@ const lossData = [
 ];
 
 const IndicadoresPage = () => {
-  const [openSection, setOpenSection] = useState<string | null>('funnel');
+  const [openSection, setOpenSection] = useState<string | null>('ia_ask');
   const { funnels } = useFunnelsContext();
   const { deals } = useDealsContext();
   const { logs: iaLogs } = useIADecisionLogs({ sinceDays: 30, limit: 1000 });
