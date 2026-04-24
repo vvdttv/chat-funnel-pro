@@ -1,178 +1,83 @@
-# Sprint 2 — Tradução de jargão e Manual da IA
+# Continuação do Sprint 2 — Manual da IA (DOCX + QA)
 
-## Objetivos
+## Status atual
 
-1. **Substituir termos em inglês** que aparecem na interface por equivalentes simples em português do Brasil, sem quebrar lógica nem tipos do código.
-2. **Gerar um manual totalmente detalhado** sobre como configurar a IA dentro de **Configurações → Fluxos IA**, cobrindo Comportamentos, Regras, Skills (canvas + blocos), Playbooks por etapa (4 colunas + detalhado), Sugestões da IA, Snapshots e Saúde do sistema. Saída em **PDF + DOCX**.
+- ✅ Tradução de jargão na UI (10 componentes editados)
+- ✅ Glossário salvo em `mem://index.md`
+- ✅ `manual_ia_v1.pdf` já gerado em `/mnt/documents/` (47 KB)
+- ⏳ **Falta**: DOCX espelho + QA visual de ambos + entrega via `<lov-artifact>`
 
----
+## O que será feito nesta rodada
 
-## Parte 1 — Tradução de jargão
+### 1. QA visual do PDF existente
 
-### Glossário (rótulos visíveis ao usuário)
+Converter `manual_ia_v1.pdf` para imagens (`pdftoppm -jpeg -r 150`) e inspecionar **todas as páginas** com o tool de leitura de imagem. Buscar:
 
+- Texto cortado nas margens ou estourando boxes
+- Sobreposição de elementos
+- Páginas em branco ou ordem incorreta
+- Sumário com numeração quebrada
+- Callouts (Dica/Atenção) com contraste ruim
+- Tabelas mal alinhadas
 
-| Inglês usado hoje        | Substituir por                                                 |
-| ------------------------ | -------------------------------------------------------------- |
-| Override / overrides     | **Ajuste personalizado** (ou “personalização”)                 |
-| Guardrail / guardrails   | **Regra de proteção**                                          |
-| Hint / detection hints   | **Dica de detecção**                                           |
-| Fallback                 | **Resposta de reserva**                                        |
-| Trigger                  | **Gatilho**                                                    |
-| Threshold                | **Limite mínimo**                                              |
-| Prompt                   | **Prompt (Instruções para a IA)**                              |
-| Skill / skills           | **Skill / skills (Habilidades da IA)**                         |
-| Workflow                 | **Fluxo de mensagens**                                         |
-| Behavior / behaviors     | **Comportamento** (já em pt)                                   |
-| Playbook                 | **Roteiro da etapa**                                           |
-| Overlay                  | **Camada de status**                                           |
-| Archetype                | **Arquétipo de etapa** (mantém — termo amplamente usado em PT) |
-| Snapshot                 | **Versão salva**                                               |
-| Rollback                 | **Reverter versão**                                            |
-| Sandbox                  | **Ambiente de teste**                                          |
-| Provenance               | **Origem da resposta**                                         |
-| Payload                  | **Conteúdo do ajuste**                                         |
-| Scope (org/funnel/stage) | **Abrangência** (Organização / Funil / Etapa)                  |
-| Seed (banner)            | **Carga inicial**                                              |
-| Inspector                | **Painel de detalhes**                                         |
-| Preview                  | **Pré-visualização**                                           |
-| Context tag / tag tóxica | **Marcador de contexto** / **Marcador problemático**           |
-| Goal                     | **Objetivo**                                                   |
-| Persona                  | manter (palavra usada em PT)                                   |
-| Tone / tom               | **Tom de voz**                                                 |
+Se houver problemas → corrigir o gerador Python (ReportLab) e regerar até ficar limpo. Imagens de QA ficam em `/tmp/`, não em `/mnt/documents/`.
 
+### 2. Gerar DOCX espelho
 
-### Arquivos a editar (apenas strings de UI; nada de tipos, chaves de tabela ou constantes lógicas)
+Script Node usando `docx-js` (já presente no `bun.lock`), salvo em `/tmp/gen_manual_ia_docx.js`. Gera `/mnt/documents/manual_ia_v1.docx` com:
 
-Foco em rótulos JSX, `placeholder=`, `title=`, `aria-label=`, opções de `<select>` e textos de seções:
+- **Página**: A4 (11906 × 16838 DXA), margens 1440 (1")
+- **Estilos**: Arial 11pt padrão; H1 16pt bold; H2 13pt bold; H3 11pt bold
+- **Capa**: título "Manual da IA do CRM", subtítulo "Como configurar a IA nos mínimos detalhes", data, versão v1
+- **Sumário**: `TableOfContents` com `headingStyleRange: "1-3"` e `hyperlink: true`
+- **Listas**: `LevelFormat.BULLET` e `LevelFormat.DECIMAL` com numbering config (nunca `•` unicode)
+- **Tabelas**: `WidthType.DXA`, `columnWidths` somando à largura, `ShadingType.CLEAR`, bordas cinza `#CCCCCC`
+- **Callouts**: tabelas de 1 célula com fundo `#F0F0F0` (Dica) e `#FFF8DC` (Atenção)
+- **Page breaks**: `new PageBreak()` dentro de Paragraph entre capítulos
 
-- `src/components/AIWorkflowBuilder.tsx` — “Guardrails reforçados” → “Regras de proteção reforçadas”; “— sem fallback —” → “— sem resposta de reserva —”.
-- `src/components/PlaybookOverridesGlobalList.tsx` — título “Overrides composicionais ativos” → “Ajustes personalizados ativos”; tooltip “Desativar override” → “Desativar ajuste”; “payload vazio” → “sem conteúdo”; chip “goal” → “objetivo”.
-- `src/components/PlaybookOverrideSnapshotsBrowser.tsx` — “snapshot capturado em estado INATIVO” → “versão salva em estado INATIVO”; chips `goal/persona/tom` → `objetivo/persona/tom`.
-- `src/components/PlaybookOverrideSuggestionsPanel.tsx` — “Tag tóxica” → “Marcador problemático”; “(sugestões do mesmo escopo serão fundidas em um único override)” → “(sugestões da mesma abrangência serão unidas em um único ajuste)”.
-- `src/components/PlaybookOverrideMultiScopeEditor.tsx` — qualquer ocorrência de “override / scope / payload” em texto visível.
-- `src/components/PlaybookFourColumnEditor.tsx` — ocorrências de “sandbox”, “preview” em cabeçalhos visíveis (manter campo `archetype` mas exibir como “Arquétipo”).
-- `src/components/StagePlaybookEditor.tsx` — “(personalizada)” já está bom; substituir variáveis chamadas `advanceTriggers`/`archiveTriggers` apenas no rótulo visível para “Gatilhos para avançar” / “Gatilhos para arquivar”.
-- `src/components/IADecisionLogsPanel.tsx` — “overlay:” → “camada:”; “Overlay de status” → “Camada de status”; “Context tag” → “Marcador de contexto”; “Decisões por playbook” → “Decisões por roteiro”.
-- `src/components/IASkillsManager.tsx` — “Nova skill” → “Nova habilidade”; “Excluir esta skill?” → “Excluir esta habilidade?”; “Skills da org” → “Habilidades da organização”; tooltip “Exportar” mantém.
-- `src/components/SkillNodeInspector.tsx` — “Código da skill a chamar” → “Código da habilidade a chamar”.
-- `src/components/IABehaviorManager.tsx` — aba “Skills” → “Habilidades”; aba “Sugestões IA” mantém; “Saúde” mantém.
-- `src/components/IABehaviorSeedBanner.tsx` — texto do banner já está em PT; só ajustar referência a “seed”.
+### 3. Conteúdo dos 14 capítulos
 
-**Regras importantes**:
+Espelha exatamente o PDF:
 
-- **Não alterar** identificadores TypeScript, nomes de tipos (`PlaybookOverride`, `OverrideSuggestion`), chaves de objeto, valores de enum, códigos como `LB_*`, `E0..E4b`, nem nomes de tabela/coluna do banco.
-- Rótulos internos a comentários `/** … */` permanecem como estão (são docs de dev).
-- Atualizar apenas o que o usuário lê na tela.
+1. Visão geral da IA (5 camadas)
+2. Comportamentos do lead (LBs)
+3. Regras (do/don't/noask)
+4. Habilidades (skills) — capítulo mais longo, com canvas e tipos de bloco
+5. Roteiro da etapa — 4 colunas + ambiente de teste
+6. Roteiro detalhado (Stage Playbook)
+7. Ajustes personalizados (overrides) + versões salvas
+8. Sugestões automáticas da IA
+9. Pontos de contato com IA executora
+10. Indicadores com IA
+11. Saúde do sistema de IA
+12. Carga inicial (seed) de comportamentos
+13. Glossário (tabela inglês → português)
+14. Receitas práticas (5 fluxos passo a passo)
 
-### Memória
+Cada capítulo segue o template: **O que é · Onde fica na tela · Passo a passo · Dica · Erros comuns**.
 
-- Adicionar uma linha em `mem://index.md` (Core): “Glossário: jargão em inglês na UI sempre traduzido (override → ajuste personalizado, guardrail → regra de proteção, etc.).”
+### 4. QA visual do DOCX
 
----
+Converter para PDF via LibreOffice headless, depois para imagens, inspecionar todas. Corrigir se necessário.
 
-## Parte 2 — Manual ultra-detalhado da IA (PDF + DOCX)
+### 5. Entrega final
 
-### Onde fica
+Emitir dois `<lov-artifact>`:
 
-Tudo em **Configurações → aba “Fluxos IA”**, mais o botão **“Configurar comportamento da IA”** que aparece dentro de cada Ponto de Contato com executor IA / Ambos (Configurações → Funis → Etapa → Ponto de Contato), e os botões **“Roteiro 4-col”** e **“Detalhado”** dentro de cada etapa do funil.
+```
+<lov-artifact path="manual_ia_v1.pdf" mime_type="application/pdf"></lov-artifact>
+<lov-artifact path="manual_ia_v1.docx" mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"></lov-artifact>
+```
 
-### Estrutura do manual (capítulos)
+Mais mensagem curta confirmando o que foi entregue e como navegar pelo sumário clicável.
 
-1. **Visão geral da IA do CRM**
-  - Como as 5 camadas se combinam: Arquétipo da etapa → Camada de status (lead aberto/perdido/arquivado) → Ajustes personalizados (org → funil → etapa) → Comportamentos detectados → Habilidades disparadas.
-  - Onde cada camada vive na tela.
-2. **Comportamentos do lead (LBs)**
-  - O que é um comportamento, formato `LB_*`, categoria, contexto, etapas típicas.
-  - Como criar um comportamento: nome, código, categoria, dicas de detecção (texto livre que a IA usa para identificar o LB), etapas em que costuma aparecer.
-  - Como filtrar (categoria, contexto, status).
-  - Quando duplicar vs criar novo.
-  - Exemplo passo a passo: criar `LB_PERGUNTOU_PARCELAMENTO`.
-3. **Regras (do/don’t/noask)**
-  - Os 3 tipos: o que **fazer**, o que **não fazer**, o que **não perguntar**.
-  - Abrangência: universal vs por etapa (`E0..E4b`).
-  - Como combinar regras com habilidades (regras viram “regras de proteção reforçadas” dentro do bloco da habilidade).
-  - Exemplo: criar regra `noask` para não perguntar renda na etapa E1.
-4. **Habilidades (skills)** — capítulo mais longo
-  - O que é uma habilidade: um mini-fluxo da IA que dispara quando certos comportamentos são detectados.
-  - **Criar habilidade**: nome, código, abrangência (universal / por funil / por etapa).
-  - **Canvas**: como arrastar blocos, conectar e ler avisos.
-  - **Tipos de bloco** (do `SkillCanvasEditor`):
-    - Gatilho — comportamentos que disparam a habilidade.
-    - Pergunta — coleta dado do lead.
-    - Mensagem — envia texto.
-    - Decisão — bifurca o caminho.
-    - Chamar habilidade — encadeia outra skill (com explicação do campo “Código da habilidade a chamar”).
-  - **Painel de detalhes (Inspector)**: campos de cada bloco, com explicação do que cada combobox faz.
-  - Versionar, exportar JSON, duplicar, excluir.
-  - Exemplo passo a passo completo: habilidade “Resgate de lead frio” com 4 blocos.
-5. **Roteiro da etapa — 4 colunas**
-  - As 4 colunas: Identidade (persona, tom de voz, objetivo) · Critérios de sucesso · Critérios de falha · Comportamentos esperados.
-  - Como o Arquétipo preenche valores padrão e como o ajuste personalizado sobrescreve.
-  - **Ambiente de teste (sandbox)**: o que ele simula, como salvar cenários, como comparar dois cenários.
-  - Exemplo: ajustar o roteiro da E2 para um funil de imóveis de alto padrão.
-6. **Roteiro detalhado** (Stage Playbook)
-  - Gatilhos para avançar, gatilhos para arquivar, follow-up, handoff humano.
-  - Quando usar o detalhado em vez do 4 colunas.
-7. **Ajustes personalizados (overrides)**
-  - 3 níveis de abrangência: organização, funil, etapa.
-  - Editor por múltiplas abrangências: como editar Identidade/Sucesso/Falha/Comportamentos para vários funis ao mesmo tempo.
-  - Lista global: como auditar e desativar.
-  - Versões salvas (snapshots): como navegar histórico, ver diff e **reverter**.
-8. **Sugestões automáticas da IA**
-  - 3 tipos: Comportamento problemático por etapa, Etapa cronicamente perdida, Marcador problemático.
-  - Como a IA calcula severidade (info / atenção / crítico) a partir do histórico de decisões.
-  - Como aplicar uma sugestão sozinha vs em lote.
-  - Pré-visualização do efeito antes de aplicar.
-9. **Pontos de contato com IA executora**
-  - Diferença entre executor Corretor / IA / Ambos.
-  - Quando abrir “Configurar comportamento da IA”.
-  - Construtor de blocos do fluxo de mensagem (enviar mensagem, esperar, digitando, gravando, condição, esperar resposta).
-  - Comportamentos a que o bloco reage + regras de proteção reforçadas + resposta de reserva.
-10. **Indicadores com IA (visão rápida)**
-  - Como a aba Indicadores usa a IA para responder qualquer pergunta livre, com áudio ou texto.
-    - O que ela vê: snapshot agregado (sem dados pessoais).
-11. **Saúde do sistema de IA**
-  - Painel de saúde: o que cada métrica significa (taxa de sucesso por arquétipo, tags problemáticas, top falhas).
-    - Como interpretar e quando agir.
-12. **Carga inicial (seed) de comportamentos**
-  - O que o banner faz, quando rodar, quando ignorar.
-13. **Glossário** (a tabela de tradução acima, em formato amigável).
-14. **Receitas práticas** (3-5 fluxos completos do início ao fim):
-  - “Subir um novo funil de captação e configurar a IA do zero.”
-    - “Bloquear a IA de oferecer desconto.”
-    - “Criar uma habilidade que dispara quando o lead pede parcelamento.”
-    - “Investigar por que a etapa E3 está perdendo muitos leads.”
-    - “Reverter um ajuste que piorou a conversão.”
+## Fora do escopo desta rodada
 
-### Geração técnica do manual
+- Renomear variáveis/tipos no código TS (mantém `PlaybookOverride`, etc.)
+- Traduzir comentários internos `/** */`
+- Traduzir mensagens de erro técnicas do console
+- Mudanças em RLS, schema do banco ou edge functions
 
-- **PDF**: Python + ReportLab Platypus em `/mnt/documents/manual_ia_v1.pdf`. Usar a estrutura já validada do `manual_crm_v2.pdf` como base (margens, tabela de conteúdo, estilos H1/H2/H3, callouts cinza para “Dica” e amarelo para “Atenção”).
-- **DOCX**: `docx-js` em Node, salvo em `/mnt/documents/manual_ia_v1.docx`. Estilos: Arial 11pt, H1 14pt bold, H2 12pt bold, listas com `LevelFormat.BULLET`, tabelas com `WidthType.DXA` e `ShadingType.CLEAR`.
-- **QA visual**: converter cada página para imagem (ReportLab → pdftoppm; DOCX → LibreOffice → PDF → pdftoppm), inspecionar todas, corrigir overflow/quebras, regerar até ficar limpo.
-- Capa com título, subtítulo “Como configurar a IA do CRM nos mínimos detalhes”, data e versão `v1`.
-- Sumário clicável.
-- Cada capítulo tem: **O que é** · **Onde fica na tela** · **Passo a passo** · **Dica** · **Erros comuns**.
+## Aprovação
 
-### Entrega final
-
-- 2 arquivos artefato:
-  ```
-  <lov-artifact path="manual_ia_v1.pdf" mime_type="application/pdf"></lov-artifact>
-  <lov-artifact path="manual_ia_v1.docx" mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"></lov-artifact>
-  ```
-- Mensagem curta resumindo o que foi traduzido e como ler o manual.
-
----
-
-## Ordem de execução
-
-1. Aplicar todas as substituições de string de UI (Parte 1).
-2. Atualizar `mem://index.md` com a regra do glossário.
-3. Escrever o gerador Python (PDF) com todo o conteúdo dos 14 capítulos.
-4. Rodar e fazer QA visual página a página.
-5. Escrever o gerador Node (DOCX) espelhando o conteúdo.
-6. Rodar e fazer QA visual.
-7. Emitir os dois `<lov-artifact>`.
-
-Fora desta rodada (ficam para depois): mudar nomes de variáveis/tipos no código, traduzir comentários internos, traduzir mensagens de erro técnicas do console.
+Posso seguir com QA do PDF, geração do DOCX e entrega?
