@@ -731,18 +731,25 @@ const FieldForm = ({ field, onSave, onCancel }: { field?: CustomField; onSave: (
           </div>
         </div>
 
-        {/* Type */}
+        {/* Type (grouped by category) */}
         <div>
           <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">Tipo do Campo</label>
           <Select value={type} onValueChange={(v) => setType(v as FieldType)}>
             <SelectTrigger className="w-full h-9 text-xs bg-secondary border-border">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(FIELD_TYPE_LABELS) as FieldType[]).map(t => (
-                <SelectItem key={t} value={t}>
-                  <span className="mr-2">{FIELD_TYPE_ICONS[t]}</span> {FIELD_TYPE_LABELS[t]}
-                </SelectItem>
+            <SelectContent className="max-h-[60vh]">
+              {FIELD_TYPE_CATEGORIES.map(cat => (
+                <div key={cat.id}>
+                  <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+                    {cat.label}
+                  </div>
+                  {cat.types.map(t => (
+                    <SelectItem key={t} value={t}>
+                      <span className="mr-2">{FIELD_TYPE_ICONS[t]}</span> {FIELD_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </div>
               ))}
             </SelectContent>
           </Select>
