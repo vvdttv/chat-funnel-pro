@@ -453,7 +453,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
           <div className="flex items-center gap-1">
             <Shield size={10} className="text-muted-foreground" />
             <span className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Guardrails reforçados
+              Regras de proteção reforçadas
             </span>
           </div>
           <button
@@ -466,7 +466,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
 
         {guardrailRuleIds.length === 0 && !guardrailPickerOpen && (
           <p className="text-[10px] text-muted-foreground italic">
-            Nenhum reforço extra — universais já estão sempre ativos.
+            Nenhum reforço extra — as regras universais já estão sempre ativas.
           </p>
         )}
 
@@ -504,7 +504,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
             <input
               value={guardrailSearch}
               onChange={e => setGuardrailSearch(e.target.value)}
-              placeholder="Buscar regra DONT/NOASK…"
+              placeholder="Buscar regra (não fazer / não perguntar)…"
               className="w-full bg-card border border-border rounded-md px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary/50 mb-2"
             />
             <div className="max-h-48 overflow-y-auto space-y-1">
@@ -535,12 +535,12 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
         )}
       </div>
 
-      {/* Fallback */}
+      {/* Resposta de reserva (fallback) */}
       <div>
         <div className="flex items-center gap-1 mb-1">
           <ArrowRightCircle size={10} className="text-muted-foreground" />
           <label className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">
-            Bloco de fallback
+            Bloco de resposta de reserva
           </label>
         </div>
         <select
@@ -548,7 +548,7 @@ const BlockBehaviorEditor = ({ block, onChange, stagePlaybookCode, siblingBlocks
           onChange={e => onChange({ ...block, fallbackBlockId: e.target.value || undefined })}
           className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-[11px] text-foreground outline-none focus:border-primary/50"
         >
-          <option value="">— sem fallback —</option>
+          <option value="">— sem resposta de reserva —</option>
           {siblingBlocks
             .filter(b => b.id !== block.id)
             .map(b => {

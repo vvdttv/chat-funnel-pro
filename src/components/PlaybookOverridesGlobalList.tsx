@@ -114,7 +114,7 @@ export const PlaybookOverridesGlobalList = () => {
         <div className="flex items-center gap-1.5">
           <Layers size={14} className="text-primary" />
           <h3 className="text-sm font-semibold text-foreground">
-            Overrides composicionais ativos
+            Ajustes personalizados ativos
           </h3>
         </div>
         <span className="text-[10px] text-muted-foreground">
@@ -123,9 +123,9 @@ export const PlaybookOverridesGlobalList = () => {
       </div>
 
       <p className="text-[11px] text-muted-foreground leading-snug">
-        Auditoria global de todas as personalizações que sobrescrevem o playbook
-        base do arquétipo. Use para revisar consistência entre funis e remover
-        regras esquecidas.
+        Auditoria global de todas as personalizações que sobrescrevem o roteiro
+        base do arquétipo da etapa. Use para revisar consistência entre funis e
+        remover regras esquecidas.
       </p>
 
       {/* Filtros */}
@@ -138,24 +138,24 @@ export const PlaybookOverridesGlobalList = () => {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <FilterPills<ScopeFilter>
-            label="Escopo"
+            label="Abrangência"
             value={scopeFilter}
             onChange={setScopeFilter}
             options={[
-              { v: 'all', l: 'Todos' },
-              { v: 'org', l: 'Org' },
+              { v: 'all', l: 'Todas' },
+              { v: 'org', l: 'Organização' },
               { v: 'funnel', l: 'Funil' },
               { v: 'stage', l: 'Etapa' },
             ]}
           />
           <FilterPills<LayerFilter>
-            label="Layer"
+            label="Camada"
             value={layerFilter}
             onChange={setLayerFilter}
             options={[
-              { v: 'all', l: 'Todos' },
-              { v: 'stage', l: 'Stage' },
-              { v: 'overlay', l: 'Overlay' },
+              { v: 'all', l: 'Todas' },
+              { v: 'stage', l: 'Etapa' },
+              { v: 'overlay', l: 'Status' },
             ]}
           />
           <div>
@@ -191,7 +191,7 @@ export const PlaybookOverridesGlobalList = () => {
       {!loading && !error && visible.length === 0 && (
         <div className="bg-card border border-dashed border-border rounded-lg p-6 text-center">
           <p className="text-[11px] text-muted-foreground">
-            Nenhum override ativo com esses filtros.
+            Nenhum ajuste ativo com esses filtros.
           </p>
           <button
             onClick={() => { setScopeFilter('all'); setLayerFilter('all'); setFunnelFilter('all'); }}
@@ -240,7 +240,7 @@ export const PlaybookOverridesGlobalList = () => {
                   onClick={() => handleRemove(ov.id)}
                   disabled={removing}
                   className="h-7 px-1.5 text-destructive hover:text-destructive shrink-0"
-                  title="Desativar override"
+                  title="Desativar ajuste"
                 >
                   {removing ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                 </Button>
@@ -258,12 +258,12 @@ export const PlaybookOverridesGlobalList = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground italic">payload vazio</p>
+                <p className="text-[10px] text-muted-foreground italic">sem conteúdo</p>
               )}
 
               {ov.payload.goal && (
                 <p className="text-[10px] text-foreground bg-background border border-border rounded p-1.5 leading-snug">
-                  <span className="text-muted-foreground">goal:</span> {ov.payload.goal}
+                  <span className="text-muted-foreground">objetivo:</span> {ov.payload.goal}
                 </p>
               )}
             </li>
