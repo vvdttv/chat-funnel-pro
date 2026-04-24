@@ -285,6 +285,72 @@ export const AIIndicatorsBlock = () => {
     setQuestion('');
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/ogg';
+      const mr = new MediaRecorder(stream, { mimeType });
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        await transcribeAndAsk(blob, mimeType);
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch (e: any) {
+      toast({
+        title: 'Não foi possível acessar o microfone',
+        description: e?.message || 'Verifique as permissões do navegador.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setRecording(false);
+  };
+
+  const transcribeAndAsk = async (blob: Blob, mimeType: string) => {
+    setTranscribing(true);
+    try {
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+      const base64 = btoa(bin);
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audio_base64: base64, mime_type: mimeType.split(';')[0] },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const text = ((data as any)?.text || '').trim();
+      if (!text) {
+        toast({ title: 'Áudio vazio', description: 'Não consegui entender o áudio. Tente novamente.', variant: 'destructive' });
+        return;
+      }
+      await ask(text);
+    } catch (e: any) {
+      toast({
+        title: 'Erro na transcrição',
+        description: e?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+
   const hasConversation = conversation.length > 0;
   const lastResult = [...conversation].reverse().find(t => t.result)?.result;
 
@@ -345,11 +411,16 @@ export const AIIndicatorsBlock = () => {
         />
         <button
           type="button"
-          disabled
-          title="Áudio em breve"
-          className="w-8 h-8 rounded-lg bg-secondary text-muted-foreground/50 flex items-center justify-center cursor-not-allowed"
+          onClick={recording ? stopRecording : startRecording}
+          disabled={loading || transcribing}
+          title={recording ? 'Parar gravação' : 'Gravar pergunta por áudio'}
+          className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 transition-all disabled:opacity-50 ${
+            recording
+              ? 'bg-destructive text-destructive-foreground animate-pulse'
+              : 'bg-secondary text-muted-foreground'
+          }`}
         >
-          <Mic size={14} />
+          {transcribing ? <Loader2 size={14} className="animate-spin" /> : recording ? <Square size={14} /> : <Mic size={14} />}
         </button>
         <button
           onClick={() => ask(question)}
