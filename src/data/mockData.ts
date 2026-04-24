@@ -220,22 +220,51 @@ export interface CustomField {
 }
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  // Texto
   text: 'Texto',
   textarea: 'Texto Longo',
+  large_text: 'Texto Rico',
+  // Numérico
   number: 'Número',
   monetary: 'Monetário',
+  currency_multi: 'Valor Multi-Moeda',
+  percentage: 'Percentual',
+  rating: 'Avaliação (estrelas)',
+  // Comunicação
   phone: 'Telefone',
   email: 'E-mail',
+  url: 'URL',
+  // Data/Hora
   date: 'Data',
   datetime: 'Data e Hora',
+  time: 'Hora',
+  date_range: 'Intervalo de Datas',
+  timezone: 'Fuso Horário',
+  // Seleção
   dropdown: 'Lista Suspensa',
   multiselect: 'Seleção Múltipla',
   checkbox: 'Caixa de Seleção',
   radio: 'Opção Única',
-  url: 'URL',
-  file: 'Arquivo',
-  signature: 'Assinatura',
   toggle: 'Liga/Desliga',
+  tags: 'Tags Livres',
+  // Mídia
+  file: 'Arquivo',
+  image: 'Imagem',
+  video: 'Vídeo',
+  audio: 'Áudio',
+  signature: 'Assinatura',
+  // Localização
+  address: 'Endereço',
+  country: 'País',
+  state: 'Estado / UF',
+  // Referência
+  user: 'Usuário',
+  org: 'Organização',
+  person: 'Contato',
+  lookup: 'Auto-complete',
+  // Avançado
+  formula: 'Fórmula Calculada',
+  hidden: 'Campo Oculto',
 };
 
 export const FIELD_OBJECT_LABELS: Record<FieldObject, string> = {

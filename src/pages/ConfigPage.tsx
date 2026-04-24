@@ -597,9 +597,24 @@ const FlowCard = ({ flow }: { flow: AIFlow }) => (
 // ========== FIELD TYPE ICON ==========
 
 const FIELD_TYPE_ICONS: Record<FieldType, string> = {
-  text: 'Aa', textarea: '¶', number: '#', monetary: 'R$', phone: '📱', email: '@',
-  date: '📅', datetime: '🕐', dropdown: '▾', multiselect: '☰', checkbox: '☑',
-  radio: '◉', url: '🔗', file: '📎', signature: '✍', toggle: '⊘',
+  // Texto
+  text: 'Aa', textarea: '¶', large_text: '✎',
+  // Numérico
+  number: '#', monetary: 'R$', currency_multi: '€', percentage: '%', rating: '★',
+  // Comunicação
+  phone: '📱', email: '@', url: '🔗',
+  // Data/Hora
+  date: '📅', datetime: '🕐', time: '⏰', date_range: '📆', timezone: '🌐',
+  // Seleção
+  dropdown: '▾', multiselect: '☰', checkbox: '☑', radio: '◉', toggle: '⊘', tags: '🏷',
+  // Mídia
+  file: '📎', image: '🖼', video: '🎬', audio: '🎵', signature: '✍',
+  // Localização
+  address: '📍', country: '🌎', state: '🗺',
+  // Referência
+  user: '👤', org: '🏢', person: '👥', lookup: '🔍',
+  // Avançado
+  formula: 'ƒ', hidden: '🚫',
 };
 
 // ========== FIELD CARD ==========
