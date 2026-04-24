@@ -1,24 +1,47 @@
-import { useState, useRef, useCallback } from 'react';
-import { Phone, FileText, MapPin, MessageCircle, Check, ChevronRight, Calendar, RotateCcw } from 'lucide-react';
-import { activities as mockActivities, Activity, ACTIVITY_TYPES, formatCurrency } from '@/data/mockData';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { Check, ChevronRight, Calendar, RotateCcw } from 'lucide-react';
+import { activities as mockActivities, Activity } from '@/data/mockData';
+import { useActivityTypes } from '@/hooks/useActivityTypes';
+import { renderActivityIcon } from '@/components/ActivityTypesManager';
+import { useDealsContext } from '@/hooks/useDeals';
+import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
+import type { Deal } from '@/data/mockData';
 
-const typeIcons = { call: Phone, proposal: FileText, visit: MapPin, followup: MessageCircle };
 const filterOptions = ['Hoje', 'Atrasadas', 'Semana'] as const;
 
-const ActivityCard = ({ activity, onDone, onPostpone }: { activity: Activity; onDone: (id: string) => void; onPostpone: (id: string) => void }) => {
+const ActivityCard = ({
+  activity,
+  typeLabel,
+  typeIcon,
+  typeColor,
+  onDone,
+  onPostpone,
+  onOpen,
+}: {
+  activity: Activity;
+  typeLabel: string;
+  typeIcon: string;
+  typeColor: string;
+  onDone: (id: string) => void;
+  onPostpone: (id: string) => void;
+  onOpen: (id: string) => void;
+}) => {
   const startX = useRef(0);
   const currentX = useRef(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const moved = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     isDragging.current = true;
+    moved.current = false;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isDragging.current || !cardRef.current) return;
     currentX.current = e.touches[0].clientX - startX.current;
+    if (Math.abs(currentX.current) > 6) moved.current = true;
     const clamped = Math.max(-100, Math.min(100, currentX.current));
     cardRef.current.style.transform = `translateX(${clamped}px)`;
   }, []);
@@ -30,12 +53,13 @@ const ActivityCard = ({ activity, onDone, onPostpone }: { activity: Activity; on
       onDone(activity.id);
     } else if (currentX.current < -80) {
       onPostpone(activity.id);
+    } else if (!moved.current) {
+      onOpen(activity.id);
     }
     cardRef.current.style.transform = 'translateX(0)';
     currentX.current = 0;
-  }, [activity.id, onDone, onPostpone]);
+  }, [activity.id, onDone, onPostpone, onOpen]);
 
-  const Icon = typeIcons[activity.type];
   const isOverdue = activity.dueDate < '2024-02-12' && !activity.done;
 
   return (
@@ -55,12 +79,16 @@ const ActivityCard = ({ activity, onDone, onPostpone }: { activity: Activity; on
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative bg-card p-4 rounded-xl transition-transform active:scale-[0.99] ${activity.done ? 'opacity-50' : ''}`}
+        onClick={() => onOpen(activity.id)}
+        className={`relative bg-card p-4 rounded-xl transition-transform active:scale-[0.99] cursor-pointer ${activity.done ? 'opacity-50' : ''}`}
         style={{ touchAction: 'pan-y' }}
       >
         <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg ${isOverdue ? 'bg-destructive/20 text-destructive' : 'bg-primary/15 text-primary'}`}>
-            <Icon size={18} />
+          <div
+            className={`p-2 rounded-lg flex items-center justify-center ${isOverdue ? 'bg-destructive/20 text-destructive' : 'bg-primary/15'}`}
+            style={isOverdue ? undefined : { color: typeColor }}
+          >
+            {renderActivityIcon(typeIcon, { size: 18 })}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -73,7 +101,7 @@ const ActivityCard = ({ activity, onDone, onPostpone }: { activity: Activity; on
                 {activity.dueTime} · {activity.dueDate === '2024-02-12' ? 'Hoje' : activity.dueDate < '2024-02-12' ? 'Atrasada' : activity.dueDate}
               </span>
               <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                {ACTIVITY_TYPES[activity.type].label}
+                {typeLabel}
               </span>
             </div>
           </div>
@@ -107,6 +135,17 @@ const AtividadesPage = () => {
   const [filter, setFilter] = useState<string>('Hoje');
   const [activityList, setActivityList] = useState(mockActivities);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [openDeal, setOpenDeal] = useState<Deal | null>(null);
+
+  const { byCode, types } = useActivityTypes();
+  const { deals } = useDealsContext();
+
+  const fallbackByType = useMemo<Record<string, { label: string; icon: string; color: string }>>(() => ({
+    call:     { label: 'Ligação',  icon: 'Phone',         color: 'hsl(210,80%,55%)' },
+    proposal: { label: 'Proposta', icon: 'FileText',      color: 'hsl(38,92%,50%)' },
+    visit:    { label: 'Visita',   icon: 'MapPin',        color: 'hsl(145,63%,49%)' },
+    followup: { label: 'Follow-up',icon: 'MessageCircle', color: 'hsl(270,60%,65%)' },
+  }), []);
 
   const filteredActivities = activityList.filter(a => {
     if (filter === 'Hoje') return a.dueDate === '2024-02-12';
@@ -119,7 +158,14 @@ const AtividadesPage = () => {
   };
 
   const handlePostpone = (_id: string) => {
-    // In production, this would open a date picker
+    // Swipe rápido: marcado para tratamento futuro pelo popup completo.
+  };
+
+  const handleOpen = (id: string) => {
+    const act = activityList.find(a => a.id === id);
+    if (!act) return;
+    const deal = deals.find(d => d.id === act.dealId);
+    if (deal) setOpenDeal(deal);
   };
 
   return (
@@ -155,17 +201,39 @@ const AtividadesPage = () => {
           </div>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground mb-3 px-1 lg:hidden">← Deslize para concluir/adiar →</p>
+            <p className="text-xs text-muted-foreground mb-3 px-1 lg:hidden">← Deslize para concluir/adiar — toque para registrar →</p>
             <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-3">
-              {filteredActivities.map(a => (
-                <ActivityCard key={a.id} activity={a} onDone={handleDone} onPostpone={handlePostpone} />
-              ))}
+              {filteredActivities.map(a => {
+                const t = byCode(a.type);
+                const fb = fallbackByType[a.type] ?? { label: a.type, icon: 'Circle', color: 'hsl(0,0%,60%)' };
+                return (
+                  <ActivityCard
+                    key={a.id}
+                    activity={a}
+                    typeLabel={t?.label ?? fb.label}
+                    typeIcon={t?.icon ?? fb.icon}
+                    typeColor={t?.color ?? fb.color}
+                    onDone={handleDone}
+                    onPostpone={handlePostpone}
+                    onOpen={handleOpen}
+                  />
+                );
+              })}
             </div>
           </>
         )}
       </div>
 
       <CalendarBottomSheet open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+
+      {openDeal && (
+        <RegisterActivityPopup
+          deal={openDeal}
+          initialStep="register_outcome"
+          onClose={() => setOpenDeal(null)}
+          onConfirm={() => setOpenDeal(null)}
+        />
+      )}
     </div>
   );
 };
