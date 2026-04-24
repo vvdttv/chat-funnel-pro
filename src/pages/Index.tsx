@@ -41,12 +41,14 @@ const Index = () => {
   return (
     <FunnelsProvider value={funnelsState}>
       <DealsProvider value={dealsState}>
-        <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            {renderPage()}
+        <ActivityTypesProvider>
+          <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              {renderPage()}
+            </div>
+            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-        </div>
+        </ActivityTypesProvider>
       </DealsProvider>
     </FunnelsProvider>
   );
