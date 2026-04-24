@@ -653,6 +653,32 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
   );
 };
 
+const ActivityTypePicker = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
+  const { types } = useActivityTypes();
+  const active = types.filter(t => t.is_active);
+  return (
+    <div>
+      <label className="text-xs font-semibold text-foreground mb-1.5 block">Tipo de atividade *</label>
+      <div className="grid grid-cols-2 gap-2">
+        {active.map(t => (
+          <button
+            key={t.code}
+            onClick={() => onChange(t.code)}
+            className={`py-2.5 rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] ${
+              value === t.code ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-secondary text-muted-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+        {active.length === 0 && (
+          <span className="col-span-2 text-xs text-muted-foreground">Nenhum tipo ativo. Configure em Config → Atividades.</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void }) => {
   const [summary, setSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
