@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Sparkles, Send, RotateCcw, Loader2, AlertCircle, Mic } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Sparkles, Send, RotateCcw, Loader2, AlertCircle, Mic, Square } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealsContext } from '@/hooks/useDeals';
 import { useFunnelsContext } from '@/hooks/useFunnels';
@@ -180,6 +180,10 @@ export const AIIndicatorsBlock = () => {
   const [question, setQuestion] = useState('');
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const snapshot = useMemo(() => {
     const totals = {
