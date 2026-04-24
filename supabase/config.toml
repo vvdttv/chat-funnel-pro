@@ -1,1 +1,4 @@
 project_id = "voppamtbdqchaopwtlkc"
+
+[functions.analyze-indicators]
+verify_jwt = false

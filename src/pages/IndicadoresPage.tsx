@@ -7,6 +7,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { IADecisionLogsPanel } from '@/components/IADecisionLogsPanel';
 import { FunnelStatusHeatmap } from '@/components/FunnelStatusHeatmap';
 import { useIADecisionLogs } from '@/hooks/useIADecisionLogs';
+import { AIIndicatorsBlock } from '@/components/AIIndicatorsBlock';
+import { Sparkles } from 'lucide-react';
 
 const lossData = [
   { name: 'Crédito Reprovado', value: 40, color: 'hsl(0, 84%, 60%)' },
