@@ -82,18 +82,6 @@ export interface FunnelStage {
     /** Customização sobre reação padrão de um LB nesta etapa específica */
     behaviorReactionOverrides?: Record<string, string>;
   };
-  /**
-   * Modo de autonomia da IA nesta etapa:
-   * - 'autonomous': IA responde sozinha após o delay
-   * - 'suggest_only': IA gera sugestão, corretor sempre aprova
-   * - 'approval_first_n': primeiras N respostas precisam de aprovação; depois autônoma
-   * - 'disabled': IA não responde nesta etapa
-   */
-  aiAutonomyMode?: 'autonomous' | 'suggest_only' | 'approval_first_n' | 'disabled';
-  /** Quantas respostas precisam ser aprovadas antes da IA virar autônoma (modo approval_first_n) */
-  aiApprovalThreshold?: number;
-  /** Atraso (em segundos) antes da IA enviar a resposta — simula tempo humano */
-  aiResponseDelaySeconds?: number;
 }
 
 export interface Funnel {
