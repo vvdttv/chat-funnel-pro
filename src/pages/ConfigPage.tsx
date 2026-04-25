@@ -919,12 +919,15 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 // ========== MAIN PAGE ==========
 
 const ConfigPage = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
+  const { profile, isAdmin, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'config_ia' : 'funis');
+  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas'>('configurar');
+  const [iaPrefill, setIaPrefill] = useState<SavedSession | null>(null);
+  const [iaSessionsRefreshKey, setIaSessionsRefreshKey] = useState(0);
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [funnelWizardOpen, setFunnelWizardOpen] = useState(false);
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
-  const { profile, isAdmin, signOut } = useAuth();
 
   // Sincroniza seleção quando funis carregam
   useEffect(() => {
