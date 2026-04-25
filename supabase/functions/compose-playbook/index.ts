@@ -159,6 +159,7 @@ serve(async (req) => {
     const [
       funnel, archetypes, statusArchetypes, physicalStages,
       catalogPlaybooks, overrides, rules, behaviors, ladders, triggers,
+      skills, skillNodes, skillGuardrails,
     ] = await Promise.all([
       supabase.from('funnels').select('id,context_tags').eq('id', funnelId).maybeSingle(),
       supabase.from('stage_archetypes').select('id,code,default_playbook_code,context_tags').eq('is_active', true),
@@ -167,9 +168,12 @@ serve(async (req) => {
       supabase.from('stage_playbooks').select('code,archetype_id,status_archetype_id,kind,goal,success_criteria,failure_criteria,default_ladder_code,typical_behavior_codes,identity').eq('is_active', true),
       supabase.from('playbook_overrides').select('scope_type,scope_id,layer,payload').eq('is_active', true),
       supabase.from('ia_rules').select('code,kind,scope,text,meta').eq('is_active', true),
-      supabase.from('lead_behaviors').select('code,label,default_reaction,next_step,applicable_context_tags,applicable_statuses').eq('is_active', true),
+      supabase.from('lead_behaviors').select('code,label,default_reaction,next_step,applicable_context_tags,applicable_statuses,detection_hints').eq('is_active', true),
       supabase.from('followup_ladders').select('code,name,description,steps').eq('is_active', true),
       supabase.from('handoff_triggers').select('code,priority,label,stage,condition,action').eq('is_active', true),
+      supabase.from('ia_skills').select('id,code,name,description,scope_type,scope_id,position').eq('is_active', true).order('position'),
+      supabase.from('ia_skill_nodes').select('id,skill_id,kind,parent_node_id,branch_label,config,position').order('position'),
+      supabase.from('ia_skill_guardrails').select('skill_id,rule_code'),
     ]);
 
     const physical = physicalStages.data;
