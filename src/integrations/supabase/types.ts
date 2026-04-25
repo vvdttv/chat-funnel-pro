@@ -490,6 +490,112 @@ export type Database = {
           },
         ]
       }
+      ia_config_prefs: {
+        Row: {
+          last_format: string | null
+          last_polarity: string | null
+          last_scope: string | null
+          last_scope_ids: Json
+          last_tone: string | null
+          last_trigger: string | null
+          organization_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_format?: string | null
+          last_polarity?: string | null
+          last_scope?: string | null
+          last_scope_ids?: Json
+          last_tone?: string | null
+          last_trigger?: string | null
+          organization_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_format?: string | null
+          last_polarity?: string | null
+          last_scope?: string | null
+          last_scope_ids?: Json
+          last_tone?: string | null
+          last_trigger?: string | null
+          organization_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_config_prefs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_config_sessions: {
+        Row: {
+          approved_at: string | null
+          created_artifacts: Json
+          created_at: string
+          custom_answers: Json
+          custom_questions: Json
+          fixed_answers: Json
+          generated_plan: Json
+          human_summary: string
+          id: string
+          organization_id: string
+          original_message: string
+          reverted_at: string | null
+          reverted_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          created_artifacts?: Json
+          created_at?: string
+          custom_answers?: Json
+          custom_questions?: Json
+          fixed_answers?: Json
+          generated_plan?: Json
+          human_summary?: string
+          id?: string
+          organization_id: string
+          original_message: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          created_artifacts?: Json
+          created_at?: string
+          custom_answers?: Json
+          custom_questions?: Json
+          fixed_answers?: Json
+          generated_plan?: Json
+          human_summary?: string
+          id?: string
+          organization_id?: string
+          original_message?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_config_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_decision_logs: {
         Row: {
           action_taken: string
