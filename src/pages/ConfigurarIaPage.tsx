@@ -8,12 +8,13 @@
  *
  * Mobile-first (max-w-md). Admin-only via ProtectedRoute do App.tsx.
  */
-import { ArrowLeft, Loader2, RefreshCw, Sparkles, Wrench } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CustomQuestions } from '@/components/configurador-ia/CustomQuestions';
 import { FixedTrioQuestions } from '@/components/configurador-ia/FixedTrioQuestions';
 import { ReviewScreen } from '@/components/configurador-ia/ReviewScreen';
+import { SavedSessionsList, type SavedSession } from '@/components/configurador-ia/SavedSessionsList';
 import { UndoBanner } from '@/components/configurador-ia/UndoBanner';
 import { Textarea } from '@/components/ui/textarea';
 import {
