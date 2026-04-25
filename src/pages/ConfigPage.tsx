@@ -22,7 +22,7 @@ import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideM
 import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
@@ -33,7 +33,6 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
-  { id: 'fluxos', label: 'Fluxos IA', icon: Bot },
 ];
 
 const CHANNEL_OPTIONS: { value: Touchpoint['channel']; label: string; icon: typeof Phone }[] = [
