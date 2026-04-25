@@ -45,16 +45,7 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scrollbar-hide"
-        onScroll={updateMetrics}
-        style={{ WebkitOverflowScrolling: 'touch' } as CSSProperties}
-      >
-        <div className="h-full w-max flex flex-row gap-3 px-3 py-2">{children}</div>
-      </div>
-
-      <div className="shrink-0 px-3 pb-1 pt-1">
+      <div className="shrink-0 px-3 pt-1 pb-1.5">
         <input
           aria-label="Rolar etapas do funil"
           type="range"
@@ -71,6 +62,15 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
           }}
           className="funnel-horizontal-range block w-full"
         />
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scrollbar-hide"
+        onScroll={updateMetrics}
+        style={{ WebkitOverflowScrolling: 'touch' } as CSSProperties}
+      >
+        <div className="h-full w-max flex flex-row gap-3 px-3 py-2">{children}</div>
       </div>
     </div>
   );
