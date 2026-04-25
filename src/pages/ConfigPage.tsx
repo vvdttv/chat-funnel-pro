@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText } from 'lucide-react';
+import { ConfiguradorIaFlow } from '@/components/configurador-ia/ConfiguradorIaFlow';
+import { SavedSessionsList, type SavedSession } from '@/components/configurador-ia/SavedSessionsList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
@@ -16,9 +18,10 @@ import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor'
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+type SettingsTab = 'config_ia' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
+  { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
   { id: 'funis', label: 'Funis', icon: Zap },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
