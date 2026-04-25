@@ -270,14 +270,6 @@ const ConfigurarIaPage = () => {
             </button>
           </div>
         )}
-
-        {/* Modo avançado sempre disponível */}
-        <button
-          onClick={() => navigate('/')}
-          className="w-full mt-2 py-2 text-xs text-muted-foreground flex items-center justify-center gap-1 transition-colors"
-        >
-          <Wrench size={12} /> Prefere o modo avançado? Ir para Config → Fluxos IA
-        </button>
       </main>
     </div>
   );
