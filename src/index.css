@@ -59,4 +59,72 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* ===== Kanban: barra de rolagem horizontal global (range slider largo, padrão Enermac) ===== */
+  .funnel-horizontal-range {
+    height: 18px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    accent-color: hsl(var(--muted-foreground));
+  }
+  .funnel-horizontal-range::-webkit-slider-runnable-track {
+    height: 10px;
+    border-radius: 5px;
+    background: hsl(var(--secondary));
+    border: 0;
+  }
+  .funnel-horizontal-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: min(3cm, 42vw);
+    height: 10px;
+    border-radius: 5px;
+    background: hsl(var(--primary) / 0.7);
+    border: 2px solid hsl(var(--secondary));
+    margin-top: 0;
+    cursor: grab;
+  }
+  .funnel-horizontal-range::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    background: hsl(var(--primary));
+  }
+  .funnel-horizontal-range::-moz-range-track {
+    height: 10px;
+    border-radius: 5px;
+    background: hsl(var(--secondary));
+    border: 0;
+  }
+  .funnel-horizontal-range::-moz-range-thumb {
+    width: min(3cm, 42vw);
+    height: 10px;
+    border-radius: 5px;
+    background: hsl(var(--primary) / 0.7);
+    border: 2px solid hsl(var(--secondary));
+    cursor: grab;
+  }
+  .funnel-horizontal-range::-moz-range-thumb:active {
+    cursor: grabbing;
+    background: hsl(var(--primary));
+  }
+
+  /* ===== Kanban: barra de rolagem vertical fina por etapa ===== */
+  .kanban-vscroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+  }
+  .kanban-vscroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .kanban-vscroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .kanban-vscroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.4);
+    border-radius: 3px;
+  }
+  .kanban-vscroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7);
+  }
 }
+
