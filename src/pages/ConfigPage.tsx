@@ -1128,6 +1128,17 @@ const ConfigPage = () => {
 
         {activeTab === 'fluxos' && (
           <>
+            <button
+              onClick={() => window.location.assign('/configurar-ia')}
+              className="w-full mb-4 p-4 rounded-xl border border-primary/30 bg-primary/10 text-left active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Sparkles size={16} className="text-primary" /> Configurar a IA em linguagem natural
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Descreva o comportamento desejado em português — a IA cria comportamentos, regras e habilidades pra você.
+              </div>
+            </button>
             <IABehaviorSeedBanner />
             <IABehaviorManager />
             <div className="my-4 border-t border-border" />
