@@ -250,7 +250,7 @@ export const KanbanBoard = ({
 
             {/* Cards */}
             <div
-              className="flex-1 overflow-y-auto p-2 space-y-2"
+              className="kanban-vscroll flex-1 overflow-y-auto p-2 space-y-2"
               style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
             >
               {col.deals.length === 0 ? (
