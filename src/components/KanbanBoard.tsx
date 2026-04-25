@@ -57,7 +57,7 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
       {maxScroll > 0 && (
         <div className="shrink-0 px-3 pb-1 pt-1">
           <input
-            aria-label="Rolar etapas"
+            aria-label="Rolar etapas do funil"
             type="range"
             min={0}
             max={maxScroll}
@@ -69,7 +69,7 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
               el.scrollLeft = next;
               setScrollLeft(next);
             }}
-            className="block w-full h-1.5 appearance-none rounded-full bg-secondary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+            className="funnel-horizontal-range block w-full"
           />
         </div>
       )}
