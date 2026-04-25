@@ -19,6 +19,8 @@ import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
+import { StageAutonomyConfig } from '@/components/StageAutonomyConfig';
+import { AIApprovalQueue } from '@/components/AIApprovalQueue';
 
 type SettingsTab = 'config_ia' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
@@ -382,6 +384,9 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
               </p>
             </button>
           </div>
+
+          {/* Autonomia da IA nesta etapa */}
+          <StageAutonomyConfig stage={stage} onUpdate={onUpdate} />
 
           {/* Tempo máximo na etapa */}
           <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
