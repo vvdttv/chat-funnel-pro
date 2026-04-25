@@ -189,44 +189,8 @@ serve(async (req) => {
       return json(200, { ok: true, ignored: "deal_nao_encontrado" });
     }
 
-    // Carrega config de autonomia da etapa
-    const { data: stageCfg } = await admin
-      .from("funnel_stages")
-      .select("ai_autonomy_mode, ai_approval_threshold, ai_response_delay_seconds")
-      .eq("funnel_id", deal.funnel_id)
-      .eq("stage_id", deal.stage_id)
-      .eq("organization_id", deal.organization_id)
-      .maybeSingle();
-
-    const autonomyMode = stageCfg?.ai_autonomy_mode ?? "suggest_only";
-    const approvalThreshold = stageCfg?.ai_approval_threshold ?? 3;
-    const delaySeconds = stageCfg?.ai_response_delay_seconds ?? 0;
-
-    if (autonomyMode === "disabled") {
-      return json(200, { ok: true, ignored: "ia_desligada_na_etapa" });
-    }
-
-    // Decide status inicial conforme autonomia
-    let initialStatus: string;
-    if (autonomyMode === "autonomous") {
-      initialStatus = "pending"; // dispatcher gera + envia
-    } else if (autonomyMode === "suggest_only") {
-      initialStatus = "pending"; // dispatcher gera mas marca como awaiting_approval
-    } else if (autonomyMode === "approval_first_n") {
-      // Conta envios reais já feitos pela IA neste deal pra decidir
-      const { count } = await admin
-        .from("ai_response_queue")
-        .select("id", { count: "exact", head: true })
-        .eq("deal_id", deal.id)
-        .eq("status", "sent");
-      initialStatus = "pending"; // dispatcher decide se manda direto ou pra aprovação
-      // armazenamos contagem no contexto pra dispatcher usar
-    } else {
-      initialStatus = "pending";
-    }
-
-    const scheduledSendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
-
+    // IA sempre responde de forma autônoma — sem aprovação humana.
+    // Auditoria das conversas é feita posteriormente via análise por IA.
     const { data: queueRow, error: qErr } = await admin
       .from("ai_response_queue")
       .insert([
@@ -237,16 +201,15 @@ serve(async (req) => {
           stage_id: deal.stage_id,
           lead_channel_id: channel.id,
           lead_message: msg.text,
-          status: initialStatus,
-          autonomy_mode: autonomyMode,
-          scheduled_send_at: scheduledSendAt,
+          status: "pending",
+          autonomy_mode: "autonomous",
+          scheduled_send_at: new Date().toISOString(),
           context: {
             provider,
             externalContactId: msg.externalContactId,
             phoneE164: msg.phoneE164,
             displayName: msg.displayName,
             receivedAt: msg.receivedAt,
-            approvalThreshold,
           },
         },
       ])
@@ -258,7 +221,7 @@ serve(async (req) => {
       return json(200, { ok: false, error: "enqueue_failed" });
     }
 
-    return json(200, { ok: true, queueId: queueRow.id, autonomyMode, scheduledSendAt });
+    return json(200, { ok: true, queueId: queueRow.id });
   } catch (e) {
     console.error("[whatsapp-webhook] unhandled:", e);
     return json(200, { ok: false, error: e instanceof Error ? e.message : "erro_desconhecido" });

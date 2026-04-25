@@ -19,14 +19,10 @@ import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
-import { StageAutonomyConfig } from '@/components/StageAutonomyConfig';
-import { AIApprovalQueue } from '@/components/AIApprovalQueue';
-
-type SettingsTab = 'config_ia' | 'aprovacoes' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+type SettingsTab = 'config_ia' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
-  { id: 'aprovacoes', label: 'Aprovações IA', icon: Bot },
   { id: 'funis', label: 'Funis', icon: Zap },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
@@ -385,9 +381,6 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
               </p>
             </button>
           </div>
-
-          {/* Autonomia da IA nesta etapa */}
-          <StageAutonomyConfig stage={stage} onUpdate={onUpdate} />
 
           {/* Tempo máximo na etapa */}
           <div className="bg-secondary rounded-lg p-2.5 mb-3 flex items-center justify-between">
@@ -1173,8 +1166,6 @@ const ConfigPage = () => {
         {activeTab === 'campos' && <FieldsManager widgets={cardWidgets} onWidgetsChange={setCardWidgets} />}
 
         {activeTab === 'atividades' && <ActivityTypesManager />}
-
-        {activeTab === 'aprovacoes' && <AIApprovalQueue />}
 
         {activeTab === 'card_layout' && (
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
