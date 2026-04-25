@@ -99,6 +99,7 @@ const ConfigurarIaPage = () => {
       return;
     }
     setSavedSessionId(result.sessionId);
+    setSessionsRefreshKey(k => k + 1);
     setStep('saved');
   };
 
