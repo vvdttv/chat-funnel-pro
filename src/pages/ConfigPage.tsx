@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,12 +14,6 @@ import SecurityQuestionManager from '@/components/SecurityQuestionManager';
 import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
 import { FunnelWizard } from '@/components/FunnelWizard';
-import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
-import { IABehaviorManager } from '@/components/IABehaviorManager';
-import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGlobalList';
-import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideSnapshotsBrowser';
-import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
-import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
 type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
