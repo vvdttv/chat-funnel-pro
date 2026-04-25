@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.transcribe-audio]
 verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.ai-response-dispatcher]
+verify_jwt = false
