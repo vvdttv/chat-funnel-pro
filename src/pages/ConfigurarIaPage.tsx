@@ -37,10 +37,12 @@ const ConfigurarIaPage = () => {
   const [step, setStep] = useState<Step>('describe');
   const [userMessage, setUserMessage] = useState('');
   const [fixedAnswers, setFixedAnswers] = useState<FixedAnswers | null>(null);
+  const [prefilledFixed, setPrefilledFixed] = useState<FixedAnswers | null>(null);
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
   const [customAnswers, setCustomAnswers] = useState<CustomAnswer[]>([]);
   const [plan, setPlan] = useState<ComposedPlan | null>(null);
   const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const [sessionsRefreshKey, setSessionsRefreshKey] = useState(0);
 
   if (!isAdmin) {
     return (
@@ -51,8 +53,17 @@ const ConfigurarIaPage = () => {
   }
 
   const reset = () => {
-    setStep('describe'); setUserMessage(''); setFixedAnswers(null);
+    setStep('describe'); setUserMessage(''); setFixedAnswers(null); setPrefilledFixed(null);
     setCustomQuestions([]); setCustomAnswers([]); setPlan(null); setSavedSessionId(null);
+  };
+
+  const handleAdjustSession = (s: SavedSession) => {
+    setUserMessage(s.original_message);
+    setPrefilledFixed(s.fixed_answers ?? null);
+    setFixedAnswers(null);
+    setCustomQuestions([]); setCustomAnswers([]); setPlan(null); setSavedSessionId(null);
+    setStep('describe');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleFixedSubmit = async (answers: FixedAnswers) => {
