@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play } from 'lucide-react';
+import { IAAuditTab } from '@/components/configurador-ia/IAAuditTab';
+import { IASimulator } from '@/components/configurador-ia/IASimulator';
 import { ConfiguradorIaFlow } from '@/components/configurador-ia/ConfiguradorIaFlow';
 import { SavedSessionsList, type SavedSession } from '@/components/configurador-ia/SavedSessionsList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -921,7 +923,7 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 const ConfigPage = () => {
   const { profile, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'config_ia' : 'funis');
-  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas'>('configurar');
+  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas' | 'auditoria' | 'simulador'>('configurar');
   const [iaPrefill, setIaPrefill] = useState<SavedSession | null>(null);
   const [iaSessionsRefreshKey, setIaSessionsRefreshKey] = useState(0);
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
@@ -1016,22 +1018,38 @@ const ConfigPage = () => {
         {activeTab === 'config_ia' && isAdmin && (
           <div className="space-y-4">
             {/* Sub-tabs no topo */}
-            <div className="flex gap-2 bg-secondary rounded-lg p-1">
+            <div className="flex gap-1 bg-secondary rounded-lg p-1 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setIaSubTab('configurar')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                className={`flex-1 min-w-max flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[11px] font-semibold transition-colors active:scale-[0.98] ${
                   iaSubTab === 'configurar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
                 }`}
               >
-                <Sparkles size={13} /> Configurar a IA
+                <Sparkles size={12} /> Configurar
               </button>
               <button
                 onClick={() => setIaSubTab('salvas')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                className={`flex-1 min-w-max flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[11px] font-semibold transition-colors active:scale-[0.98] ${
                   iaSubTab === 'salvas' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
                 }`}
               >
-                <MessageSquareText size={13} /> O que já está configurado
+                <MessageSquareText size={12} /> Configurações salvas
+              </button>
+              <button
+                onClick={() => setIaSubTab('auditoria')}
+                className={`flex-1 min-w-max flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[11px] font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'auditoria' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <Search size={12} /> Auditoria
+              </button>
+              <button
+                onClick={() => setIaSubTab('simulador')}
+                className={`flex-1 min-w-max flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[11px] font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'simulador' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <Play size={12} /> Simulador
               </button>
             </div>
 
@@ -1060,6 +1078,10 @@ const ConfigPage = () => {
                 />
               </div>
             )}
+
+            {iaSubTab === 'auditoria' && <IAAuditTab />}
+
+            {iaSubTab === 'simulador' && <IASimulator />}
           </div>
         )}
 
