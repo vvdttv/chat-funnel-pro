@@ -59,6 +59,96 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_response_queue: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attempts: number
+          autonomy_mode: string
+          context: Json
+          created_at: string
+          deal_id: string
+          failure_reason: string | null
+          final_response: string | null
+          funnel_id: string
+          ia_decision_log_id: string | null
+          id: string
+          lead_channel_id: string | null
+          lead_message: string
+          organization_id: string
+          rejected_reason: string | null
+          scheduled_send_at: string | null
+          sent_at: string | null
+          stage_id: string
+          status: string
+          suggested_response: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attempts?: number
+          autonomy_mode: string
+          context?: Json
+          created_at?: string
+          deal_id: string
+          failure_reason?: string | null
+          final_response?: string | null
+          funnel_id: string
+          ia_decision_log_id?: string | null
+          id?: string
+          lead_channel_id?: string | null
+          lead_message: string
+          organization_id: string
+          rejected_reason?: string | null
+          scheduled_send_at?: string | null
+          sent_at?: string | null
+          stage_id: string
+          status?: string
+          suggested_response?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attempts?: number
+          autonomy_mode?: string
+          context?: Json
+          created_at?: string
+          deal_id?: string
+          failure_reason?: string | null
+          final_response?: string | null
+          funnel_id?: string
+          ia_decision_log_id?: string | null
+          id?: string
+          lead_channel_id?: string | null
+          lead_message?: string
+          organization_id?: string
+          rejected_reason?: string | null
+          scheduled_send_at?: string | null
+          sent_at?: string | null
+          stage_id?: string
+          status?: string
+          suggested_response?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_response_queue_lead_channel_id_fkey"
+            columns: ["lead_channel_id"]
+            isOneToOne: false
+            referencedRelation: "lead_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_response_queue_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_activities: {
         Row: {
           created_at: string
@@ -335,6 +425,9 @@ export type Database = {
       }
       funnel_stages: {
         Row: {
+          ai_approval_threshold: number
+          ai_autonomy_mode: string
+          ai_response_delay_seconds: number
           context_tags: Json
           created_at: string
           funnel_id: string
@@ -347,6 +440,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_approval_threshold?: number
+          ai_autonomy_mode?: string
+          ai_response_delay_seconds?: number
           context_tags?: Json
           created_at?: string
           funnel_id: string
@@ -359,6 +455,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_approval_threshold?: number
+          ai_autonomy_mode?: string
+          ai_response_delay_seconds?: number
           context_tags?: Json
           created_at?: string
           funnel_id?: string
@@ -912,6 +1011,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lead_behaviors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_channels: {
+        Row: {
+          channel: string
+          created_at: string
+          deal_id: string
+          display_name: string | null
+          external_contact_id: string
+          id: string
+          is_active: boolean
+          metadata: Json
+          organization_id: string
+          phone_e164: string | null
+          provider: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          deal_id: string
+          display_name?: string | null
+          external_contact_id: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          organization_id: string
+          phone_e164?: string | null
+          provider?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          deal_id?: string
+          display_name?: string | null
+          external_contact_id?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          organization_id?: string
+          phone_e164?: string | null
+          provider?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_channels_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
