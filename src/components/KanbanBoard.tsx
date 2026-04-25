@@ -54,25 +54,24 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
         <div className="h-full w-max flex flex-row gap-3 px-3 py-2">{children}</div>
       </div>
 
-      {maxScroll > 0 && (
-        <div className="shrink-0 px-3 pb-1 pt-1">
-          <input
-            aria-label="Rolar etapas do funil"
-            type="range"
-            min={0}
-            max={maxScroll}
-            value={scrollLeft}
-            onChange={(e) => {
-              const el = scrollRef.current;
-              if (!el) return;
-              const next = Number(e.currentTarget.value);
-              el.scrollLeft = next;
-              setScrollLeft(next);
-            }}
-            className="funnel-horizontal-range block w-full"
-          />
-        </div>
-      )}
+      <div className="shrink-0 px-3 pb-1 pt-1">
+        <input
+          aria-label="Rolar etapas do funil"
+          type="range"
+          min={0}
+          max={maxScroll || 1}
+          value={scrollLeft}
+          disabled={maxScroll <= 0}
+          onChange={(e) => {
+            const el = scrollRef.current;
+            if (!el) return;
+            const next = Number(e.currentTarget.value);
+            el.scrollLeft = next;
+            setScrollLeft(next);
+          }}
+          className="funnel-horizontal-range block w-full"
+        />
+      </div>
     </div>
   );
 };
