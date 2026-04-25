@@ -14,6 +14,7 @@ import type { CardWidget } from '@/components/CardWidgetConfig';
 import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
 import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
+import { KanbanBoard, type KanbanColumn } from '@/components/KanbanBoard';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -1596,8 +1597,6 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [activeFunnelId, setActiveFunnelId] = useState<string>('');
-  const [stageIndex, setStageIndex] = useState(0);
-  const [cardIndex, setCardIndex] = useState(0);
   const [lossDeal, setLossDeal] = useState<Deal | null>(null);
   const [forcedDeal, setForcedDeal] = useState<{ deal: Deal; step: Exclude<ForcedStep, null> } | null>(null);
   const { setDealStatus } = useDealsContext();
@@ -1618,38 +1617,36 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   }, [funnels, activeFunnelId]);
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId);
-
-  // ===== POR FUNIL =====
   const funnelStages = activeFunnel?.stages || [];
-  const currentStageName = funnelStages[stageIndex]?.name || '';
+
   // ===== APPLY FILTERS =====
   const applyFilters = useCallback((list: Deal[]): Deal[] => {
     return list.filter(d => {
-      // Responsável - sem campo no mock, ignorar por enquanto
-      // Origem - via lead
       if (stageFilters.origem) {
         const lead = leads.find(l => l.id === d.leadId);
         if (!lead || lead.origin !== stageFilters.origem) return false;
       }
-      // Atividades hoje / amanhã - sem dados reais, ignorar por enquanto
-      // periodoCriacao - usa createdAt do deal
       if (stageFilters.periodoCriacao.from || stageFilters.periodoCriacao.to) {
         const created = d.createdAt?.slice(0, 10) || '';
         if (stageFilters.periodoCriacao.from && created < stageFilters.periodoCriacao.from) return false;
         if (stageFilters.periodoCriacao.to && created > stageFilters.periodoCriacao.to) return false;
       }
-      // Demais filtros de período - prontos para dados reais
       return true;
     });
   }, [stageFilters]);
 
-  const funnelStageDeals = useMemo(
-    () => applyFilters(dealsList.filter(d => d.funnelId === activeFunnelId && d.stage === currentStageName)),
-    [dealsList, activeFunnelId, currentStageName, applyFilters]
-  );
+  // ===== COLUNAS POR FUNIL =====
+  const funnelColumns = useMemo<KanbanColumn[]>(() => {
+    const filtered = applyFilters(dealsList.filter(d => d.funnelId === activeFunnelId));
+    return funnelStages.map(stage => ({
+      key: stage.id,
+      name: stage.name,
+      deals: filtered.filter(d => d.stage === stage.name),
+    }));
+  }, [dealsList, activeFunnelId, funnelStages, applyFilters]);
 
-  // ===== POR LEAD =====
-  const leadStageDeals = useMemo(() => {
+  // ===== COLUNAS POR LEAD (fila de atendimento) =====
+  const leadColumns = useMemo<KanbanColumn[]>(() => {
     const grouped: Record<LeadStageKey, Deal[]> = {
       unread_agent: [],
       unread_client: [],
@@ -1657,50 +1654,26 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       no_reply_agent: [],
     };
     applyFilters(dealsList).forEach(d => {
-      const key = classifyDealLeadStage(d);
-      grouped[key].push(d);
+      grouped[classifyDealLeadStage(d)].push(d);
     });
-    return grouped;
+    return LEAD_STAGES.map(s => ({
+      key: s.key,
+      name: s.name,
+      deals: grouped[s.key],
+    }));
   }, [dealsList, applyFilters]);
-
-  const [leadStageIndex, setLeadStageIndex] = useState(0);
-  const [leadCardIndex, setLeadCardIndex] = useState(0);
-  const currentLeadStage = LEAD_STAGES[leadStageIndex];
-  const currentLeadDeals = leadStageDeals[currentLeadStage.key];
 
   // Handlers
   const handleFunnelChange = (funnelId: string) => {
     setActiveFunnelId(funnelId);
-    setStageIndex(0);
-    setCardIndex(0);
-  };
-
-  const handleStageNav = (dir: 'prev' | 'next') => {
-    if (viewMode === 'funnel') {
-      setStageIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(funnelStages.length - 1, i + 1));
-      setCardIndex(0);
-    } else {
-      setLeadStageIndex(i => dir === 'prev' ? Math.max(0, i - 1) : Math.min(LEAD_STAGES.length - 1, i + 1));
-      setLeadCardIndex(0);
-    }
   };
 
   const handleModeChange = (mode: ViewMode) => {
     setViewMode(mode);
-    setStageIndex(0);
-    setCardIndex(0);
-    setLeadStageIndex(0);
-    setLeadCardIndex(0);
   };
 
-  // Current view data
-  const stages = viewMode === 'funnel'
-    ? funnelStages.map(s => ({ name: s.name }))
-    : LEAD_STAGES.map(s => ({ name: s.name }));
-  const activeStageIdx = viewMode === 'funnel' ? stageIndex : leadStageIndex;
-  const currentDeals = viewMode === 'funnel' ? funnelStageDeals : currentLeadDeals;
-  const activeCardIdx = viewMode === 'funnel' ? cardIndex : leadCardIndex;
-  const stageTotal = currentDeals.reduce((sum, d) => sum + d.value, 0);
+  const columns = viewMode === 'funnel' ? funnelColumns : leadColumns;
+  const allCurrentDeals = useMemo(() => columns.flatMap(c => c.deals), [columns]);
 
   return (
     <div className="flex flex-col h-full relative pb-16">
@@ -1758,34 +1731,16 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       </div>
 
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} onClose={() => setFiltersOpen(false)} />}
-      <AIAnalysisPanel deals={currentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
+      <AIAnalysisPanel deals={allCurrentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
-      <div className="lg:max-w-5xl lg:mx-auto w-full">
-        {/* Stage Navigator */}
-        <StageNavigator
-          stages={stages}
-          activeIndex={activeStageIdx}
-          onPrev={() => handleStageNav('prev')}
-          onNext={() => handleStageNav('next')}
-          dealCount={currentDeals.length}
-          subtitle={`${activeStageIdx + 1}/${stages.length} · ${currentDeals.length} ${currentDeals.length === 1 ? 'lead' : 'leads'} · ${formatCurrency(stageTotal)}`}
-        />
-
-        {/* Card Navigator */}
-        <CardNavigator
-          deals={currentDeals}
-          activeIndex={Math.min(activeCardIdx, Math.max(0, currentDeals.length - 1))}
-          onPrev={() => {
-            if (viewMode === 'funnel') setCardIndex(i => Math.max(0, i - 1));
-            else setLeadCardIndex(i => Math.max(0, i - 1));
-          }}
-          onNext={() => {
-            if (viewMode === 'funnel') setCardIndex(i => Math.min(funnelStageDeals.length - 1, i + 1));
-            else setLeadCardIndex(i => Math.min(currentLeadDeals.length - 1, i + 1));
-          }}
-          onCardClick={(deal) => setSelectedDeal(deal)}
+      {/* Kanban Board (colunas lado a lado com scroll horizontal) */}
+      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full">
+        <KanbanBoard
+          columns={columns}
           widgets={cardWidgets}
+          onCardClick={(deal) => setSelectedDeal(deal)}
           onForcedAction={(deal, step) => setForcedDeal({ deal, step })}
+          emptyLabel={viewMode === 'funnel' ? 'Sem leads nesta etapa' : 'Sem leads nesta fila'}
         />
       </div>
 
