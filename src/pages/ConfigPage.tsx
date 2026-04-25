@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { properties, waNumbers, aiFlows, formatCurrency, Property, AIFlow, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType, AIWorkflow } from '@/data/mockData';
+import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,15 +14,9 @@ import SecurityQuestionManager from '@/components/SecurityQuestionManager';
 import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
 import { FunnelWizard } from '@/components/FunnelWizard';
-import { IABehaviorSeedBanner } from '@/components/IABehaviorSeedBanner';
-import { IABehaviorManager } from '@/components/IABehaviorManager';
-import { PlaybookOverridesGlobalList } from '@/components/PlaybookOverridesGlobalList';
-import { PlaybookOverrideSnapshotsBrowser } from '@/components/PlaybookOverrideSnapshotsBrowser';
-import { PlaybookOverrideMultiScopeEditor } from '@/components/PlaybookOverrideMultiScopeEditor';
-import { PlaybookOverrideSuggestionsPanel } from '@/components/PlaybookOverrideSuggestionsPanel';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'fluxos' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'funis', label: 'Funis', icon: Zap },
@@ -33,7 +27,6 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
   { id: 'numeros', label: 'Números WA', icon: Smartphone },
-  { id: 'fluxos', label: 'Fluxos IA', icon: Bot },
 ];
 
 const CHANNEL_OPTIONS: { value: Touchpoint['channel']; label: string; icon: typeof Phone }[] = [
@@ -571,31 +564,6 @@ const PropertyCard = ({ property }: { property: Property }) => (
   </div>
 );
 
-const FlowCard = ({ flow }: { flow: AIFlow }) => (
-  <div className="bg-card rounded-xl p-4 mb-3">
-    <div className="flex items-start justify-between mb-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{flow.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{flow.description}</p>
-      </div>
-      <div className={`p-1 ${flow.active ? 'text-primary' : 'text-muted-foreground'}`}>
-        {flow.active ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-      </div>
-    </div>
-    <div className="flex items-center justify-between mt-3">
-      <span className="text-xs text-muted-foreground">{flow.blocks} blocos</span>
-      <div className="flex gap-2">
-        <button className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-lg active:scale-95 transition-transform">
-          <Copy size={12} /> Clonar
-        </button>
-        <button className="flex items-center gap-1 text-xs text-primary bg-primary/15 px-2 py-1 rounded-lg active:scale-95 transition-transform">
-          Editar <ChevronRight size={12} />
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
 // ========== FIELD TYPE ICON ==========
 
 const FIELD_TYPE_ICONS: Record<FieldType, string> = {
@@ -1126,39 +1094,6 @@ const ConfigPage = () => {
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
         )}
 
-        {activeTab === 'fluxos' && (
-          <>
-            <button
-              onClick={() => window.location.assign('/configurar-ia')}
-              className="w-full mb-4 p-4 rounded-xl border border-primary/30 bg-primary/10 text-left active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Sparkles size={16} className="text-primary" /> Configurar a IA em linguagem natural
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Descreva o comportamento desejado em português — a IA cria comportamentos, regras e habilidades pra você.
-              </div>
-            </button>
-            <IABehaviorSeedBanner />
-            <IABehaviorManager />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideSuggestionsPanel />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideMultiScopeEditor />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverridesGlobalList />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideSnapshotsBrowser />
-            <div className="my-4 border-t border-border" />
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{aiFlows.length} fluxos</span>
-              <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform">
-                <Plus size={14} /> Novo Fluxo
-              </button>
-            </div>
-            {aiFlows.map(f => <FlowCard key={f.id} flow={f} />)}
-          </>
-        )}
         </div>
       </div>
       <FunnelWizard

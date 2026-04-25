@@ -8,12 +8,13 @@
  *
  * Mobile-first (max-w-md). Admin-only via ProtectedRoute do App.tsx.
  */
-import { ArrowLeft, Loader2, RefreshCw, Sparkles, Wrench } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CustomQuestions } from '@/components/configurador-ia/CustomQuestions';
 import { FixedTrioQuestions } from '@/components/configurador-ia/FixedTrioQuestions';
 import { ReviewScreen } from '@/components/configurador-ia/ReviewScreen';
+import { SavedSessionsList, type SavedSession } from '@/components/configurador-ia/SavedSessionsList';
 import { UndoBanner } from '@/components/configurador-ia/UndoBanner';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -36,10 +37,12 @@ const ConfigurarIaPage = () => {
   const [step, setStep] = useState<Step>('describe');
   const [userMessage, setUserMessage] = useState('');
   const [fixedAnswers, setFixedAnswers] = useState<FixedAnswers | null>(null);
+  const [prefilledFixed, setPrefilledFixed] = useState<FixedAnswers | null>(null);
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
   const [customAnswers, setCustomAnswers] = useState<CustomAnswer[]>([]);
   const [plan, setPlan] = useState<ComposedPlan | null>(null);
   const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const [sessionsRefreshKey, setSessionsRefreshKey] = useState(0);
 
   if (!isAdmin) {
     return (
@@ -50,8 +53,17 @@ const ConfigurarIaPage = () => {
   }
 
   const reset = () => {
-    setStep('describe'); setUserMessage(''); setFixedAnswers(null);
+    setStep('describe'); setUserMessage(''); setFixedAnswers(null); setPrefilledFixed(null);
     setCustomQuestions([]); setCustomAnswers([]); setPlan(null); setSavedSessionId(null);
+  };
+
+  const handleAdjustSession = (s: SavedSession) => {
+    setUserMessage(s.original_message);
+    setPrefilledFixed(s.fixed_answers ?? null);
+    setFixedAnswers(null);
+    setCustomQuestions([]); setCustomAnswers([]); setPlan(null); setSavedSessionId(null);
+    setStep('describe');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleFixedSubmit = async (answers: FixedAnswers) => {
@@ -87,6 +99,7 @@ const ConfigurarIaPage = () => {
       return;
     }
     setSavedSessionId(result.sessionId);
+    setSessionsRefreshKey(k => k + 1);
     setStep('saved');
   };
 
@@ -150,22 +163,31 @@ const ConfigurarIaPage = () => {
 
         {/* Passo: descrever */}
         {step === 'describe' && (
-          <div className="space-y-3">
-            <Textarea
-              value={userMessage}
-              onChange={e => setUserMessage(e.target.value)}
-              placeholder="Ex: Quando o lead pedir desconto, a IA não pode prometer nada — só consultar comigo."
-              rows={4}
-              className="bg-card"
-            />
-            <button
-              onClick={() => userMessage.trim().length >= 5 && setStep('fixed_trio')}
-              disabled={userMessage.trim().length < 5}
-              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
-            >
-              Continuar
-            </button>
-          </div>
+          <>
+            <div className="space-y-3">
+              <Textarea
+                value={userMessage}
+                onChange={e => setUserMessage(e.target.value)}
+                placeholder="Ex: Quando o lead pedir desconto, a IA não pode prometer nada — só consultar comigo."
+                rows={4}
+                className="bg-card"
+              />
+              <button
+                onClick={() => userMessage.trim().length >= 5 && setStep('fixed_trio')}
+                disabled={userMessage.trim().length < 5}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+              >
+                Continuar
+              </button>
+            </div>
+
+            <div className="pt-4">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2 px-1">
+                O que já está configurado
+              </div>
+              <SavedSessionsList refreshKey={sessionsRefreshKey} onAdjust={handleAdjustSession} />
+            </div>
+          </>
         )}
 
         {/* Sumário da intenção (depois do passo describe) */}
@@ -178,7 +200,17 @@ const ConfigurarIaPage = () => {
 
         {/* Passo: trio fixo */}
         {step === 'fixed_trio' && (
-          <FixedTrioQuestions prefs={prefs} onSubmit={handleFixedSubmit} />
+          <FixedTrioQuestions
+            prefs={prefilledFixed ? {
+              last_scope: prefilledFixed.scope,
+              last_scope_ids: prefilledFixed.scopeIds ?? [],
+              last_trigger: prefilledFixed.trigger,
+              last_polarity: prefilledFixed.polarity,
+              last_tone: null,
+              last_format: null,
+            } : prefs}
+            onSubmit={handleFixedSubmit}
+          />
         )}
 
         {/* Passo: perguntas customizadas */}
@@ -238,14 +270,6 @@ const ConfigurarIaPage = () => {
             </button>
           </div>
         )}
-
-        {/* Modo avançado sempre disponível */}
-        <button
-          onClick={() => navigate('/')}
-          className="w-full mt-2 py-2 text-xs text-muted-foreground flex items-center justify-center gap-1 transition-colors"
-        >
-          <Wrench size={12} /> Prefere o modo avançado? Ir para Config → Fluxos IA
-        </button>
       </main>
     </div>
   );
