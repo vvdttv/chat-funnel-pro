@@ -276,12 +276,60 @@ serve(async (req) => {
     const handoffTriggers = (triggers.data ?? []).filter(
       (t: any) => t.stage === '*' || t.stage === stageId);
 
+    // ----- Skills aplicáveis -----
+    // deno-lint-ignore no-explicit-any
+    const skillNodesBySkill = new Map<string, any[]>();
+    for (const n of (skillNodes.data ?? [])) {
+      const arr = skillNodesBySkill.get(n.skill_id) ?? [];
+      arr.push(n);
+      skillNodesBySkill.set(n.skill_id, arr);
+    }
+    const skillGuardrailsBySkill = new Map<string, string[]>();
+    for (const g of (skillGuardrails.data ?? [])) {
+      const arr = skillGuardrailsBySkill.get(g.skill_id) ?? [];
+      arr.push(g.rule_code);
+      skillGuardrailsBySkill.set(g.skill_id, arr);
+    }
+    // deno-lint-ignore no-explicit-any
+    const applicableSkills = (skills.data ?? []).filter((s: any) => {
+      if (s.scope_type === 'universal') return true;
+      if (s.scope_type === 'stage') return s.scope_id === stageId || s.scope_id === stageScopeId;
+      if (s.scope_type === 'context') {
+        // scope_id pode ser uma context tag única
+        return s.scope_id && contextTags.includes(s.scope_id);
+      }
+      return false;
+    // deno-lint-ignore no-explicit-any
+    }).map((s: any) => {
+      const nodes = skillNodesBySkill.get(s.id) ?? [];
+      // deno-lint-ignore no-explicit-any
+      const trigger = nodes.find((n: any) => n.kind === 'trigger');
+      const triggerBehaviorCodes: string[] = trigger?.config?.behaviorCodes ?? trigger?.config?.triggerBehaviorCodes ?? [];
+      // deno-lint-ignore no-explicit-any
+      const stepNodes = nodes.filter((n: any) => n.kind !== 'trigger').map((n: any) => ({
+        kind: n.kind,
+        config: n.config ?? {},
+        branchLabel: n.branch_label,
+      }));
+      return {
+        code: s.code,
+        name: s.name,
+        description: s.description ?? '',
+        scopeType: s.scope_type,
+        scopeId: s.scope_id,
+        triggerBehaviorCodes,
+        guardrailRuleCodes: skillGuardrailsBySkill.get(s.id) ?? [],
+        steps: stepNodes,
+      };
+    });
+
     const archetypeCode: string | null = archetype?.code ?? null;
     const appliedRuleCodes = applicableRules.map((r: { code: string }) => r.code);
 
     const effectivePlaybook = {
       identity, goal, successCriteria, failureCriteria,
       expectedBehaviors, applicableRules, followUpLadder, handoffTriggers,
+      availableSkills: applicableSkills,
       provenance: {
         archetypeCode,
         statusOverlayCode,
@@ -309,6 +357,25 @@ serve(async (req) => {
         ? expectedBehaviors.map((b: any) =>
             `  · [${b.code}] ${b.label}\n      reação: ${b.default_reaction}\n      próximo: ${b.next_step}`).join('\n')
         : '  (nenhum LB aplicável)';
+      const skillsBlock = applicableSkills.length
+        ? applicableSkills.map(s => {
+            const triggers = s.triggerBehaviorCodes.length
+              ? s.triggerBehaviorCodes.join(', ')
+              : '(qualquer comportamento aplicável)';
+            const stepsTxt = s.steps.length
+              // deno-lint-ignore no-explicit-any
+              ? s.steps.map((st: any, i: number) => {
+                  const cfg = st.config ?? {};
+                  const detail = cfg.message || cfg.text || cfg.tone || cfg.reason || cfg.skillCode || cfg.ladderCode || cfg.field || '';
+                  return `      ${i + 1}. ${st.kind}${detail ? ` — ${typeof detail === 'string' ? detail.slice(0, 120) : ''}` : ''}`;
+                }).join('\n')
+              : '      (sem passos definidos)';
+            const guardrails = s.guardrailRuleCodes.length
+              ? `\n      restrições: ${s.guardrailRuleCodes.join(', ')}`
+              : '';
+            return `  · [${s.code}] ${s.name}\n      gatilho: ${triggers}${guardrails}\n${stepsTxt}`;
+          }).join('\n')
+        : '  (nenhuma habilidade aplicável)';
       systemPrompt = `# IDENTIDADE
 Persona: ${identity.persona}
 Tom: ${identity.tone}
@@ -337,6 +404,10 @@ ${list(noasks)}
 
 # LBs ATIVOS
 ${lbs}
+
+# HABILIDADES DISPONÍVEIS
+Quando você detectar um comportamento listado em "gatilho", execute os passos da habilidade correspondente, respeitando suas restrições.
+${skillsBlock}
 
 # CONTEXTO
 arquétipo: ${archetypeCode ?? '(nenhum)'} | overlay: ${statusOverlayCode ?? '(nenhum)'}
