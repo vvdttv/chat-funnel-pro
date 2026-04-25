@@ -163,22 +163,31 @@ const ConfigurarIaPage = () => {
 
         {/* Passo: descrever */}
         {step === 'describe' && (
-          <div className="space-y-3">
-            <Textarea
-              value={userMessage}
-              onChange={e => setUserMessage(e.target.value)}
-              placeholder="Ex: Quando o lead pedir desconto, a IA não pode prometer nada — só consultar comigo."
-              rows={4}
-              className="bg-card"
-            />
-            <button
-              onClick={() => userMessage.trim().length >= 5 && setStep('fixed_trio')}
-              disabled={userMessage.trim().length < 5}
-              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
-            >
-              Continuar
-            </button>
-          </div>
+          <>
+            <div className="space-y-3">
+              <Textarea
+                value={userMessage}
+                onChange={e => setUserMessage(e.target.value)}
+                placeholder="Ex: Quando o lead pedir desconto, a IA não pode prometer nada — só consultar comigo."
+                rows={4}
+                className="bg-card"
+              />
+              <button
+                onClick={() => userMessage.trim().length >= 5 && setStep('fixed_trio')}
+                disabled={userMessage.trim().length < 5}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
+              >
+                Continuar
+              </button>
+            </div>
+
+            <div className="pt-4">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2 px-1">
+                O que já está configurado
+              </div>
+              <SavedSessionsList refreshKey={sessionsRefreshKey} onAdjust={handleAdjustSession} />
+            </div>
+          </>
         )}
 
         {/* Sumário da intenção (depois do passo describe) */}
@@ -191,7 +200,17 @@ const ConfigurarIaPage = () => {
 
         {/* Passo: trio fixo */}
         {step === 'fixed_trio' && (
-          <FixedTrioQuestions prefs={prefs} onSubmit={handleFixedSubmit} />
+          <FixedTrioQuestions
+            prefs={prefilledFixed ? {
+              last_scope: prefilledFixed.scope,
+              last_scope_ids: prefilledFixed.scopeIds ?? [],
+              last_trigger: prefilledFixed.trigger,
+              last_polarity: prefilledFixed.polarity,
+              last_tone: null,
+              last_format: null,
+            } : prefs}
+            onSubmit={handleFixedSubmit}
+          />
         )}
 
         {/* Passo: perguntas customizadas */}
