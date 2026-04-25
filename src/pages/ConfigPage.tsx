@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText } from 'lucide-react';
+import { ConfiguradorIaFlow } from '@/components/configurador-ia/ConfiguradorIaFlow';
+import { SavedSessionsList, type SavedSession } from '@/components/configurador-ia/SavedSessionsList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder';
@@ -16,9 +18,10 @@ import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor'
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 
-type SettingsTab = 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+type SettingsTab = 'config_ia' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
+  { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
   { id: 'funis', label: 'Funis', icon: Zap },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
@@ -916,12 +919,15 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 // ========== MAIN PAGE ==========
 
 const ConfigPage = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('funis');
+  const { profile, isAdmin, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'config_ia' : 'funis');
+  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas'>('configurar');
+  const [iaPrefill, setIaPrefill] = useState<SavedSession | null>(null);
+  const [iaSessionsRefreshKey, setIaSessionsRefreshKey] = useState(0);
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [funnelWizardOpen, setFunnelWizardOpen] = useState(false);
   const { widgets: cardWidgets, updateWidgets: setCardWidgets } = useCardWidgets();
-  const { profile, isAdmin, signOut } = useAuth();
 
   // Sincroniza seleção quando funis carregam
   useEffect(() => {
@@ -1007,6 +1013,56 @@ const ConfigPage = () => {
         </aside>
 
         <div className="flex-1 px-4 lg:px-0 pb-24 min-w-0">
+        {activeTab === 'config_ia' && isAdmin && (
+          <div className="space-y-4">
+            {/* Sub-tabs no topo */}
+            <div className="flex gap-2 bg-secondary rounded-lg p-1">
+              <button
+                onClick={() => setIaSubTab('configurar')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'configurar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <Sparkles size={13} /> Configurar a IA
+              </button>
+              <button
+                onClick={() => setIaSubTab('salvas')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'salvas' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <MessageSquareText size={13} /> O que já está configurado
+              </button>
+            </div>
+
+            {iaSubTab === 'configurar' && (
+              <ConfiguradorIaFlow
+                key={iaPrefill?.id ?? 'fresh'}
+                initialPrefill={iaPrefill}
+                onSaved={() => {
+                  setIaSessionsRefreshKey(k => k + 1);
+                  setIaPrefill(null);
+                }}
+              />
+            )}
+
+            {iaSubTab === 'salvas' && (
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground bg-card/50 border border-border rounded-lg p-3">
+                  Tudo que você já configurou aparece aqui. Toque em uma configuração pra ver os detalhes ou ajustar — sem mexer em nada técnico.
+                </div>
+                <SavedSessionsList
+                  refreshKey={iaSessionsRefreshKey}
+                  onAdjust={(s) => {
+                    setIaPrefill(s);
+                    setIaSubTab('configurar');
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'funis' && (
           <>
             {funnelsLoading ? (
