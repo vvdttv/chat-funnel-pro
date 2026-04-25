@@ -1013,6 +1013,56 @@ const ConfigPage = () => {
         </aside>
 
         <div className="flex-1 px-4 lg:px-0 pb-24 min-w-0">
+        {activeTab === 'config_ia' && isAdmin && (
+          <div className="space-y-4">
+            {/* Sub-tabs no topo */}
+            <div className="flex gap-2 bg-secondary rounded-lg p-1">
+              <button
+                onClick={() => setIaSubTab('configurar')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'configurar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <Sparkles size={13} /> Configurar a IA
+              </button>
+              <button
+                onClick={() => setIaSubTab('salvas')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors active:scale-[0.98] ${
+                  iaSubTab === 'salvas' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                <MessageSquareText size={13} /> O que já está configurado
+              </button>
+            </div>
+
+            {iaSubTab === 'configurar' && (
+              <ConfiguradorIaFlow
+                key={iaPrefill?.id ?? 'fresh'}
+                initialPrefill={iaPrefill}
+                onSaved={() => {
+                  setIaSessionsRefreshKey(k => k + 1);
+                  setIaPrefill(null);
+                }}
+              />
+            )}
+
+            {iaSubTab === 'salvas' && (
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground bg-card/50 border border-border rounded-lg p-3">
+                  Tudo que você já configurou aparece aqui. Toque em uma configuração pra ver os detalhes ou ajustar — sem mexer em nada técnico.
+                </div>
+                <SavedSessionsList
+                  refreshKey={iaSessionsRefreshKey}
+                  onAdjust={(s) => {
+                    setIaPrefill(s);
+                    setIaSubTab('configurar');
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'funis' && (
           <>
             {funnelsLoading ? (
