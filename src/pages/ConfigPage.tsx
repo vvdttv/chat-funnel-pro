@@ -570,31 +570,6 @@ const PropertyCard = ({ property }: { property: Property }) => (
   </div>
 );
 
-const FlowCard = ({ flow }: { flow: AIFlow }) => (
-  <div className="bg-card rounded-xl p-4 mb-3">
-    <div className="flex items-start justify-between mb-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{flow.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{flow.description}</p>
-      </div>
-      <div className={`p-1 ${flow.active ? 'text-primary' : 'text-muted-foreground'}`}>
-        {flow.active ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-      </div>
-    </div>
-    <div className="flex items-center justify-between mt-3">
-      <span className="text-xs text-muted-foreground">{flow.blocks} blocos</span>
-      <div className="flex gap-2">
-        <button className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-lg active:scale-95 transition-transform">
-          <Copy size={12} /> Clonar
-        </button>
-        <button className="flex items-center gap-1 text-xs text-primary bg-primary/15 px-2 py-1 rounded-lg active:scale-95 transition-transform">
-          Editar <ChevronRight size={12} />
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
 // ========== FIELD TYPE ICON ==========
 
 const FIELD_TYPE_ICONS: Record<FieldType, string> = {
