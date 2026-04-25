@@ -1125,39 +1125,6 @@ const ConfigPage = () => {
           <CardWidgetConfig widgets={cardWidgets} onChange={setCardWidgets} />
         )}
 
-        {activeTab === 'fluxos' && (
-          <>
-            <button
-              onClick={() => window.location.assign('/configurar-ia')}
-              className="w-full mb-4 p-4 rounded-xl border border-primary/30 bg-primary/10 text-left active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Sparkles size={16} className="text-primary" /> Configurar a IA em linguagem natural
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Descreva o comportamento desejado em português — a IA cria comportamentos, regras e habilidades pra você.
-              </div>
-            </button>
-            <IABehaviorSeedBanner />
-            <IABehaviorManager />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideSuggestionsPanel />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideMultiScopeEditor />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverridesGlobalList />
-            <div className="my-4 border-t border-border" />
-            <PlaybookOverrideSnapshotsBrowser />
-            <div className="my-4 border-t border-border" />
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{aiFlows.length} fluxos</span>
-              <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform">
-                <Plus size={14} /> Novo Fluxo
-              </button>
-            </div>
-            {aiFlows.map(f => <FlowCard key={f.id} flow={f} />)}
-          </>
-        )}
         </div>
       </div>
       <FunnelWizard
