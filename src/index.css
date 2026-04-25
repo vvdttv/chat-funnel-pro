@@ -108,23 +108,28 @@
     background: hsl(var(--primary));
   }
 
-  /* ===== Kanban: barra de rolagem vertical fina por etapa ===== */
+  /* ===== Kanban: barra de rolagem vertical fina por etapa (sempre visível) ===== */
   .kanban-vscroll {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+    scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--secondary));
+    overflow-y: scroll;
   }
   .kanban-vscroll::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    -webkit-appearance: none;
   }
   .kanban-vscroll::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--secondary));
+    border-radius: 4px;
   }
   .kanban-vscroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.4);
-    border-radius: 3px;
+    background: hsl(var(--primary) / 0.6);
+    border-radius: 4px;
+    border: 1px solid hsl(var(--secondary));
   }
-  .kanban-vscroll::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.7);
+  .kanban-vscroll::-webkit-scrollbar-thumb:hover,
+  .kanban-vscroll::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--primary));
   }
 }
 
