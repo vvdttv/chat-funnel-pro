@@ -12,7 +12,7 @@ interface Props {
   durationSec?: number;
 }
 
-export const UndoBanner = ({ sessionId, onRevert, onDismiss, durationSec = 60 }: Props) => {
+export const UndoBanner = ({ sessionId: _sessionId, onRevert, onDismiss, durationSec = 60 }: Props) => {
   const [remaining, setRemaining] = useState(durationSec);
   const [reverting, setReverting] = useState(false);
 
