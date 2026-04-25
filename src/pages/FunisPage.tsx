@@ -14,6 +14,7 @@ import type { CardWidget } from '@/components/CardWidgetConfig';
 import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
 import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
+import { KanbanBoard, type KanbanColumn } from '@/components/KanbanBoard';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
