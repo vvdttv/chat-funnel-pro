@@ -923,7 +923,7 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 const ConfigPage = () => {
   const { profile, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'config_ia' : 'funis');
-  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas'>('configurar');
+  const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas' | 'auditoria' | 'simulador'>('configurar');
   const [iaPrefill, setIaPrefill] = useState<SavedSession | null>(null);
   const [iaSessionsRefreshKey, setIaSessionsRefreshKey] = useState(0);
   const { funnels: funnelsList, loading: funnelsLoading, updateFunnel, addFunnel } = useFunnelsContext();
