@@ -1,11 +1,13 @@
-import { Users, Clock, BarChart3, Settings } from 'lucide-react';
+import { Users, Clock, BarChart3, Settings, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BottomNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const tabs = [
+const baseTabs = [
   { id: 'leads', icon: Users, label: 'Leads' },
   { id: 'activities', icon: Clock, label: 'Atividades' },
   { id: 'indicators', icon: BarChart3, label: 'Indicadores' },
@@ -13,10 +15,13 @@ const tabs = [
 ];
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <nav className="fixed bottom-0 inset-x-0 w-full bg-card border-t border-border z-50">
       <div className="flex items-center justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] max-w-md lg:max-w-2xl mx-auto">
-        {tabs.map((tab) => {
+        {baseTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -32,6 +37,16 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
             </button>
           );
         })}
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/configurar-ia')}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors active:scale-95 transition-transform text-muted-foreground"
+            aria-label="Configurar IA"
+          >
+            <Sparkles size={22} strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">Config IA</span>
+          </button>
+        )}
       </div>
     </nav>
   );
