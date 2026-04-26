@@ -54,7 +54,7 @@ const HorizontalScroller = ({ children, className }: HorizontalScrollerProps) =>
         <div className="h-full w-max flex flex-row gap-3 px-3 py-2">{children}</div>
       </div>
 
-      <div className="shrink-0 px-3 pt-1.5 pb-1">
+      <div className="shrink-0 px-3 pb-0">
         <input
           aria-label="Rolar etapas do funil"
           type="range"
