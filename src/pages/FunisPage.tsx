@@ -1676,7 +1676,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const allCurrentDeals = useMemo(() => columns.flatMap(c => c.deals), [columns]);
 
   return (
-    <div className="flex flex-col h-full relative pb-16">
+    <div className="flex flex-col h-full relative">
       {/* Toolbar + panels */}
       <div ref={toolbarRef} className="lg:max-w-5xl lg:mx-auto w-full">
         <div className="px-4 lg:px-8 pt-2 pb-0.5">
@@ -1734,7 +1734,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       <AIAnalysisPanel deals={allCurrentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Kanban Board (colunas lado a lado com scroll horizontal) */}
-      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full">
+      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full pb-[var(--bottom-nav-h,3.75rem)]">
         <KanbanBoard
           columns={columns}
           widgets={cardWidgets}
