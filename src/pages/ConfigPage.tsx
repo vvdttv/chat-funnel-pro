@@ -949,7 +949,7 @@ const ConfigPage = () => {
   const visibleTabs = tabs.filter(t => !t.adminOnly || isAdmin);
 
   return (
-    <div className="flex flex-col h-full pb-16">
+    <div className="flex flex-col h-full">
       <div className="px-4 lg:px-8 pt-4 pb-2 lg:max-w-7xl lg:mx-auto w-full">
         {/* Header da conta */}
         <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-2 mb-3">

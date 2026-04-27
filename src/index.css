@@ -39,6 +39,9 @@
     --ai-note-border: 270 40% 35%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
+
+    /* Altura reservada para a BottomNav fixa (inclui safe-area inferior) */
+    --bottom-nav-h: calc(3.25rem + env(safe-area-inset-bottom));
   }
 }
 
