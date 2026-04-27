@@ -1734,7 +1734,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       <AIAnalysisPanel deals={allCurrentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
       {/* Kanban Board (colunas lado a lado com scroll horizontal) */}
-      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full pb-[var(--bottom-nav-h,3.75rem)]">
+      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full">
         <KanbanBoard
           columns={columns}
           widgets={cardWidgets}

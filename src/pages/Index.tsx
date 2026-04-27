@@ -43,7 +43,7 @@ const Index = () => {
       <DealsProvider value={dealsState}>
         <ActivityTypesProvider>
           <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden pb-[var(--bottom-nav-h)]">
               {renderPage()}
             </div>
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
