@@ -36,7 +36,7 @@ const IndicadoresPage = () => {
   const toggleSection = (s: string) => setOpenSection(openSection === s ? null : s);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto scrollbar-hide pb-16">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
       <div className="px-4 lg:px-8 pt-4 pb-2 lg:max-w-7xl lg:mx-auto w-full">
 
         {/* Forecast Card */}
