@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         roles,
-        isAdmin: roles.includes('admin'),
+        isAdmin: roles.includes('admin') || profile?.role === 'superadmin',
         loading,
         signInWithUsername,
         signOut,
