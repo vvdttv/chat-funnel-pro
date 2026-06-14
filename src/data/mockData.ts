@@ -134,6 +134,7 @@ export interface Activity {
   recurring: boolean;
 }
 
+/** @deprecated Fase 1: substituído por `Conversation` (hook useConversations + tabela conversations). Mantido só para compat; remover em limpeza futura. */
 export interface ChatThread {
   id: string;
   leadId: string;
@@ -148,6 +149,7 @@ export interface ChatThread {
   dealStage: string;
 }
 
+/** @deprecated Fase 1: substituído por `Message` (hook useMessages + tabela messages). Mantido só para compat; remover em limpeza futura. */
 export interface ChatMessage {
   id: string;
   threadId: string;

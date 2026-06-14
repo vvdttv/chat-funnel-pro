@@ -86,6 +86,7 @@ interface ComposeBody {
   stage_id: string;
   deal_status?: DealStatus;
   render_prompt?: boolean;
+  organization_id?: string;
 }
 
 const validate = (raw: unknown): { ok: true; data: ComposeBody } | { ok: false; error: string } => {
@@ -104,6 +105,7 @@ const validate = (raw: unknown): { ok: true; data: ComposeBody } | { ok: false; 
       stage_id: b.stage_id,
       deal_status: status,
       render_prompt: b.render_prompt !== false,
+      organization_id: typeof b.organization_id === 'string' ? b.organization_id : undefined,
     },
   };
 };
@@ -115,32 +117,56 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const authHeader = req.headers.get("Authorization") ?? '';
-    if (!authHeader.toLowerCase().startsWith('bearer ')) {
-      return json(401, { error: 'auth_required' });
-    }
+    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const INTERNAL_TOKEN = Deno.env.get("INTERNAL_FUNCTION_TOKEN") ?? '';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    // Confirma sessão e org do usuário
-    const { data: userResp, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !userResp?.user) return json(401, { error: 'auth_invalid' });
-    const userId = userResp.user.id;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', userId)
-      .maybeSingle();
-    const organizationId = profile?.organization_id;
-    if (!organizationId) return json(403, { error: 'sem_organizacao' });
-
+    // Body é parseado antes da auth porque, no modo interno (worker M2M), a
+    // organização vem do próprio body (não há JWT de usuário de onde derivá-la).
     let parsedBody: unknown;
     try { parsedBody = await req.json(); } catch { return json(400, { error: 'json_invalido' }); }
     const v = validate(parsedBody);
     if (!v.ok) return json(400, { error: v.error });
+
+    // Auth: dois modos.
+    //  (a) Interno/M2M — header `x-internal-token` == INTERNAL_FUNCTION_TOKEN.
+    //      Usa service-role (bypassa RLS) e lê `organization_id` do body.
+    //  (b) Usuário — JWT no Authorization; org derivada de profiles via RLS.
+    //      Comportamento ORIGINAL preservado, sem alteração.
+    const internalToken = req.headers.get('x-internal-token') ?? '';
+    const isInternal = INTERNAL_TOKEN !== '' && internalToken === INTERNAL_TOKEN;
+
+    let supabase;
+    let userId: string;
+    let organizationId: string | undefined;
+
+    if (isInternal) {
+      const orgFromBody = v.data.organization_id;
+      if (typeof orgFromBody !== 'string' || !orgFromBody) {
+        return json(400, { error: 'organization_id_obrigatorio_interno' });
+      }
+      organizationId = orgFromBody;
+      userId = 'system';
+      supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    } else {
+      const authHeader = req.headers.get("Authorization") ?? '';
+      if (!authHeader.toLowerCase().startsWith('bearer ')) {
+        return json(401, { error: 'auth_required' });
+      }
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userResp, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userResp?.user) return json(401, { error: 'auth_invalid' });
+      userId = userResp.user.id;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .maybeSingle();
+      organizationId = profile?.organization_id;
+      if (!organizationId) return json(403, { error: 'sem_organizacao' });
+    }
+
     const { deal_id: dealId, funnel_id: funnelId, stage_id: stageId, deal_status: dealStatusInput, render_prompt: renderPromptFlag } = v.data;
     let dealStatus: DealStatus = dealStatusInput ?? 'open';
 
@@ -156,24 +182,31 @@ serve(async (req) => {
       dealStatus = (deal.status as DealStatus) ?? 'open';
     }
 
+    // NOTA multi-tenant: as tabelas de domínio (funnels, funnel_stages,
+    // stage_playbooks, playbook_overrides, ia_rules, lead_behaviors,
+    // followup_ladders, handoff_triggers, ia_skills, ia_skill_nodes,
+    // ia_skill_guardrails) têm organization_id e RLS deny-all (acesso só via
+    // service-role). Como o modo interno usa service-role (bypassa RLS), o
+    // filtro por organização é feito manualmente aqui — senão vazaria entre
+    // orgs. stage_archetypes/status_archetypes são catálogo global (sem org).
     const [
       funnel, archetypes, statusArchetypes, physicalStages,
       catalogPlaybooks, overrides, rules, behaviors, ladders, triggers,
       skills, skillNodes, skillGuardrails,
     ] = await Promise.all([
-      supabase.from('funnels').select('id,context_tags').eq('id', funnelId).maybeSingle(),
+      supabase.from('funnels').select('id,context_tags').eq('id', funnelId).eq('organization_id', organizationId).maybeSingle(),
       supabase.from('stage_archetypes').select('id,code,default_playbook_code,context_tags').eq('is_active', true),
       supabase.from('status_archetypes').select('id,code').eq('is_active', true),
-      supabase.from('funnel_stages').select('funnel_id,stage_id,stage_archetype_id,purpose,context_tags').eq('funnel_id', funnelId).eq('stage_id', stageId).maybeSingle(),
-      supabase.from('stage_playbooks').select('code,archetype_id,status_archetype_id,kind,goal,success_criteria,failure_criteria,default_ladder_code,typical_behavior_codes,identity').eq('is_active', true),
-      supabase.from('playbook_overrides').select('scope_type,scope_id,layer,payload').eq('is_active', true),
-      supabase.from('ia_rules').select('code,kind,scope,text,meta').eq('is_active', true),
-      supabase.from('lead_behaviors').select('code,label,default_reaction,next_step,applicable_context_tags,applicable_statuses,detection_hints').eq('is_active', true),
-      supabase.from('followup_ladders').select('code,name,description,steps').eq('is_active', true),
-      supabase.from('handoff_triggers').select('code,priority,label,stage,condition,action').eq('is_active', true),
-      supabase.from('ia_skills').select('id,code,name,description,scope_type,scope_id,position').eq('is_active', true).order('position'),
-      supabase.from('ia_skill_nodes').select('id,skill_id,kind,parent_node_id,branch_label,config,position').order('position'),
-      supabase.from('ia_skill_guardrails').select('skill_id,rule_code'),
+      supabase.from('funnel_stages').select('funnel_id,stage_id,stage_archetype_id,purpose,context_tags').eq('funnel_id', funnelId).eq('stage_id', stageId).eq('organization_id', organizationId).maybeSingle(),
+      supabase.from('stage_playbooks').select('code,archetype_id,status_archetype_id,kind,goal,success_criteria,failure_criteria,default_ladder_code,typical_behavior_codes,identity').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('playbook_overrides').select('scope_type,scope_id,layer,payload').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('ia_rules').select('code,kind,scope,text,meta').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('lead_behaviors').select('code,label,default_reaction,next_step,applicable_context_tags,applicable_statuses,detection_hints').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('followup_ladders').select('code,name,description,steps').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('handoff_triggers').select('code,priority,label,stage,condition,action').eq('is_active', true).eq('organization_id', organizationId),
+      supabase.from('ia_skills').select('id,code,name,description,scope_type,scope_id,position').eq('is_active', true).eq('organization_id', organizationId).order('position'),
+      supabase.from('ia_skill_nodes').select('id,skill_id,kind,parent_node_id,branch_label,config,position').eq('organization_id', organizationId).order('position'),
+      supabase.from('ia_skill_guardrails').select('skill_id,rule_code').eq('organization_id', organizationId),
     ]);
 
     const physical = physicalStages.data;

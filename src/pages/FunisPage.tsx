@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { chatMessages, chatThreads, LOSS_REASONS, formatCurrency, Deal, leads, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
+import { LOSS_REASONS, formatCurrency, Deal, leads, LEAD_TEMPERATURES, getDealDaysInStage } from '@/data/mockData';
 import { useActivityTypes } from '@/hooks/useActivityTypes';
 import { useDealsContext } from '@/hooks/useDeals';
+import { ConversationsProvider, useConversationsContext, type Conversation } from '@/hooks/useConversations';
+import { useMessages } from '@/hooks/useMessages';
 import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, MessageSquare, Sparkles, SlidersHorizontal, RotateCcw, Play, Filter, User, CalendarDays, Clock, FileText, Loader2, Paperclip, Image as ImageIcon, Mic, Plus, UserCog } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,17 +31,18 @@ const LEAD_STAGES = [
 
 type LeadStageKey = typeof LEAD_STAGES[number]['key'];
 
-// Classify a deal into a lead stage based on chat data
-function classifyDealLeadStage(deal: Deal): LeadStageKey {
-  const thread = chatThreads.find(t => t.dealId === deal.id);
-  if (!thread) return 'unread_agent';
-  const msgs = chatMessages.filter(m => m.threadId === thread.id).filter(m => m.sender !== 'ai');
-  if (msgs.length === 0) return 'unread_agent';
-  const last = msgs[msgs.length - 1];
-  if (last.sender === 'lead' && thread.unread > 0) return 'unread_agent';
-  if (last.sender === 'agent' && thread.unread > 0) return 'unread_client';
-  if (last.sender === 'agent') return 'no_reply_client';
-  return 'no_reply_agent';
+// Classifica um deal numa coluna de "fila de atendimento" a partir do estado
+// real da conversa persistida (conversations.last_inbound_at/last_outbound_at).
+// - lead falou por último (inbound mais recente) → corretor precisa responder
+// - nós falamos por último (outbound mais recente) → aguardando o cliente
+// - sem conversa/mensagem → entra como não lida pelo corretor
+function classifyDealLeadStage(deal: Deal, conv: Conversation | undefined): LeadStageKey {
+  if (!conv || !conv.lastMessageAt) return 'unread_agent';
+  const inbound = conv.lastInboundAt ? new Date(conv.lastInboundAt).getTime() : 0;
+  const outbound = conv.lastOutboundAt ? new Date(conv.lastOutboundAt).getTime() : 0;
+  if (inbound === 0 && outbound === 0) return 'unread_agent';
+  if (inbound >= outbound) return 'unread_agent';   // lead aguarda resposta do corretor
+  return 'no_reply_client';                          // corretor respondeu, aguarda o cliente
 }
 
 // ========== DEAL CARD (full-width single card) ==========
@@ -246,8 +249,9 @@ type LocalMessage = {
 
 // ========== CHAT VIEW ==========
 
-const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () => void }) => {
+const DealChatView = ({ deal, conversation, onMessageSent }: { deal: Deal; conversation?: Conversation; onMessageSent?: () => void }) => {
   const { funnels } = useFunnelsContext();
+  const { messages: dbMessages } = useMessages(conversation?.id ?? null);
   const [message, setMessage] = useState('');
   const [aiMode, setAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -315,8 +319,15 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
   };
 
   const formatRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-  const thread = chatThreads.find(t => t.dealId === deal.id);
-  const baseMessages = thread ? chatMessages.filter(m => m.threadId === thread.id) : [];
+
+  // Mensagens reais da conversa persistida, mapeadas para o formato do chat.
+  const baseMessages = dbMessages.map(m => ({
+    id: m.id,
+    threadId: m.conversationId,
+    content: m.content ?? '',
+    sender: m.sender === 'correspondent' || m.sender === 'system' ? 'agent' : m.sender,
+    timestamp: new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+  }));
 
   const allMessages = [
     ...baseMessages.map(m => ({
@@ -334,7 +345,7 @@ const DealChatView = ({ deal, onMessageSent }: { deal: Deal; onMessageSent?: () 
     }
   }, [allMessages.length, aiLoading]);
 
-  if (!thread) {
+  if (!conversation) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <MessageSquare size={32} className="text-muted-foreground mb-3" />
@@ -681,6 +692,9 @@ const ActivityTypePicker = ({ value, onChange }: { value: string; onChange: (v: 
 };
 
 const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void }) => {
+  const { conversations } = useConversationsContext();
+  const dealConversation = conversations.find(c => c.dealId === deal.id);
+  const { messages: convMessages } = useMessages(dealConversation?.id ?? null);
   const [summary, setSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [activityType, setActivityType] = useState('');
@@ -693,10 +707,9 @@ const NextStepPopup = ({ deal, onConfirm }: { deal: Deal; onConfirm: () => void 
 
   const handleAIExtract = () => {
     setAiLoading(true);
-    // Mock AI extraction — in production, call Lovable AI edge function
-    const thread = chatThreads.find(t => t.dealId === deal.id);
-    const msgs = thread ? chatMessages.filter(m => m.threadId === thread.id).filter(m => m.sender !== 'ai') : [];
-    const lastMsgs = msgs.slice(-5).map(m => `${m.sender === 'agent' ? 'Corretor' : 'Lead'}: ${m.content}`).join('\n');
+    // Resumo a partir das mensagens reais da conversa (mock de IA; vira edge function depois).
+    const msgs = convMessages.filter(m => m.sender !== 'ai');
+    const lastMsgs = msgs.slice(-5).map(m => `${m.sender === 'agent' ? 'Corretor' : 'Lead'}: ${m.content ?? ''}`).join('\n');
 
     setTimeout(() => {
       const aiSummary = `Conversa com ${deal.leadName} sobre ${deal.property}.\n\nÚltimas mensagens:\n${lastMsgs || 'Sem mensagens recentes.'}\n\nO lead demonstrou interesse e aguarda próximos passos.`;
@@ -989,6 +1002,8 @@ const DealStatusActions = ({
 };
 
 const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal: Deal | null; onClose: () => void; onPendingStepChange?: (pending: boolean) => void; onLost?: (deal: Deal) => void }) => {
+  const { conversations } = useConversationsContext();
+  const dealConversation = deal ? conversations.find(c => c.dealId === deal.id) : undefined;
   const [activeTab, setActiveTab] = useState<'info' | 'conversa'>('conversa');
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showNextStep, setShowNextStep] = useState(false);
@@ -1089,7 +1104,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex flex-col px-4">
-                <DealChatView deal={deal} onMessageSent={handleMessageSent} />
+                <DealChatView deal={deal} conversation={dealConversation} onMessageSent={handleMessageSent} />
               </div>
             )}
           </div>
@@ -1597,6 +1612,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const { widgets: cardWidgets } = useCardWidgets();
   const { funnels } = useFunnelsContext();
   const { deals: dealsList } = useDealsContext();
+  const { conversations } = useConversationsContext();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -1650,6 +1666,19 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   }, [dealsList, activeFunnelId, funnelStages, applyFilters]);
 
   // ===== COLUNAS POR LEAD (fila de atendimento) =====
+  const convByDeal = useMemo(() => {
+    const map = new Map<string, Conversation>();
+    for (const c of conversations) {
+      if (!c.dealId) continue;
+      const existing = map.get(c.dealId);
+      // mantém a conversa mais recente por deal
+      if (!existing || (c.lastMessageAt ?? '') > (existing.lastMessageAt ?? '')) {
+        map.set(c.dealId, c);
+      }
+    }
+    return map;
+  }, [conversations]);
+
   const leadColumns = useMemo<KanbanColumn[]>(() => {
     const grouped: Record<LeadStageKey, Deal[]> = {
       unread_agent: [],
@@ -1658,14 +1687,14 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       no_reply_agent: [],
     };
     applyFilters(dealsList).forEach(d => {
-      grouped[classifyDealLeadStage(d)].push(d);
+      grouped[classifyDealLeadStage(d, convByDeal.get(d.id))].push(d);
     });
     return LEAD_STAGES.map(s => ({
       key: s.key,
       name: s.name,
       deals: grouped[s.key],
     }));
-  }, [dealsList, applyFilters]);
+  }, [dealsList, applyFilters, convByDeal]);
 
   // Handlers
   const handleFunnelChange = (funnelId: string) => {
@@ -1781,4 +1810,10 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   );
 };
 
-export default FunisPage;
+const FunisPageWithProviders = (props: { onPendingStepChange?: (pending: boolean) => void }) => (
+  <ConversationsProvider>
+    <FunisPage {...props} />
+  </ConversationsProvider>
+);
+
+export default FunisPageWithProviders;

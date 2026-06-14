@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { resolveWahaContact } from "../_shared/waha.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,8 @@ interface NormalizedMessage {
   displayName?: string;
   text: string;
   receivedAt: string;
+  externalId?: string;
+  contentType?: string;
   raw: unknown;
 }
 
@@ -42,6 +45,8 @@ const detectProvider = (req: Request, payload: any): string => {
   const hdr = req.headers.get("x-wa-provider")?.toLowerCase();
   if (hdr) return hdr;
   if (payload?.object === "whatsapp_business_account") return "cloud_api";
+  // WAHA: { event: 'message', payload: { from, body, ... }, session }
+  if (payload?.event === "message" && payload?.payload?.from !== undefined) return "waha";
   if (payload?.event && payload?.instance) return "evolution";
   if (payload?.MessageSid && payload?.From?.startsWith("whatsapp:")) return "twilio";
   if (payload?.messages?.[0]?.fromMe !== undefined) return "z_api";
@@ -50,6 +55,26 @@ const detectProvider = (req: Request, payload: any): string => {
 
 const normalize = (provider: string, payload: any): NormalizedMessage | null => {
   try {
+    if (provider === "waha") {
+      // Formato WAHA (engine WEBJS): { event:'message', session, payload:{ from, to, body, fromMe, id, _data } }
+      const p = payload?.payload ?? payload;
+      if (p?.fromMe === true) return null; // ignora o que nós mesmos enviamos
+      const from = p?.from ?? "";
+      const data = p?._data ?? {};
+      return {
+        provider,
+        externalContactId: from, // pode ser <id>@lid ou <num>@c.us — resolvido depois
+        phoneE164: !String(from).includes("@lid")
+          ? `+${String(from).split("@")[0].replace(/\D/g, "")}`
+          : undefined,
+        displayName: data?.notifyName ?? p?.notifyName,
+        text: p?.body ?? "",
+        receivedAt: new Date((p?.timestamp ? Number(p.timestamp) * 1000 : Date.now())).toISOString(),
+        externalId: p?.id ?? data?.id?._serialized ?? data?.id?.id,
+        contentType: p?.hasMedia ? "image" : "text",
+        raw: payload,
+      };
+    }
     if (provider === "cloud_api") {
       const change = payload?.entry?.[0]?.changes?.[0]?.value;
       const msg = change?.messages?.[0];
@@ -68,10 +93,11 @@ const normalize = (provider: string, payload: any): NormalizedMessage | null => 
     if (provider === "evolution") {
       const m = payload?.data ?? payload?.message ?? payload;
       const remote = m?.key?.remoteJid ?? m?.from;
+      const remoteDigits = remote ? String(remote).split("@")[0].replace(/\D/g, "") : "";
       return {
         provider,
         externalContactId: remote,
-        phoneE164: remote?.split("@")?.[0],
+        phoneE164: remoteDigits ? `+${remoteDigits}` : undefined,
         displayName: m?.pushName,
         text: m?.message?.conversation ?? m?.message?.extendedTextMessage?.text ?? m?.body ?? "",
         receivedAt: new Date(m?.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now()).toISOString(),
@@ -127,10 +153,13 @@ serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   try {
-    // Token compartilhado opcional
+    // Token compartilhado: aceita via header `x-webhook-token` OU query `?token=`.
+    // O query param permite proteger o webhook mesmo com provedores (ex.: WAHA
+    // Core) que não enviam headers customizados — o token vai embutido na hook URL.
     const expectedToken = Deno.env.get("WHATSAPP_WEBHOOK_TOKEN");
     if (expectedToken) {
-      const got = req.headers.get("x-webhook-token");
+      const url = new URL(req.url);
+      const got = req.headers.get("x-webhook-token") ?? url.searchParams.get("token");
       if (got !== expectedToken) return json(401, { error: "invalid_webhook_token" });
     }
 
@@ -159,12 +188,39 @@ serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Localiza canal (lead_channels) → deal
+    // Resolução de LID (WhatsApp usa Linked ID opaco, não telefone, no `from`).
+    // Se vier <id>@lid, resolve para o contato real via API de contatos do WAHA.
+    let lookupContactId = msg.externalContactId;
+    let lookupPhone = msg.phoneE164;
+    if (String(msg.externalContactId).includes("@lid")) {
+      const resolved = await resolveWahaContact(msg.externalContactId);
+      if (resolved) {
+        lookupContactId = resolved.id;          // <num>@c.us
+        lookupPhone = resolved.phoneE164;        // +<num>
+        msg.phoneE164 = resolved.phoneE164;
+      } else {
+        console.warn("[whatsapp-webhook] LID não resolvido:", msg.externalContactId);
+      }
+    }
+
+    // Localiza canal (lead_channels) → deal. Casa por external_contact_id OU phone.
+    // Sanitiza valores externos: PostgREST .or() interpola strings, então
+    // vírgula/parênteses/aspas poderiam corromper o filtro. IDs de WhatsApp só
+    // contêm [0-9a-zA-Z@._+-]; qualquer outro caractere é removido.
+    const safe = (v: string) => String(v).replace(/[^0-9a-zA-Z@._+-]/g, "");
+    const phoneDigits = (lookupPhone ?? "").replace(/[^0-9]/g, "");
+    const orParts: string[] = [];
+    for (const id of [lookupContactId, msg.externalContactId]) {
+      const s = safe(id);
+      if (s) orParts.push(`external_contact_id.eq.${s}`);
+    }
+    if (lookupPhone) orParts.push(`phone_e164.eq.${safe(lookupPhone)}`);
+    if (phoneDigits) orParts.push(`phone_e164.eq.${phoneDigits}`);
     const { data: channel, error: chErr } = await admin
       .from("lead_channels")
       .select("id, organization_id, deal_id")
       .eq("channel", "whatsapp")
-      .or(`external_contact_id.eq.${msg.externalContactId},phone_e164.eq.${msg.phoneE164 ?? msg.externalContactId}`)
+      .or(orParts.join(","))
       .eq("is_active", true)
       .maybeSingle();
 
@@ -173,7 +229,8 @@ serve(async (req) => {
     if (!channel) {
       console.log("[whatsapp-webhook] canal não mapeado", {
         externalContactId: msg.externalContactId,
-        phoneE164: msg.phoneE164,
+        resolved: lookupContactId,
+        phoneE164: lookupPhone,
       });
       return json(200, { ok: true, ignored: "canal_nao_mapeado", externalContactId: msg.externalContactId });
     }
@@ -189,8 +246,88 @@ serve(async (req) => {
       return json(200, { ok: true, ignored: "deal_nao_encontrado" });
     }
 
-    // IA sempre responde de forma autônoma — sem aprovação humana.
-    // Auditoria das conversas é feita posteriormente via análise por IA.
+    // --- Persistência da conversa + mensagem inbound ---
+    // Garante uma conversa (por deal). Cria se não existir; reusa a mais recente.
+    let conversationId: string | null = null;
+    const { data: existingConv } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("deal_id", deal.id)
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingConv) {
+      conversationId = (existingConv as { id: string }).id;
+    } else {
+      const { data: newConv, error: convErr } = await admin
+        .from("conversations")
+        .insert([{
+          organization_id: deal.organization_id,
+          deal_id: deal.id,
+          lead_channel_id: channel.id,
+          channel: "whatsapp",
+          provider,
+          contact_phone_e164: lookupPhone ?? null,
+          contact_name: msg.displayName ?? null,
+        }])
+        .select("id")
+        .single();
+      if (convErr) {
+        // Corrida: outra entrega criou a conversa em paralelo. Rebusca.
+        console.error("[whatsapp-webhook] criar conversa err:", convErr);
+        const { data: retryConv } = await admin
+          .from("conversations")
+          .select("id")
+          .eq("deal_id", deal.id)
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        conversationId = (retryConv as { id: string } | null)?.id ?? null;
+      } else {
+        conversationId = (newConv as { id: string }).id;
+      }
+    }
+
+    // Insere a mensagem inbound (dedup por external_id via índice único).
+    // O trigger touch_conversation atualiza last_inbound_at (janela 24h).
+    if (conversationId) {
+      const { error: msgErr } = await admin
+        .from("messages")
+        .insert([{
+          organization_id: deal.organization_id,
+          conversation_id: conversationId,
+          direction: "inbound",
+          sender_type: "lead",
+          content_type: msg.contentType ?? "text",
+          content: msg.text,
+          external_id: msg.externalId ?? null,
+          channel_route: provider === "cloud_api" ? "cloud_api" : "waha",
+          status: "received",
+        }]);
+      if (msgErr) {
+        // 23505 = violação de unique (mensagem já recebida) → idempotente, ok
+        if ((msgErr as { code?: string }).code === "23505") {
+          console.log("[whatsapp-webhook] inbound duplicado ignorado", { externalId: msg.externalId });
+          return json(200, { ok: true, ignored: "duplicado", externalId: msg.externalId });
+        }
+        console.error("[whatsapp-webhook] inserir message err:", msgErr);
+      }
+    }
+
+    // Modo de autonomia real: lê da etapa do funil (default seguro suggest_only).
+    let autonomyMode = "suggest_only";
+    const { data: stageRow } = await admin
+      .from("funnel_stages")
+      .select("ai_autonomy_mode")
+      .eq("funnel_id", deal.funnel_id)
+      .eq("stage_id", deal.stage_id)
+      .maybeSingle();
+    const stageMode = (stageRow as { ai_autonomy_mode?: string } | null)?.ai_autonomy_mode;
+    if (stageMode && ["autonomous", "suggest_only", "approval_first_n", "disabled"].includes(stageMode)) {
+      autonomyMode = stageMode;
+    }
+
+    // Enfileira para o worker dispatch-ai-queue processar.
     const { data: queueRow, error: qErr } = await admin
       .from("ai_response_queue")
       .insert([
@@ -202,14 +339,16 @@ serve(async (req) => {
           lead_channel_id: channel.id,
           lead_message: msg.text,
           status: "pending",
-          autonomy_mode: "autonomous",
+          autonomy_mode: autonomyMode,
           scheduled_send_at: new Date().toISOString(),
           context: {
             provider,
             externalContactId: msg.externalContactId,
-            phoneE164: msg.phoneE164,
+            resolvedContactId: lookupContactId,
+            phoneE164: lookupPhone,
             displayName: msg.displayName,
             receivedAt: msg.receivedAt,
+            conversationId,
           },
         },
       ])
@@ -221,7 +360,7 @@ serve(async (req) => {
       return json(200, { ok: false, error: "enqueue_failed" });
     }
 
-    return json(200, { ok: true, queueId: queueRow.id });
+    return json(200, { ok: true, queueId: queueRow.id, conversationId });
   } catch (e) {
     console.error("[whatsapp-webhook] unhandled:", e);
     return json(200, { ok: false, error: e instanceof Error ? e.message : "erro_desconhecido" });

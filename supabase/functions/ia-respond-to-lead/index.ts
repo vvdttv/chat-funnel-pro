@@ -57,6 +57,7 @@ interface ReqBody {
   lead_message: string;
   conversation_history?: Array<{ role: 'lead' | 'agent' | 'ai'; content: string }>;
   dry_run?: boolean;
+  organization_id?: string;
 }
 
 const validate = (raw: unknown): { ok: true; data: ReqBody } | { ok: false; error: string } => {
@@ -75,6 +76,7 @@ const validate = (raw: unknown): { ok: true; data: ReqBody } | { ok: false; erro
       lead_message: b.lead_message,
       conversation_history: Array.isArray(b.conversation_history) ? b.conversation_history as ReqBody['conversation_history'] : [],
       dry_run: b.dry_run === true,
+      organization_id: typeof b.organization_id === 'string' ? b.organization_id : undefined,
     },
   };
 };
@@ -86,19 +88,10 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const INTERNAL_TOKEN = Deno.env.get('INTERNAL_FUNCTION_TOKEN') ?? '';
     const aiConfig = getAIGatewayConfig();
     if (!aiConfig.apiKey) return json(500, { error: 'ai_gateway_key_missing' });
-
-    const authHeader = req.headers.get('Authorization') ?? '';
-    if (!authHeader.toLowerCase().startsWith('bearer ')) return json(401, { error: 'auth_required' });
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: userResp, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !userResp?.user) return json(401, { error: 'auth_invalid' });
-    const userId = userResp.user.id;
 
     let parsedBody: unknown;
     try { parsedBody = await req.json(); } catch { return json(400, { error: 'json_invalido' }); }
@@ -106,19 +99,50 @@ serve(async (req) => {
     if (!v.ok) return json(400, { error: v.error });
     const body = v.data;
 
+    // Auth: dois modos (igual a compose-playbook).
+    //  (a) Interno/M2M — header `x-internal-token`: usa service-role e exige
+    //      `organization_id` no body. Repassado a compose-playbook adiante.
+    //  (b) Usuário — JWT no Authorization. Comportamento ORIGINAL preservado.
+    const internalToken = req.headers.get('x-internal-token') ?? '';
+    const isInternal = INTERNAL_TOKEN !== '' && internalToken === INTERNAL_TOKEN;
+
+    let supabase;
+    let userId: string;
+    if (isInternal) {
+      if (!body.organization_id) return json(400, { error: 'organization_id_obrigatorio_interno' });
+      userId = 'system';
+      supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+    } else {
+      const authHeader = req.headers.get('Authorization') ?? '';
+      if (!authHeader.toLowerCase().startsWith('bearer ')) return json(401, { error: 'auth_required' });
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userResp, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userResp?.user) return json(401, { error: 'auth_invalid' });
+      userId = userResp.user.id;
+    }
+
     // ----- 1. Compor playbook -----
+    // No modo usuário, repassa o JWT (RLS). No modo interno, repassa o
+    // x-internal-token + organization_id para compose-playbook usar service-role.
+    const composeHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (isInternal) {
+      composeHeaders['x-internal-token'] = internalToken;
+      composeHeaders['Authorization'] = `Bearer ${SERVICE_ROLE}`;
+    } else {
+      composeHeaders['Authorization'] = req.headers.get('Authorization') ?? '';
+    }
     const composeResp = await fetch(`${SUPABASE_URL}/functions/v1/compose-playbook`, {
       method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      },
+      headers: composeHeaders,
       body: JSON.stringify({
         deal_id: body.deal_id,
         funnel_id: body.funnel_id,
         stage_id: body.stage_id,
         deal_status: body.deal_status,
         render_prompt: true,
+        ...(isInternal ? { organization_id: body.organization_id } : {}),
       }),
     });
     if (!composeResp.ok) {
@@ -129,7 +153,9 @@ serve(async (req) => {
     const composed = await composeResp.json();
     const pb = composed.effectivePlaybook;
     const systemPrompt: string = composed.systemPrompt ?? '';
-    const organizationId: string = composed.organizationId;
+    // No modo interno a org vem do body; no modo usuário, do compose. Valida.
+    const organizationId: string = composed.organizationId ?? body.organization_id ?? '';
+    if (!organizationId) return json(500, { error: 'organization_id_ausente' });
 
     // deno-lint-ignore no-explicit-any
     const expectedBehaviors: any[] = pb.expectedBehaviors ?? [];
