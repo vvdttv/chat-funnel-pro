@@ -51,7 +51,7 @@ jobs:
         run: |
           rsync -az --delete \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            dist/ "root@${{ secrets.CONTABO_HOST }}:/var/www/chat-funnel-pro/"
+            dist/ "root@${{ secrets.CONTABO_HOST }}:/var/www/chat-funnel-pro/dist/"
 
       - name: Cleanup SSH key
         if: always()
