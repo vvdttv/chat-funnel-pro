@@ -20,16 +20,19 @@ export interface AIGatewayConfig {
   fastModel: string
   /** Modelo para tarefas de raciocínio (geração de resposta, composição). */
   smartModel: string
+  /** Esforço de raciocínio (reasoning_effort): 'low' | 'medium' | 'high' | ''. Vazio = não envia. */
+  reasoningEffort: string
 }
 
 /**
  * Resolve a configuração do gateway a partir das variáveis de ambiente.
  *
  * Variáveis (novas, plug-and-play):
- * - AI_GATEWAY_URL   — ex: https://apibridge.duckdns.org/v1  ou  https://claudecode-vvdttv.duckdns.org/v1
- * - AI_GATEWAY_KEY   — chave do provedor
- * - AI_MODEL_FAST    — ex: google/gemini-2.5-flash, gpt-4o-mini, claude-haiku-4-5
- * - AI_MODEL_SMART   — ex: google/gemini-2.5-pro, gpt-4o, claude-sonnet-4-6
+ * - AI_GATEWAY_URL      — ex: https://claudecode-vvdttv.duckdns.org/v1
+ * - AI_GATEWAY_KEY      — chave do provedor
+ * - AI_MODEL_FAST       — ex: claude-sonnet-4.6
+ * - AI_MODEL_SMART      — ex: claude-sonnet-4.6
+ * - AI_REASONING_EFFORT — low | medium | high (default 'medium'; vazio desliga)
  *
  * Fallback (legado Lovable) quando as novas não existem.
  */
@@ -43,7 +46,8 @@ export function getAIGatewayConfig(): AIGatewayConfig {
     ''
   const fastModel = Deno.env.get('AI_MODEL_FAST') ?? 'google/gemini-2.5-flash'
   const smartModel = Deno.env.get('AI_MODEL_SMART') ?? 'google/gemini-2.5-pro'
-  return { baseUrl, apiKey, fastModel, smartModel }
+  const reasoningEffort = Deno.env.get('AI_REASONING_EFFORT') ?? 'medium'
+  return { baseUrl, apiKey, fastModel, smartModel, reasoningEffort }
 }
 
 export interface ChatMessage {
@@ -61,6 +65,8 @@ export interface ChatCompletionOptions {
   tools?: unknown[]
   tool_choice?: unknown
   temperature?: number
+  /** Sobrescreve o reasoning_effort da config. Passe '' para desligar nesta chamada. */
+  reasoningEffort?: string
   /** Config já resolvida; se ausente, é resolvida de env. */
   config?: AIGatewayConfig
 }
@@ -84,6 +90,9 @@ export async function aiChatCompletion(
   if (opts.tools) body.tools = opts.tools
   if (opts.tool_choice) body.tool_choice = opts.tool_choice
   if (typeof opts.temperature === 'number') body.temperature = opts.temperature
+  // reasoning_effort: usa o override da chamada ou o default da config; vazio não envia.
+  const effort = opts.reasoningEffort ?? config.reasoningEffort
+  if (effort) body.reasoning_effort = effort
 
   return await fetch(`${config.baseUrl}/chat/completions`, {
     method: 'POST',
