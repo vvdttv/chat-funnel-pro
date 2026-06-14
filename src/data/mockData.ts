@@ -6,6 +6,8 @@ export interface Lead {
   origin: string;
 }
 
+import type { Tag } from '@/integrations/supabase/types';
+
 export type TouchpointExecutor = 'agent' | 'ai' | 'both';
 export type MessageType = 'text' | 'image' | 'audio' | 'video';
 
@@ -114,6 +116,8 @@ export interface Deal {
   nextActionAt?: string | null;
   nextActionDescription?: string;
   lastActivityAt?: string | null;
+  // Tags para o sistema de tags
+  tags?: Tag[];
   lastActivitySummary?: string;
 }
 

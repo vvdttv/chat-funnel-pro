@@ -1327,7 +1327,8 @@ type FilterKey =
   | 'periodoPrimeiraMsgCliente'
   | 'periodoPrimeiraMsgCorretor'
   | 'periodoProximaAtividade'
-  | 'periodoUltimaAtividade';
+  | 'periodoUltimaAtividade'
+  | 'tags';
 
 interface FilterOption {
   key: FilterKey;
@@ -1338,6 +1339,7 @@ interface FilterOption {
 const FILTER_OPTIONS: FilterOption[] = [
   { key: 'responsavel', label: 'Usuário atribuído como responsável pelo cliente', type: 'select' },
   { key: 'origem', label: 'Origem de criação do cadastro do cliente', type: 'select' },
+  { key: 'tags', label: 'Tags', type: 'select' },
   { key: 'atividadesAtrasadas', label: 'Leads com atividades atrasadas/vencidas', type: 'toggle' },
   { key: 'atividadesHoje', label: 'Leads com atividades vencendo hoje', type: 'toggle' },
   { key: 'atividadesAmanha', label: 'Leads com atividades vencendo a partir de amanhã', type: 'toggle' },
@@ -1356,6 +1358,7 @@ const FILTER_OPTIONS: FilterOption[] = [
 interface StageFilterState {
   responsavel: string;
   origem: string;
+  tags: string;
   atividadesAtrasadas: boolean;
   atividadesHoje: boolean;
   atividadesAmanha: boolean;
@@ -1376,6 +1379,7 @@ const emptyDateRange: DateRange = { from: '', to: '' };
 const defaultFilters: StageFilterState = {
   responsavel: '',
   origem: '',
+  tags: '',
   atividadesAtrasadas: false,
   atividadesHoje: false,
   atividadesAmanha: false,

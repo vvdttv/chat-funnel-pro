@@ -2,6 +2,7 @@ import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, use
 import { Users } from 'lucide-react';
 import type { Deal } from '@/data/mockData';
 import type { CardWidget } from '@/components/CardWidgetConfig';
+import type { Tag } from '@/integrations/supabase/types';
 import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 import { formatCurrency } from '@/data/mockData';
@@ -97,11 +98,12 @@ const widgetValue = (widget: CardWidget, deal: Deal): string => {
 interface KanbanCardProps {
   deal: Deal;
   widgets: CardWidget[];
+  tags: Tag[];
   onClick: () => void;
   onForcedAction?: (step: Exclude<ForcedStep, null>) => void;
 }
 
-const KanbanCard = ({ deal, widgets, onClick, onForcedAction }: KanbanCardProps) => {
+const KanbanCard = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCardProps) => {
   const forcedStep = inferForcedStep({
     status: deal.status,
     lostSubstage: deal.lostSubstage,
@@ -172,6 +174,24 @@ const KanbanCard = ({ deal, widgets, onClick, onForcedAction }: KanbanCardProps)
             })}
           </div>
         )}
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pl-0.5">
+            {tags.map(tag => (
+              <div
+                key={tag.id}
+                className="h-4 text-[9px] rounded-full font-medium"
+                style={{
+                  backgroundColor: `${tag.color}1a`,
+                  color: tag.color,
+                }}
+              >
+                {tag.name}
+              </div>
+            ))}
+          </div>
+        )}
       </button>
 
       {forcedStep && onForcedAction && (
@@ -189,6 +209,7 @@ export interface KanbanColumn {
   key: string;
   name: string;
   deals: Deal[];
+  tags?: Tag[];
   /** HSL color string (sem hsl(), só os valores), usado na borda superior da coluna */
   accent?: string;
 }
@@ -260,6 +281,7 @@ export const KanbanBoard = ({
                     key={deal.id}
                     deal={deal}
                     widgets={widgets}
+                    tags={deal.tags || []}
                     onClick={() => onCardClick(deal)}
                     onForcedAction={onForcedAction ? (step) => onForcedAction(deal, step) : undefined}
                   />
