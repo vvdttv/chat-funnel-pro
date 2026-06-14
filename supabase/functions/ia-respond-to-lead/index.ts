@@ -34,6 +34,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiChatCompletion, getAIGatewayConfig } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,8 +86,8 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) return json(500, { error: 'lovable_api_key_missing' });
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) return json(500, { error: 'ai_gateway_key_missing' });
 
     const authHeader = req.headers.get('Authorization') ?? '';
     if (!authHeader.toLowerCase().startsWith('bearer ')) return json(401, { error: 'auth_required' });
@@ -147,39 +148,33 @@ serve(async (req) => {
         `- ${b.code}: ${b.label}${b.detection_hints?.length ? ` | dicas: ${(b.detection_hints as string[]).join('; ')}` : ''}`
       ).join('\n');
 
-      const detectResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: `Você é um classificador de comportamentos de leads. Dada a mensagem do lead e o catálogo de comportamentos possíveis, retorne os códigos dos comportamentos detectados. Só retorne códigos que existem no catálogo. Catálogo:\n${lbCatalog}` },
-            { role: 'user', content: `Histórico recente:\n${historyTxt || '(nenhum)'}\n\nMensagem atual do lead:\n${body.lead_message}` },
-          ],
-          tools: [{
-            type: 'function',
-            function: {
-              name: 'report_detected_behaviors',
-              description: 'Reporta os códigos dos comportamentos detectados',
-              parameters: {
-                type: 'object',
-                properties: {
-                  detected_codes: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Lista de códigos do catálogo (ex: LB-DESCONTO)',
-                  },
+      const detectResp = await aiChatCompletion({
+        config: aiConfig,
+        tier: 'fast',
+        messages: [
+          { role: 'system', content: `Você é um classificador de comportamentos de leads. Dada a mensagem do lead e o catálogo de comportamentos possíveis, retorne os códigos dos comportamentos detectados. Só retorne códigos que existem no catálogo. Catálogo:\n${lbCatalog}` },
+          { role: 'user', content: `Histórico recente:\n${historyTxt || '(nenhum)'}\n\nMensagem atual do lead:\n${body.lead_message}` },
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'report_detected_behaviors',
+            description: 'Reporta os códigos dos comportamentos detectados',
+            parameters: {
+              type: 'object',
+              properties: {
+                detected_codes: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Lista de códigos do catálogo (ex: LB-DESCONTO)',
                 },
-                required: ['detected_codes'],
-                additionalProperties: false,
               },
+              required: ['detected_codes'],
+              additionalProperties: false,
             },
-          }],
-          tool_choice: { type: 'function', function: { name: 'report_detected_behaviors' } },
-        }),
+          },
+        }],
+        tool_choice: { type: 'function', function: { name: 'report_detected_behaviors' } },
       });
       if (detectResp.status === 429) return json(429, { error: 'rate_limited' });
       if (detectResp.status === 402) return json(402, { error: 'sem_creditos' });
@@ -260,16 +255,10 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
         { role: 'user', content: body.lead_message },
       ];
 
-      const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-pro',
-          messages: respMsgs,
-        }),
+      const aiResp = await aiChatCompletion({
+        config: aiConfig,
+        tier: 'smart',
+        messages: respMsgs as { role: 'system' | 'user' | 'assistant' | 'tool'; content: string }[],
       });
       if (aiResp.status === 429) return json(429, { error: 'rate_limited' });
       if (aiResp.status === 402) return json(402, { error: 'sem_creditos' });

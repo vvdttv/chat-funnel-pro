@@ -2,6 +2,8 @@
 // Usa Lovable AI Gateway com tool-calling para retornar chart_spec estruturado.
 // Recebe pergunta livre + snapshot agregado e devolve {summary, chart_spec}.
 
+import { aiChatCompletion, getAIGatewayConfig } from "../_shared/aiGateway.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -127,8 +129,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) {
       return new Response(
         JSON.stringify({ error: 'LOVABLE_API_KEY ausente no servidor.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -168,18 +170,12 @@ Deno.serve(async (req: Request) => {
     }
     messages.push({ role: 'user', content: userContent });
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages,
-        tools: [TOOL_DEFINITION],
-        tool_choice: { type: 'function', function: { name: 'render_indicator' } },
-      }),
+    const aiResp = await aiChatCompletion({
+      config: aiConfig,
+      tier: 'fast',
+      messages: messages as Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string }>,
+      tools: [TOOL_DEFINITION],
+      tool_choice: { type: 'function', function: { name: 'render_indicator' } },
     });
 
     if (aiResp.status === 429) {

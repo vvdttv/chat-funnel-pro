@@ -8,15 +8,13 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiChatCompletion, getAIGatewayConfig } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
 interface LBDraft {
   code: string;
@@ -91,8 +89,8 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) {
       return jsonResp({ error: "LOVABLE_API_KEY não configurada" }, 500);
     }
 
@@ -177,21 +175,15 @@ serve(async (req) => {
       total_logs: logs.length,
     });
 
-    const aiResp = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [TOOL_SCHEMA],
-        tool_choice: { type: "function", function: { name: "suggest_lead_behaviors" } },
-      }),
+    const aiResp = await aiChatCompletion({
+      config: aiConfig,
+      tier: "fast",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [TOOL_SCHEMA],
+      tool_choice: { type: "function", function: { name: "suggest_lead_behaviors" } },
     });
 
     if (aiResp.status === 429) {

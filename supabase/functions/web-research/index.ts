@@ -13,14 +13,13 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiChatCompletion, getAIGatewayConfig } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const json = (payload: unknown, status = 200): Response =>
   new Response(JSON.stringify(payload), {
@@ -48,8 +47,8 @@ serve(async (req) => {
       return json({ error: "Query inválida" }, 400);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return json({ error: "LOVABLE_API_KEY não configurada" }, 500);
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) return json({ error: "LOVABLE_API_KEY não configurada" }, 500);
 
     const systemPrompt = `Você é um pesquisador. Recebe uma pergunta sobre um tema (geralmente bairro, imóvel, mercado imobiliário, condomínio). Sintetize uma resposta útil em pt-BR com 3-6 frases, mencionando fontes plausíveis no formato [Título — domínio.com].
 
@@ -61,17 +60,14 @@ Saída APENAS em JSON válido (sem fences):
   "sources": [{ "title": "string", "domain": "string" }]
 }`;
 
-    const resp = await fetch(LOVABLE_AI_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: query },
-        ],
-        temperature: 0.5,
-      }),
+    const resp = await aiChatCompletion({
+      config: aiConfig,
+      tier: "smart",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: query },
+      ],
+      temperature: 0.5,
     });
 
     if (resp.status === 429) return json({ error: "Muitas requisições. Tenta de novo em alguns minutos." }, 429);

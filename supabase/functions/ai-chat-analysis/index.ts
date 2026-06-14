@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiChatCompletion, getAIGatewayConfig, type ChatMessage } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,8 +54,8 @@ serve(async (req) => {
       attachments?: Attachment[];
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -151,17 +152,10 @@ Responda de forma concisa e prática. Suas respostas são visíveis APENAS para 
       aiMessages.push({ role: "user", content: userQuestion });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: aiMessages,
-        stream: false,
-      }),
+    const response = await aiChatCompletion({
+      config: aiConfig,
+      tier: "fast",
+      messages: aiMessages as unknown as ChatMessage[],
     });
 
     if (!response.ok) {

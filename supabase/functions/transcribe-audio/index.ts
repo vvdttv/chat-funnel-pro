@@ -1,6 +1,8 @@
 // Edge function: transcribe-audio
 // Recebe áudio em base64 (webm/ogg/mp3/wav) e devolve transcrição em PT-BR via Lovable AI Gateway (Gemini multimodal).
 
+import { aiChatCompletion, getAIGatewayConfig, type ChatMessage } from "../_shared/aiGateway.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -24,8 +26,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!apiKey) {
+    const aiConfig = getAIGatewayConfig();
+    if (!aiConfig.apiKey) {
       return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurada' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -34,32 +36,28 @@ Deno.serve(async (req) => {
 
     const mt = mime_type || 'audio/webm';
 
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Você é um transcritor de áudio. Transcreva fielmente em português do Brasil. Devolva APENAS o texto transcrito, sem comentários, sem aspas, sem prefixos.',
-          },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Transcreva este áudio:' },
-              {
-                type: 'input_audio',
-                input_audio: { data: audio_base64, format: mt.split('/')[1] || 'webm' },
-              },
-            ],
-          },
-        ],
-      }),
+    const resp = await aiChatCompletion({
+      config: aiConfig,
+      // Modelo de transcrição multimodal explícito: precisa suportar input_audio,
+      // por isso NÃO mapeamos para tier fast/smart (que podem ser texto-only).
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Você é um transcritor de áudio. Transcreva fielmente em português do Brasil. Devolva APENAS o texto transcrito, sem comentários, sem aspas, sem prefixos.',
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Transcreva este áudio:' },
+            {
+              type: 'input_audio',
+              input_audio: { data: audio_base64, format: mt.split('/')[1] || 'webm' },
+            },
+          ],
+        },
+      ] as unknown as ChatMessage[],
     });
 
     if (!resp.ok) {

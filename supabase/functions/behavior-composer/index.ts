@@ -20,6 +20,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiChatCompletion, getAIGatewayConfig } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL_QUESTIONS = "google/gemini-3-flash-preview";
 const MODEL_PLAN = "google/gemini-2.5-pro";
 
@@ -190,20 +190,20 @@ interface GatewayCallArgs {
 }
 
 const callGateway = async ({ model, systemPrompt, userPrompt }: GatewayCallArgs): Promise<string | Response> => {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return json({ error: "LOVABLE_API_KEY não configurada" }, 500);
+  const aiConfig = getAIGatewayConfig();
+  if (!aiConfig.apiKey) return json({ error: "LOVABLE_API_KEY não configurada" }, 500);
 
-  const resp = await fetch(LOVABLE_AI_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.4,
-    }),
+  // MODEL_QUESTIONS (flash-preview) → fast; MODEL_PLAN (pro) → smart.
+  const tier: "fast" | "smart" = model === MODEL_PLAN ? "smart" : "fast";
+
+  const resp = await aiChatCompletion({
+    config: aiConfig,
+    tier,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.4,
   });
 
   if (resp.status === 429) {
