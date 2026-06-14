@@ -134,7 +134,7 @@ const authenticate = async (req: Request): Promise<AuthCtx | Response> => {
   const { data: profile } = await admin
     .from("profiles")
     .select("organization_id")
-    .eq("user_id", userData.user.id)
+    .eq("id", userData.user.id)
     .maybeSingle();
   if (!profile?.organization_id) return json({ error: "Sem organização" }, 403);
 

@@ -132,7 +132,7 @@ serve(async (req) => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
     const organizationId = profile?.organization_id;
     if (!organizationId) return json(403, { error: 'sem_organizacao' });

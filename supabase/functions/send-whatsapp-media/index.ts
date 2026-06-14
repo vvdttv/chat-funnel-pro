@@ -69,7 +69,7 @@ serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: profile } = await admin
-      .from("profiles").select("organization_id").eq("user_id", u.user.id).maybeSingle();
+      .from("profiles").select("organization_id").eq("id", u.user.id).maybeSingle();
     if (!profile?.organization_id) return json({ error: "Sem organização" }, 403);
     const orgId = profile.organization_id as string;
 

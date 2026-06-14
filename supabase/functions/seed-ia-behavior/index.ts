@@ -115,7 +115,7 @@ serve(async (req) => {
     const { data: profile, error: profErr } = await admin
       .from("profiles")
       .select("organization_id")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .maybeSingle();
     if (profErr || !profile?.organization_id) {
       return json({ error: "Organização não encontrada para o usuário" }, 403);
