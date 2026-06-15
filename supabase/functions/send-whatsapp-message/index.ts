@@ -26,7 +26,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { wahaSendText } from "../_shared/waha.ts";
+import { getWahaConfig, wahaSendText } from "../_shared/waha.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +48,9 @@ interface SendBody {
   text: string;
   sender_type?: "ai" | "broker" | "system";
   sender_id?: string;
+  // Número WhatsApp a usar (Fase 2A). Resolve a sessão WAHA correta da persona.
+  // Opcional: se ausente, usa o número da conversa ou a sessão default (env).
+  whatsapp_number_id?: string;
 }
 
 serve(async (req) => {
@@ -86,7 +89,7 @@ serve(async (req) => {
     // 1) Carrega a conversa (org, telefone, janela)
     const { data: conv, error: convErr } = await admin
       .from("conversations")
-      .select("id, organization_id, contact_phone_e164, last_inbound_at, provider")
+      .select("id, organization_id, contact_phone_e164, last_inbound_at, provider, whatsapp_number_id")
       .eq("id", body.conversation_id)
       .maybeSingle();
     if (convErr || !conv) {
@@ -121,10 +124,29 @@ serve(async (req) => {
 
     // 3) DENTRO DA JANELA → WAHA (não-oficial)
     const senderType = body.sender_type ?? "ai";
+
+    // Resolve a sessão WAHA da persona/número (Fase 2A). O número pode vir no
+    // body (worker) ou estar gravado na conversa. Se o número for de uma sessão
+    // WAHA específica, usa-a; senão cai na sessão default (env WAHA_SESSION).
+    const numberId = body.whatsapp_number_id ?? conv.whatsapp_number_id ?? null;
+    const wahaConfig = getWahaConfig();
+    if (numberId) {
+      const { data: num } = await admin
+        .from("whatsapp_numbers")
+        .select("provider, waha_session")
+        .eq("id", numberId)
+        .eq("organization_id", conv.organization_id)
+        .maybeSingle();
+      const session = (num as { provider?: string; waha_session?: string | null } | null);
+      if (session?.provider === "waha" && session.waha_session) {
+        wahaConfig.session = session.waha_session;
+      }
+    }
+
     const result = await wahaSendText({
       chatId: conv.contact_phone_e164,
       text: body.text,
-    });
+    }, wahaConfig);
 
     // 4) Persiste o outbound em messages (trigger atualiza last_outbound_at)
     const msgRow = {

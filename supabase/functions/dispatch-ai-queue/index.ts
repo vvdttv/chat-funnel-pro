@@ -53,6 +53,13 @@ interface QueueItem {
   context: Record<string, unknown> | null;
 }
 
+interface ConversationRow {
+  id: string;
+  contact_phone_e164: string | null;
+  persona_id: string | null;
+  whatsapp_number_id: string | null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
@@ -124,14 +131,14 @@ async function processItem(item: QueueItem, ctx: Ctx) {
   // Localiza/garante a conversa do deal. Prioriza o conversationId já gravado
   // pelo whatsapp-webhook no context (evita query e janela de corrida).
   const ctxConvId = item.context?.conversationId as string | undefined;
-  let conversation: { id: string; contact_phone_e164: string | null } | null = null;
+  let conversation: ConversationRow | null = null;
   if (ctxConvId) {
     const { data } = await admin
       .from("conversations")
-      .select("id, contact_phone_e164")
+      .select("id, contact_phone_e164, persona_id, whatsapp_number_id")
       .eq("id", ctxConvId)
       .maybeSingle();
-    conversation = (data as { id: string; contact_phone_e164: string | null } | null) ?? null;
+    conversation = (data as ConversationRow | null) ?? null;
   }
   if (!conversation) {
     conversation = await ensureConversation(admin, item);
@@ -176,6 +183,7 @@ async function processItem(item: QueueItem, ctx: Ctx) {
       lead_message: item.lead_message,
       conversation_history: history,
       organization_id: item.organization_id,
+      ...(conversation?.persona_id ? { persona_id: conversation.persona_id } : {}),
     }),
   });
 
@@ -224,6 +232,7 @@ async function processItem(item: QueueItem, ctx: Ctx) {
         conversation_id: conversation.id,
         text: suggested,
         sender_type: "ai",
+        ...(conversation.whatsapp_number_id ? { whatsapp_number_id: conversation.whatsapp_number_id } : {}),
       }),
     });
     const sendJson = await sendResp.json().catch(() => ({}));
@@ -257,18 +266,18 @@ async function processItem(item: QueueItem, ctx: Ctx) {
 async function ensureConversation(
   admin: ReturnType<typeof createClient>,
   item: QueueItem,
-): Promise<{ id: string; contact_phone_e164: string | null } | null> {
+): Promise<ConversationRow | null> {
   const ctxPhone = (item.context?.phoneE164 as string | undefined) ?? null;
 
   // 1) por deal_id (caminho comum)
   const { data: byDeal } = await admin
     .from("conversations")
-    .select("id, contact_phone_e164")
+    .select("id, contact_phone_e164, persona_id, whatsapp_number_id")
     .eq("deal_id", item.deal_id)
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
-  if (byDeal) return byDeal as { id: string; contact_phone_e164: string | null };
+  if (byDeal) return byDeal as ConversationRow;
 
   // 2) cria (o inbound deveria ter criado; fallback defensivo)
   const { data: created, error } = await admin
@@ -282,13 +291,13 @@ async function ensureConversation(
       contact_phone_e164: ctxPhone,
       contact_name: (item.context?.displayName as string | undefined) ?? null,
     }])
-    .select("id, contact_phone_e164")
+    .select("id, contact_phone_e164, persona_id, whatsapp_number_id")
     .single();
   if (error) {
     console.error("[dispatch-ai-queue] ensureConversation erro:", error);
     return null;
   }
-  return created as { id: string; contact_phone_e164: string | null };
+  return created as ConversationRow;
 }
 
 /** Incrementa attempts e reagenda com backoff; após MAX_ATTEMPTS marca failed. */

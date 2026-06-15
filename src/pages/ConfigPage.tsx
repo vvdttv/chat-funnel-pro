@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { properties, waNumbers, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
+import { properties, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
 import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play } from 'lucide-react';
 import { IAAuditTab } from '@/components/configurador-ia/IAAuditTab';
@@ -19,18 +19,23 @@ import { StagePlaybookEditor } from '@/components/StagePlaybookEditor';
 import { PlaybookFourColumnEditor } from '@/components/PlaybookFourColumnEditor';
 import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
-type SettingsTab = 'config_ia' | 'funis' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+import PersonasManager from '@/components/PersonasManager';
+import WhatsappNumbersManager from '@/components/WhatsappNumbersManager';
+import { PersonasProvider } from '@/hooks/usePersonas';
+import { WhatsappNumbersProvider } from '@/hooks/useWhatsappNumbers';
+type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
   { id: 'funis', label: 'Funis', icon: Zap },
+  { id: 'personas', label: 'Personas', icon: User, adminOnly: true },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
   { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
   { id: 'imoveis', label: 'Imóveis', icon: Building2 },
-  { id: 'numeros', label: 'Números WA', icon: Smartphone },
+  { id: 'numeros', label: 'Números WA', icon: Smartphone, adminOnly: true },
 ];
 
 const CHANNEL_OPTIONS: { value: Touchpoint['channel']; label: string; icon: typeof Phone }[] = [
@@ -919,7 +924,7 @@ const FieldsManager = ({ widgets, onWidgetsChange }: { widgets: CardWidget[]; on
 
 // ========== MAIN PAGE ==========
 
-const ConfigPage = () => {
+const ConfigPageInner = () => {
   const { profile, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? 'config_ia' : 'funis');
   const [iaSubTab, setIaSubTab] = useState<'configurar' | 'salvas' | 'auditoria' | 'simulador'>('configurar');
@@ -1131,33 +1136,9 @@ const ConfigPage = () => {
           </>
         )}
 
-        {activeTab === 'numeros' && (
-          <>
-            {waNumbers.map(wa => (
-              <div key={wa.id} className="bg-card rounded-xl p-4 mb-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{wa.label}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{wa.number}</p>
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    wa.type === 'official' ? 'bg-primary/15 text-primary' : 'bg-warning/15 text-warning'
-                  }`}>
-                    {wa.type === 'official' ? 'API Oficial' : 'QR Code'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {wa.agents.map(agent => (
-                    <span key={agent} className="text-[10px] bg-secondary text-muted-foreground px-2 py-1 rounded-full">{agent}</span>
-                  ))}
-                  <button className="text-[10px] bg-primary/15 text-primary px-2 py-1 rounded-full active:scale-95 transition-transform">
-                    + Vincular
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
+        {activeTab === 'personas' && isAdmin && <PersonasManager />}
+
+        {activeTab === 'numeros' && isAdmin && <WhatsappNumbersManager />}
 
         {activeTab === 'usuarios' && <UsersManager />}
 
@@ -1182,5 +1163,13 @@ const ConfigPage = () => {
     </div>
   );
 };
+
+const ConfigPage = () => (
+  <PersonasProvider>
+    <WhatsappNumbersProvider>
+      <ConfigPageInner />
+    </WhatsappNumbersProvider>
+  </PersonasProvider>
+);
 
 export default ConfigPage;

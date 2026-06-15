@@ -38,6 +38,9 @@ interface NormalizedMessage {
   receivedAt: string;
   externalId?: string;
   contentType?: string;
+  // Número/sessão RECEPTOR (para casar persona/whatsapp_number — Fase 2A).
+  toNumber?: string;
+  session?: string;
   raw: unknown;
 }
 
@@ -72,6 +75,8 @@ const normalize = (provider: string, payload: any): NormalizedMessage | null => 
         receivedAt: new Date((p?.timestamp ? Number(p.timestamp) * 1000 : Date.now())).toISOString(),
         externalId: p?.id ?? data?.id?._serialized ?? data?.id?.id,
         contentType: p?.hasMedia ? "image" : "text",
+        toNumber: p?.to ? String(p.to).split("@")[0].replace(/\D/g, "") : undefined,
+        session: payload?.session ?? p?.session,
         raw: payload,
       };
     }
@@ -246,18 +251,76 @@ serve(async (req) => {
       return json(200, { ok: true, ignored: "deal_nao_encontrado" });
     }
 
+    // --- Resolve persona/número receptor (Fase 2A) ---
+    // Casa o número que RECEBEU a mensagem (toNumber/session) com whatsapp_numbers
+    // → persona. Define quem "atende" a conversa. Fallback: número default da org.
+    let whatsappNumberId: string | null = null;
+    let personaId: string | null = null;
+    {
+      const toDigits = (msg.toNumber ?? "").replace(/\D/g, "");
+      const sess = String(msg.session ?? "").replace(/[^0-9a-zA-Z._-]/g, "");
+      let numRow: { id: string; persona_id: string | null } | null = null;
+      if (toDigits || sess) {
+        const numOr: string[] = [];
+        if (toDigits) {
+          numOr.push(`phone_e164.eq.+${toDigits}`);
+          numOr.push(`phone_e164.eq.${toDigits}`);
+        }
+        if (sess) numOr.push(`waha_session.eq.${sess}`);
+        const { data } = await admin
+          .from("whatsapp_numbers")
+          .select("id, persona_id")
+          .eq("organization_id", deal.organization_id)
+          .eq("is_active", true)
+          .or(numOr.join(","))
+          .maybeSingle();
+        numRow = (data as { id: string; persona_id: string | null } | null) ?? null;
+      }
+      if (!numRow) {
+        // fallback: número default da org
+        const { data } = await admin
+          .from("whatsapp_numbers")
+          .select("id, persona_id")
+          .eq("organization_id", deal.organization_id)
+          .eq("is_active", true)
+          .eq("is_default", true)
+          .maybeSingle();
+        numRow = (data as { id: string; persona_id: string | null } | null) ?? null;
+      }
+      if (numRow) {
+        whatsappNumberId = numRow.id;
+        personaId = numRow.persona_id;
+      }
+    }
+
     // --- Persistência da conversa + mensagem inbound ---
     // Garante uma conversa (por deal). Cria se não existir; reusa a mais recente.
     let conversationId: string | null = null;
     const { data: existingConv } = await admin
       .from("conversations")
-      .select("id")
+      .select("id, persona_id, whatsapp_number_id")
       .eq("deal_id", deal.id)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
     if (existingConv) {
       conversationId = (existingConv as { id: string }).id;
+      // Backfill: se a conversa ainda não tem persona/número, grava agora.
+      // Guarda `.is(col, null)` evita corrida entre entregas paralelas
+      // sobrescreverem um valor já gravado por outra.
+      const ex = existingConv as { persona_id: string | null; whatsapp_number_id: string | null };
+      if (!ex.whatsapp_number_id && whatsappNumberId) {
+        await admin.from("conversations")
+          .update({ whatsapp_number_id: whatsappNumberId })
+          .eq("id", conversationId)
+          .is("whatsapp_number_id", null);
+      }
+      if (!ex.persona_id && personaId) {
+        await admin.from("conversations")
+          .update({ persona_id: personaId })
+          .eq("id", conversationId)
+          .is("persona_id", null);
+      }
     } else {
       const { data: newConv, error: convErr } = await admin
         .from("conversations")
@@ -269,6 +332,8 @@ serve(async (req) => {
           provider,
           contact_phone_e164: lookupPhone ?? null,
           contact_name: msg.displayName ?? null,
+          whatsapp_number_id: whatsappNumberId,
+          persona_id: personaId,
         }])
         .select("id")
         .single();

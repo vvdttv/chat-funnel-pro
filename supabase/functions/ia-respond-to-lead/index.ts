@@ -58,6 +58,7 @@ interface ReqBody {
   conversation_history?: Array<{ role: 'lead' | 'agent' | 'ai'; content: string }>;
   dry_run?: boolean;
   organization_id?: string;
+  persona_id?: string;
 }
 
 const validate = (raw: unknown): { ok: true; data: ReqBody } | { ok: false; error: string } => {
@@ -77,6 +78,7 @@ const validate = (raw: unknown): { ok: true; data: ReqBody } | { ok: false; erro
       conversation_history: Array.isArray(b.conversation_history) ? b.conversation_history as ReqBody['conversation_history'] : [],
       dry_run: b.dry_run === true,
       organization_id: typeof b.organization_id === 'string' ? b.organization_id : undefined,
+      persona_id: typeof b.persona_id === 'string' ? b.persona_id : undefined,
     },
   };
 };
@@ -142,6 +144,7 @@ serve(async (req) => {
         stage_id: body.stage_id,
         deal_status: body.deal_status,
         render_prompt: true,
+        ...(body.persona_id ? { persona_id: body.persona_id } : {}),
         ...(isInternal ? { organization_id: body.organization_id } : {}),
       }),
     });

@@ -87,6 +87,7 @@ interface ComposeBody {
   deal_status?: DealStatus;
   render_prompt?: boolean;
   organization_id?: string;
+  persona_id?: string;
 }
 
 const validate = (raw: unknown): { ok: true; data: ComposeBody } | { ok: false; error: string } => {
@@ -106,6 +107,7 @@ const validate = (raw: unknown): { ok: true; data: ComposeBody } | { ok: false; 
       deal_status: status,
       render_prompt: b.render_prompt !== false,
       organization_id: typeof b.organization_id === 'string' ? b.organization_id : undefined,
+      persona_id: typeof b.persona_id === 'string' ? b.persona_id : undefined,
     },
   };
 };
@@ -169,6 +171,7 @@ serve(async (req) => {
 
     const { deal_id: dealId, funnel_id: funnelId, stage_id: stageId, deal_status: dealStatusInput, render_prompt: renderPromptFlag } = v.data;
     let dealStatus: DealStatus = dealStatusInput ?? 'open';
+    let personaId: string | undefined = v.data.persona_id;
 
     // Se veio deal_id, busca status real (RLS garante org/permissão)
     if (dealId) {
@@ -182,6 +185,21 @@ serve(async (req) => {
       dealStatus = (deal.status as DealStatus) ?? 'open';
     }
 
+    // Persona (Fase 2A): se não veio explícita no body, deriva da conversa do deal.
+    // A persona é a camada FINAL da identity — sobrescreve persona/tom/missão do
+    // playbook, dando ao lead a percepção de uma pessoa fixa atendendo.
+    if (!personaId && dealId) {
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('persona_id')
+        .eq('deal_id', dealId)
+        .eq('organization_id', organizationId)
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      personaId = (conv as { persona_id?: string | null } | null)?.persona_id ?? undefined;
+    }
+
     // NOTA multi-tenant: as tabelas de domínio (funnels, funnel_stages,
     // stage_playbooks, playbook_overrides, ia_rules, lead_behaviors,
     // followup_ladders, handoff_triggers, ia_skills, ia_skill_nodes,
@@ -192,7 +210,7 @@ serve(async (req) => {
     const [
       funnel, archetypes, statusArchetypes, physicalStages,
       catalogPlaybooks, overrides, rules, behaviors, ladders, triggers,
-      skills, skillNodes, skillGuardrails,
+      skills, skillNodes, skillGuardrails, personaRow,
     ] = await Promise.all([
       supabase.from('funnels').select('id,context_tags').eq('id', funnelId).eq('organization_id', organizationId).maybeSingle(),
       supabase.from('stage_archetypes').select('id,code,default_playbook_code,context_tags').eq('is_active', true),
@@ -207,6 +225,9 @@ serve(async (req) => {
       supabase.from('ia_skills').select('id,code,name,description,scope_type,scope_id,position').eq('is_active', true).eq('organization_id', organizationId).order('position'),
       supabase.from('ia_skill_nodes').select('id,skill_id,kind,parent_node_id,branch_label,config,position').eq('organization_id', organizationId).order('position'),
       supabase.from('ia_skill_guardrails').select('skill_id,rule_code').eq('organization_id', organizationId),
+      personaId
+        ? supabase.from('agent_personas').select('name,gender,personality,style,tone,mission,identity_notes').eq('id', personaId).eq('organization_id', organizationId).eq('is_active', true).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
     const physical = physicalStages.data;
@@ -276,6 +297,25 @@ serve(async (req) => {
         if (ov.payload?.failureCriteria) failureCriteria = uniq([...failureCriteria, ...ov.payload.failureCriteria]);
         if (ov.payload?.expectedBehaviorIds) expectedCodes = uniq([...expectedCodes, ...ov.payload.expectedBehaviorIds]);
       }
+    }
+
+    // ----- Persona (Fase 2A): camada FINAL da identity -----
+    // Sobrescreve persona/tom/missão do playbook com a persona configurada,
+    // garantindo identidade fixa percebida pelo lead. personality/style/notes
+    // entram em identityNotes (acumulados, não perdem as notas anteriores).
+    // deno-lint-ignore no-explicit-any
+    const persona: any = (personaRow as { data?: any })?.data ?? null;
+    if (persona) {
+      const extraNotes = [persona.personality, persona.style, persona.identity_notes]
+        .map((s: unknown) => (typeof s === 'string' ? s.trim() : ''))
+        .filter(Boolean)
+        .join(' | ');
+      identity = mergeIdentity(identity, {
+        persona: persona.name,
+        tone: persona.tone,
+        mission: persona.mission,
+        identityNotes: [identity.identityNotes, extraNotes].filter(Boolean).join(' | '),
+      });
     }
 
     // deno-lint-ignore no-explicit-any
@@ -454,6 +494,7 @@ overrides: ${overrideIds.join(' | ') || '(nenhum)'}`;
       systemPrompt,
       organizationId,
       userId,
+      personaId: personaId ?? null,
     });
   } catch (e) {
     console.error("compose-playbook error:", e);
