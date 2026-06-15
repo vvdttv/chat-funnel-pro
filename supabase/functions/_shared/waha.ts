@@ -201,3 +201,91 @@ export async function wahaSendFile(
     config,
   )
 }
+
+export interface WahaMediaDownload {
+  ok: boolean
+  bytes?: Uint8Array
+  mimeType?: string
+  status: number
+  error?: string
+}
+
+/**
+ * Baixa a mídia de uma mensagem inbound do WAHA.
+ *
+ * Com `WHATSAPP_HOOK_DOWNLOAD_MEDIA=true` (engine WEBJS), o webhook já recebe
+ * `payload.media = { url, mimetype, filename }`. A `url` é servida pelo próprio
+ * WAHA (host interno) e exige o header X-Api-Key. Se a URL vier relativa (raro),
+ * prefixa apiUrl. Limite de tamanho protege contra arquivos gigantes.
+ */
+export async function downloadWahaMedia(
+  mediaUrl: string,
+  config: WahaConfig = getWahaConfig(),
+  maxBytes = 25 * 1024 * 1024,
+): Promise<WahaMediaDownload> {
+  if (!mediaUrl) return { ok: false, status: 0, error: 'sem_url' }
+  if (!config.apiKey) return { ok: false, status: 0, error: 'waha_nao_configurado' }
+  try {
+    const url = /^https?:\/\//i.test(mediaUrl)
+      ? mediaUrl
+      : `${config.apiUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'X-Api-Key': config.apiKey },
+    })
+    if (!resp.ok) {
+      console.error('[waha] downloadWahaMedia não-ok:', resp.status)
+      return { ok: false, status: resp.status, error: `waha_media_${resp.status}` }
+    }
+    // Checa Content-Length ANTES de bufferizar — evita OOM em arquivo gigante
+    // que crasharia o isolate (e geraria reentrega/crash-loop do webhook).
+    const declared = Number(resp.headers.get('content-length') ?? '0')
+    if (declared && declared > maxBytes) {
+      console.error('[waha] downloadWahaMedia content-length excede limite:', declared)
+      // Drena o corpo para liberar a conexão sem materializar o buffer.
+      await resp.body?.cancel().catch(() => {})
+      return { ok: false, status: resp.status, error: 'midia_muito_grande' }
+    }
+    const buf = new Uint8Array(await resp.arrayBuffer())
+    if (buf.byteLength > maxBytes) {
+      console.error('[waha] downloadWahaMedia excede limite (sem content-length):', buf.byteLength)
+      return { ok: false, status: resp.status, error: 'midia_muito_grande' }
+    }
+    const mimeType = resp.headers.get('content-type')?.split(';')[0]?.trim() || undefined
+    return { ok: true, bytes: buf, mimeType, status: resp.status }
+  } catch (e) {
+    console.error('[waha] downloadWahaMedia erro:', e)
+    return { ok: false, status: 0, error: e instanceof Error ? e.message : 'erro_desconhecido' }
+  }
+}
+
+/** Extensão de arquivo a partir do mimetype (fallback 'bin'). */
+export function extFromMime(mime?: string): string {
+  if (!mime) return 'bin'
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'video/mp4': 'mp4',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  }
+  return map[mime.toLowerCase()] ?? (mime.split('/')[1]?.replace(/[^a-z0-9]/gi, '').slice(0, 10) || 'bin')
+}
+
+/** Mapeia mimetype WhatsApp para content_type da tabela messages. */
+export function contentTypeFromMime(mime?: string): string {
+  if (!mime) return 'document'
+  const m = mime.toLowerCase()
+  if (m.startsWith('image/')) return 'image'
+  if (m.startsWith('audio/')) return 'audio'
+  if (m.startsWith('video/')) return 'video'
+  return 'document'
+}

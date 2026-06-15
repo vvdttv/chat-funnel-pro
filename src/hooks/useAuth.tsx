@@ -10,7 +10,7 @@ export interface UserProfile {
   display_name: string | null;
 }
 
-export type AppRole = 'admin' | 'corretor';
+export type AppRole = 'admin' | 'corretor' | 'correspondente' | 'atendente';
 
 interface AuthContextValue {
   session: Session | null;

@@ -15,7 +15,12 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { resolveWahaContact } from "../_shared/waha.ts";
+import {
+  resolveWahaContact,
+  downloadWahaMedia,
+  extFromMime,
+  contentTypeFromMime,
+} from "../_shared/waha.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +46,10 @@ interface NormalizedMessage {
   // Número/sessão RECEPTOR (para casar persona/whatsapp_number — Fase 2A).
   toNumber?: string;
   session?: string;
+  // Mídia inbound (Fase 2C). Preenchido quando hasMedia + download habilitado.
+  mediaUrl?: string;
+  mediaMimeType?: string;
+  mediaFilename?: string;
   raw: unknown;
 }
 
@@ -59,11 +68,16 @@ const detectProvider = (req: Request, payload: any): string => {
 const normalize = (provider: string, payload: any): NormalizedMessage | null => {
   try {
     if (provider === "waha") {
-      // Formato WAHA (engine WEBJS): { event:'message', session, payload:{ from, to, body, fromMe, id, _data } }
+      // Formato WAHA (engine WEBJS): { event:'message', session, payload:{ from, to, body, fromMe, id, hasMedia, media, _data } }
       const p = payload?.payload ?? payload;
       if (p?.fromMe === true) return null; // ignora o que nós mesmos enviamos
       const from = p?.from ?? "";
       const data = p?._data ?? {};
+      // Mídia: com WHATSAPP_HOOK_DOWNLOAD_MEDIA=true, vem em p.media {url,mimetype,filename}.
+      const media = p?.media ?? data?.media ?? null;
+      const mediaUrl: string | undefined = media?.url ?? undefined;
+      const mediaMime: string | undefined = media?.mimetype ?? data?.mimetype ?? undefined;
+      const hasMedia = p?.hasMedia === true || !!mediaUrl;
       return {
         provider,
         externalContactId: from, // pode ser <id>@lid ou <num>@c.us — resolvido depois
@@ -74,9 +88,13 @@ const normalize = (provider: string, payload: any): NormalizedMessage | null => 
         text: p?.body ?? "",
         receivedAt: new Date((p?.timestamp ? Number(p.timestamp) * 1000 : Date.now())).toISOString(),
         externalId: p?.id ?? data?.id?._serialized ?? data?.id?.id,
-        contentType: p?.hasMedia ? "image" : "text",
+        // content_type pelo mimetype real quando há mídia; senão texto.
+        contentType: hasMedia ? contentTypeFromMime(mediaMime) : "text",
         toNumber: p?.to ? String(p.to).split("@")[0].replace(/\D/g, "") : undefined,
         session: payload?.session ?? p?.session,
+        mediaUrl,
+        mediaMimeType: mediaMime,
+        mediaFilename: media?.filename ?? undefined,
         raw: payload,
       };
     }
@@ -189,8 +207,9 @@ serve(async (req) => {
     const provider = detectProvider(req, payload);
     const msg = normalize(provider, payload);
 
-    // Sempre responde 200 pra provedor não reentregar — logamos pra debug
-    if (!msg || !msg.text?.trim()) {
+    // Sempre responde 200 pra provedor não reentregar — logamos pra debug.
+    // Aceita mensagem só-mídia (texto vazio + mediaUrl): documentos do lead.
+    if (!msg || (!msg.text?.trim() && !msg.mediaUrl)) {
       console.log("[whatsapp-webhook] sem mensagem normalizada", { provider });
       return json(200, { ok: true, ignored: "sem_mensagem" });
     }
@@ -481,8 +500,9 @@ serve(async (req) => {
 
     // Insere a mensagem inbound (dedup por external_id via índice único).
     // O trigger touch_conversation atualiza last_inbound_at (janela 24h).
+    let insertedMessageId: string | null = null;
     if (conversationId) {
-      const { error: msgErr } = await admin
+      const { data: insertedMsg, error: msgErr } = await admin
         .from("messages")
         .insert([{
           organization_id: deal.organization_id,
@@ -494,7 +514,9 @@ serve(async (req) => {
           external_id: msg.externalId ?? null,
           channel_route: provider === "cloud_api" ? "cloud_api" : "waha",
           status: "received",
-        }]);
+        }])
+        .select("id")
+        .maybeSingle();
       if (msgErr) {
         // 23505 = violação de unique (mensagem já recebida) → idempotente, ok
         if ((msgErr as { code?: string }).code === "23505") {
@@ -502,6 +524,68 @@ serve(async (req) => {
           return json(200, { ok: true, ignored: "duplicado", externalId: msg.externalId });
         }
         console.error("[whatsapp-webhook] inserir message err:", msgErr);
+      } else {
+        insertedMessageId = (insertedMsg as { id?: string } | null)?.id ?? null;
+      }
+    }
+
+    // --- Captura de mídia inbound (Fase 2C) ---
+    // Se a mensagem trouxe mídia (WAHA com WHATSAPP_HOOK_DOWNLOAD_MEDIA=true),
+    // baixa o arquivo, sobe no bucket whatsapp-media-public e registra em
+    // lead_documents (fonte de verdade dos documentos do lead). Idempotente:
+    // o índice lead_documents_message_uniq evita duplicar pela mesma message.
+    // Falha de download/upload NÃO derruba o webhook (loga e segue).
+    // Só processa se temos a message ancorada (insertedMessageId): sem ela, o
+    // dedup por message_id não funciona e geraríamos docs órfãos com message_id
+    // NULL a cada reentrega (H2). Em caso de duplicado a função já retornou antes.
+    if (msg.mediaUrl && provider === "waha" && insertedMessageId) {
+      try {
+        const dl = await downloadWahaMedia(msg.mediaUrl);
+        if (dl.ok && dl.bytes) {
+          const mime = msg.mediaMimeType ?? dl.mimeType ?? "application/octet-stream";
+          const ext = extFromMime(mime);
+          const rand = crypto.randomUUID().slice(0, 8);
+          const path = `${deal.organization_id}/lead-docs/${deal.id}/${Date.now()}-${rand}.${ext}`;
+          const { error: upErr } = await admin.storage
+            .from("whatsapp-media-public")
+            .upload(path, dl.bytes, { contentType: mime, upsert: false });
+          if (upErr) {
+            console.error("[whatsapp-webhook] upload mídia err:", upErr);
+          } else {
+            const { data: pub } = admin.storage.from("whatsapp-media-public").getPublicUrl(path);
+            const fileUrl = pub.publicUrl;
+            const fileName = msg.mediaFilename?.trim().slice(0, 200) || `documento.${ext}`;
+            // Atualiza a message com a URL da mídia (best-effort).
+            await admin.from("messages")
+              .update({ media_url: fileUrl })
+              .eq("id", insertedMessageId);
+            // Registra o documento do lead (dedup por message_id).
+            const { error: docErr } = await admin.from("lead_documents").insert([{
+              organization_id: deal.organization_id,
+              deal_id: deal.id,
+              message_id: insertedMessageId,
+              file_url: fileUrl,
+              file_name: fileName,
+              mime_type: mime,
+              source: "lead_whatsapp",
+            }]);
+            if (docErr) {
+              // 23505 = doc já registrado p/ esta message (reentrega) → ok.
+              // Qualquer outro erro: remove o blob recém-subido para não deixar
+              // arquivo órfão no bucket sem registro no banco (H5).
+              if ((docErr as { code?: string }).code === "23505") {
+                await admin.storage.from("whatsapp-media-public").remove([path]).catch(() => {});
+              } else {
+                console.error("[whatsapp-webhook] inserir lead_document err:", docErr);
+                await admin.storage.from("whatsapp-media-public").remove([path]).catch(() => {});
+              }
+            }
+          }
+        } else {
+          console.warn("[whatsapp-webhook] download de mídia falhou:", dl.error);
+        }
+      } catch (e) {
+        console.error("[whatsapp-webhook] captura de mídia exceção:", e);
       }
     }
 
@@ -519,6 +603,11 @@ serve(async (req) => {
     }
 
     // Enfileira para o worker dispatch-ai-queue processar.
+    // Mensagem só-mídia (texto vazio): manda um marcador descritivo para a IA
+    // saber que chegou um documento/imagem (ela trata na etapa de coleta).
+    const leadMessageForQueue = msg.text?.trim()
+      ? msg.text
+      : (msg.mediaUrl ? `[documento recebido: ${msg.mediaFilename ?? msg.contentType ?? "arquivo"}]` : msg.text);
     const { data: queueRow, error: qErr } = await admin
       .from("ai_response_queue")
       .insert([
@@ -528,7 +617,7 @@ serve(async (req) => {
           funnel_id: deal.funnel_id,
           stage_id: deal.stage_id,
           lead_channel_id: channel.id,
-          lead_message: msg.text,
+          lead_message: leadMessageForQueue,
           status: "pending",
           autonomy_mode: autonomyMode,
           scheduled_send_at: new Date().toISOString(),
@@ -540,6 +629,7 @@ serve(async (req) => {
             displayName: msg.displayName,
             receivedAt: msg.receivedAt,
             conversationId,
+            hasMedia: !!msg.mediaUrl,
           },
         },
       ])
