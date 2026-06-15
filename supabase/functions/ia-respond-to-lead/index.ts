@@ -108,7 +108,7 @@ serve(async (req) => {
     const internalToken = req.headers.get('x-internal-token') ?? '';
     const isInternal = INTERNAL_TOKEN !== '' && internalToken === INTERNAL_TOKEN;
 
-    let supabase;
+    let supabase: ReturnType<typeof createClient>;
     let userId: string;
     if (isInternal) {
       if (!body.organization_id) return json(400, { error: 'organization_id_obrigatorio_interno' });
@@ -300,6 +300,150 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       response = aj.choices?.[0]?.message?.content ?? '';
     }
 
+    // ----- 5b. Pré-qualificação + sugestão de transição de etapa -----
+    // Só avalia quando há resposta (sem handoff) e estamos com org resolvida.
+    // Carrega os critérios da etapa atual; se houver, pede à IA (tier fast)
+    // para avaliar de forma conversacional contra o histórico+mensagem.
+    // Resultado vira `stageTransition` (sugestão) — NÃO move o deal aqui.
+    let stageTransition: {
+      triggered: boolean;
+      fromStageId: string;
+      toStageId: string;
+      reason: string;
+      qualified: boolean;
+      collected: Record<string, unknown>;
+      missing: string[];
+    } | null = null;
+    let qualificationEval: {
+      qualified: boolean;
+      collected: Record<string, unknown>;
+      missing: string[];
+    } | null = null;
+
+    if (!handoff.triggered && response && response.trim()) {
+      // Critérios obrigatórios da etapa atual.
+      const { data: criteria } = await supabase
+        .from('stage_qualification_criteria')
+        .select('key, label, criterion_type, config, question_hint, is_required')
+        .eq('organization_id', organizationId)
+        .eq('funnel_id', body.funnel_id)
+        .eq('stage_id', body.stage_id)
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+
+      if (criteria && criteria.length > 0) {
+        // deno-lint-ignore no-explicit-any
+        const critList = (criteria as any[]).map(c =>
+          `- ${c.key} (${c.is_required ? 'obrigatório' : 'opcional'}): ${c.label}${c.question_hint ? ` — ${c.question_hint}` : ''}`
+        ).join('\n');
+
+        const fullHistoryTxt = [
+          ...(body.conversation_history ?? []).map(m => `${m.role.toUpperCase()}: ${m.content}`),
+          `LEAD: ${body.lead_message}`,
+        ].join('\n');
+
+        const qualResp = await aiChatCompletion({
+          config: aiConfig,
+          tier: 'fast',
+          messages: [
+            { role: 'system', content: `Você avalia se um lead imobiliário satisfaz critérios de qualificação a partir da conversa. Avalie de forma conservadora: só marque um critério como satisfeito se a conversa traz evidência clara. Não invente. Critérios:\n${critList}` },
+            { role: 'user', content: `Conversa:\n${fullHistoryTxt}` },
+          ],
+          tools: [{
+            type: 'function',
+            function: {
+              name: 'report_qualification',
+              description: 'Reporta a avaliação dos critérios de qualificação',
+              parameters: {
+                type: 'object',
+                properties: {
+                  collected: {
+                    type: 'object',
+                    description: 'Mapa key→valor avaliado para cada critério (boolean para tipo boolean; valor textual/numérico para os demais; null se não há evidência).',
+                    additionalProperties: true,
+                  },
+                  missing: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Keys dos critérios OBRIGATÓRIOS ainda não satisfeitos.',
+                  },
+                },
+                required: ['collected', 'missing'],
+                additionalProperties: false,
+              },
+            },
+          }],
+          tool_choice: { type: 'function', function: { name: 'report_qualification' } },
+        });
+
+        if (qualResp.ok) {
+          const qj = await qualResp.json();
+          const tc = qj.choices?.[0]?.message?.tool_calls?.[0];
+          if (tc?.function?.arguments) {
+            try {
+              const args = JSON.parse(tc.function.arguments);
+              // collected deve ser objeto (não array/null). LLM pode devolver
+              // array — nesse caso descarta e trata como vazio (tudo missing).
+              const collected: Record<string, unknown> =
+                args.collected !== null &&
+                typeof args.collected === 'object' &&
+                !Array.isArray(args.collected)
+                  ? (args.collected as Record<string, unknown>)
+                  : {};
+              const requiredKeys = (criteria as Array<{ key: string; is_required: boolean }>)
+                .filter(c => c.is_required).map(c => c.key);
+              // missing = obrigatórios sem evidência positiva. `0` é valor válido
+              // (não falsy aqui); false/''/null/undefined contam como não-satisfeito.
+              const missing = requiredKeys.filter(k => {
+                const val = collected[k];
+                return val === undefined || val === null || val === false || val === '';
+              });
+              const qualified = missing.length === 0;
+              qualificationEval = { qualified, collected, missing };
+
+              if (qualified) {
+                // Próxima etapa = position+1 no funil (linear). Resolve via funnel_stages.
+                const { data: curStage } = await supabase
+                  .from('funnel_stages')
+                  .select('position')
+                  .eq('organization_id', organizationId)
+                  .eq('funnel_id', body.funnel_id)
+                  .eq('stage_id', body.stage_id)
+                  .maybeSingle();
+                const curPos = (curStage as { position?: number } | null)?.position ?? null;
+                if (curPos !== null) {
+                  const { data: nextStage } = await supabase
+                    .from('funnel_stages')
+                    .select('stage_id')
+                    .eq('organization_id', organizationId)
+                    .eq('funnel_id', body.funnel_id)
+                    .eq('position', curPos + 1)
+                    .maybeSingle();
+                  const nextStageId = (nextStage as { stage_id?: string } | null)?.stage_id ?? null;
+                  if (nextStageId) {
+                    stageTransition = {
+                      triggered: true,
+                      fromStageId: body.stage_id,
+                      toStageId: nextStageId,
+                      reason: 'pré-qualificação atingida',
+                      qualified: true,
+                      collected,
+                      missing: [],
+                    };
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('[ia-respond-to-lead] parse qualification args failed:', e);
+            }
+          }
+        } else {
+          const t = await qualResp.text();
+          console.error('[ia-respond-to-lead] qualification eval failed:', t);
+        }
+      }
+    }
+
     // ----- 6. Log -----
     let logId: string | null = null;
     if (!body.dry_run) {
@@ -322,6 +466,8 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
           generated_response: response,
           handoff,
           system_prompt_used: systemPrompt,
+          qualification: qualificationEval,
+          suggested_stage_transition: stageTransition,
         },
         archetype_code: pb.provenance?.archetypeCode ?? null,
         status_overlay_code: pb.provenance?.statusOverlayCode ?? null,
@@ -349,6 +495,8 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       contextTags: pb.provenance?.contextTags ?? [],
       systemPrompt,
       logId,
+      stageTransition,
+      qualification: qualificationEval,
       dryRun: body.dry_run === true,
       userId,
     });

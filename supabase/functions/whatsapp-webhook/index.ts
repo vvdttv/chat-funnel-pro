@@ -161,8 +161,14 @@ serve(async (req) => {
     // Token compartilhado: aceita via header `x-webhook-token` OU query `?token=`.
     // O query param permite proteger o webhook mesmo com provedores (ex.: WAHA
     // Core) que não enviam headers customizados — o token vai embutido na hook URL.
+    // Fail-closed: sem token configurado no ambiente, recusa POST (não abre o
+    // endpoint silenciosamente). Em produção a env já está setada (Fase 1).
     const expectedToken = Deno.env.get("WHATSAPP_WEBHOOK_TOKEN");
-    if (expectedToken) {
+    if (!expectedToken) {
+      console.error("[whatsapp-webhook] WHATSAPP_WEBHOOK_TOKEN ausente — recusando POST (fail-closed)");
+      return json(503, { error: "webhook_not_configured" });
+    }
+    {
       const url = new URL(req.url);
       const got = req.headers.get("x-webhook-token") ?? url.searchParams.get("token");
       if (got !== expectedToken) return json(401, { error: "invalid_webhook_token" });
@@ -221,7 +227,7 @@ serve(async (req) => {
     }
     if (lookupPhone) orParts.push(`phone_e164.eq.${safe(lookupPhone)}`);
     if (phoneDigits) orParts.push(`phone_e164.eq.${phoneDigits}`);
-    const { data: channel, error: chErr } = await admin
+    const { data: channelFound, error: chErr } = await admin
       .from("lead_channels")
       .select("id, organization_id, deal_id")
       .eq("channel", "whatsapp")
@@ -231,13 +237,133 @@ serve(async (req) => {
 
     if (chErr) console.error("[whatsapp-webhook] channel lookup err:", chErr);
 
+    // Canal resolvido (existente ou criado para lead novo). Mutável porque o
+    // fluxo de "lead novo" cria o canal abaixo e reaponta esta referência.
+    let channel = channelFound as { id: string; organization_id: string; deal_id: string } | null;
+
     if (!channel) {
-      console.log("[whatsapp-webhook] canal não mapeado", {
-        externalContactId: msg.externalContactId,
-        resolved: lookupContactId,
-        phoneE164: lookupPhone,
-      });
-      return json(200, { ok: true, ignored: "canal_nao_mapeado", externalContactId: msg.externalContactId });
+      // --- Lead NOVO (Fase 2B): cria deal na etapa 1 do funil da IA ---------
+      // 1) Resolve a ORG pelo número RECEPTOR (toNumber/session → whatsapp_numbers).
+      //    Sem número casado, não dá pra saber a qual org pertence → mantém o
+      //    comportamento anterior (descarta com log).
+      const toDigits = (msg.toNumber ?? "").replace(/\D/g, "");
+      const sess = String(msg.session ?? "").replace(/[^0-9a-zA-Z._-]/g, "");
+      let newLeadOrg: string | null = null;
+      if (toDigits || sess) {
+        const numOr: string[] = [];
+        if (toDigits) {
+          numOr.push(`phone_e164.eq.+${toDigits}`);
+          numOr.push(`phone_e164.eq.${toDigits}`);
+        }
+        if (sess) numOr.push(`waha_session.eq.${sess}`);
+        const { data: numRow } = await admin
+          .from("whatsapp_numbers")
+          .select("organization_id")
+          .eq("is_active", true)
+          .or(numOr.join(","))
+          .maybeSingle();
+        newLeadOrg = (numRow as { organization_id?: string } | null)?.organization_id ?? null;
+      }
+
+      if (!newLeadOrg) {
+        console.log("[whatsapp-webhook] canal não mapeado e org indefinida (sem número receptor)", {
+          externalContactId: msg.externalContactId,
+          resolved: lookupContactId,
+          phoneE164: lookupPhone,
+          toNumber: msg.toNumber,
+          session: msg.session,
+        });
+        return json(200, { ok: true, ignored: "canal_nao_mapeado" });
+      }
+
+      // 2) Funil da IA da org + etapa de menor position (etapa 1).
+      const { data: aiFunnel } = await admin
+        .from("funnels")
+        .select("id")
+        .eq("organization_id", newLeadOrg)
+        .eq("is_ai_funnel", true)
+        .maybeSingle();
+      const aiFunnelId = (aiFunnel as { id?: string } | null)?.id ?? null;
+      if (!aiFunnelId) {
+        console.warn("[whatsapp-webhook] org sem funil de IA configurado", { org: newLeadOrg });
+        return json(200, { ok: true, ignored: "sem_funil_ia" });
+      }
+      const { data: firstStage } = await admin
+        .from("funnel_stages")
+        .select("stage_id")
+        .eq("funnel_id", aiFunnelId)
+        .order("position", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const firstStageId = (firstStage as { stage_id?: string } | null)?.stage_id ?? null;
+      if (!firstStageId) {
+        console.warn("[whatsapp-webhook] funil de IA sem etapas", { funnel: aiFunnelId });
+        return json(200, { ok: true, ignored: "funil_ia_sem_etapas" });
+      }
+
+      // 3) Cria o deal (id TEXT gerado; lead_id/lead_name NOT NULL).
+      const externalIdForChannel = safe(lookupContactId || msg.externalContactId);
+      if (!externalIdForChannel) {
+        console.error("[whatsapp-webhook] external_contact_id vazio após sanitização");
+        return json(200, { ok: false, error: "contato_invalido" });
+      }
+      const newDealId = `deal-${crypto.randomUUID()}`;
+      const leadIdentifier = lookupPhone ?? lookupContactId ?? newDealId;
+      // displayName é controlado pelo remetente: trim + limite de coluna.
+      const leadName = (msg.displayName?.trim().slice(0, 200)) || (lookupPhone ?? "Lead WhatsApp");
+      const { error: dealInsErr } = await admin.from("deals").insert([{
+        id: newDealId,
+        funnel_id: aiFunnelId,
+        stage_id: firstStageId,
+        lead_id: leadIdentifier,
+        lead_name: leadName,
+        status: "open",
+        organization_id: newLeadOrg,
+      }]);
+      if (dealInsErr) {
+        console.error("[whatsapp-webhook] criar deal (lead novo) err:", dealInsErr);
+        return json(200, { ok: false, error: "criar_deal_falhou" });
+      }
+
+      // 4) Cria o lead_channel. O índice único (org, channel, external_contact_id)
+      //    é o árbitro da corrida: se duas mensagens do mesmo lead novo chegam
+      //    juntas, ambas criam um deal, mas só uma cria o canal. A perdedora
+      //    REMOVE o próprio deal órfão e reusa o canal/deal vencedor — evita
+      //    deals duplicados sem inbound.
+      const { data: newChan, error: chanInsErr } = await admin.from("lead_channels").insert([{
+        organization_id: newLeadOrg,
+        deal_id: newDealId,
+        channel: "whatsapp",
+        provider,
+        external_contact_id: externalIdForChannel,
+        phone_e164: lookupPhone ?? null,
+        display_name: msg.displayName?.trim().slice(0, 200) ?? null,
+        is_active: true,
+      }]).select("id, organization_id, deal_id").single();
+
+      if (chanInsErr) {
+        console.warn("[whatsapp-webhook] criar canal falhou, re-buscando (corrida?)", chanInsErr);
+        // Remove o deal órfão que esta entrega criou (a vencedora tem o seu).
+        await admin.from("deals").delete().eq("id", newDealId);
+        const { data: retryChan } = await admin
+          .from("lead_channels")
+          .select("id, organization_id, deal_id")
+          .eq("organization_id", newLeadOrg)
+          .eq("channel", "whatsapp")
+          .eq("external_contact_id", externalIdForChannel)
+          .maybeSingle();
+        channel = (retryChan as { id: string; organization_id: string; deal_id: string } | null) ?? null;
+        if (!channel) return json(200, { ok: false, error: "criar_canal_falhou" });
+      } else {
+        channel = newChan as { id: string; organization_id: string; deal_id: string };
+        console.log("[whatsapp-webhook] lead novo criado", { deal: newDealId, org: newLeadOrg, stage: firstStageId });
+      }
+    }
+
+    // Após o bloco de lead novo, channel deve estar resolvido. Guarda defensiva.
+    if (!channel) {
+      console.error("[whatsapp-webhook] canal não resolvido após criação");
+      return json(200, { ok: false, error: "canal_nao_resolvido" });
     }
 
     // Carrega deal (status, funnel_id, stage_id)

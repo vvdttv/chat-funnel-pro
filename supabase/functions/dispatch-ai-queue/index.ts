@@ -195,10 +195,16 @@ async function processItem(item: QueueItem, ctx: Ctx) {
   const suggested: string | null = ia.response ?? null;
   const handoffTriggered: boolean = ia.handoff?.triggered === true;
   const iaLogId: string | null = ia.logId ?? null;
+  // Fase 2B: transição de etapa sugerida pela IA (pré-qualificação).
+  // Em suggest_only apenas guardamos para o admin aprovar no painel — não move.
+  const suggestedTransition = ia.stageTransition ?? null;
 
   const baseUpdate: Record<string, unknown> = {
     suggested_response: suggested,
     ia_decision_log_id: iaLogId,
+    // Só grava quando há transição; evita zerar uma sugestão já registrada
+    // num eventual reprocessamento do item.
+    ...(suggestedTransition !== null ? { suggested_stage_transition: suggestedTransition } : {}),
     updated_at: new Date().toISOString(),
   };
 

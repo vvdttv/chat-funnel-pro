@@ -97,38 +97,56 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
-    }
-
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
-    const userId = userData.user.id;
+    const INTERNAL_TOKEN = Deno.env.get("INTERNAL_FUNCTION_TOKEN") ?? "";
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const { data: profile, error: profErr } = await admin
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", userId)
-      .maybeSingle();
-    if (profErr || !profile?.organization_id) {
-      return json({ error: "Organização não encontrada para o usuário" }, 403);
-    }
-    const orgId = profile.organization_id as string;
+    // Auth: dois modos (mesmo padrão de compose-playbook/ia-respond-to-lead).
+    //  (a) Interno/M2M — header x-internal-token: usa service-role e exige
+    //      organization_id no body (admin implícito). Usado para semear sem
+    //      um usuário logado (ex.: bootstrap da org via script/operador).
+    //  (b) Usuário — JWT no Authorization: descobre a org via profiles e exige
+    //      role admin. Comportamento ORIGINAL preservado.
+    const internalToken = req.headers.get("x-internal-token") ?? "";
+    const isInternal = INTERNAL_TOKEN !== "" && internalToken === INTERNAL_TOKEN;
 
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("organization_id", orgId);
-    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
-    if (!isAdmin) return json({ error: "Apenas admin pode semear" }, 403);
+    let orgId: string;
+    if (isInternal) {
+      const bodyOrg = (await req.clone().json().catch(() => ({})))?.organization_id;
+      if (!bodyOrg || typeof bodyOrg !== "string") {
+        return json({ error: "organization_id_obrigatorio_interno" }, 400);
+      }
+      orgId = bodyOrg;
+    } else {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (!authHeader.startsWith("Bearer ")) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
+      const userId = userData.user.id;
+
+      const { data: profile, error: profErr } = await admin
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profErr || !profile?.organization_id) {
+        return json({ error: "Organização não encontrada para o usuário" }, 403);
+      }
+      orgId = profile.organization_id as string;
+
+      const { data: roles } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("organization_id", orgId);
+      const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+      if (!isAdmin) return json({ error: "Apenas admin pode semear" }, 403);
+    }
 
     // Pré-carrega arquétipos globais para resolver archetype_code → archetype_id.
     const { data: stageArchetypes } = await admin

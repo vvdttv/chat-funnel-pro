@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { properties, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play, ListChecks } from 'lucide-react';
 import { IAAuditTab } from '@/components/configurador-ia/IAAuditTab';
 import { IASimulator } from '@/components/configurador-ia/IASimulator';
 import { ConfiguradorIaFlow } from '@/components/configurador-ia/ConfiguradorIaFlow';
@@ -21,13 +21,16 @@ import { FunnelWizard } from '@/components/FunnelWizard';
 import { ActivityTypesManager } from '@/components/ActivityTypesManager';
 import PersonasManager from '@/components/PersonasManager';
 import WhatsappNumbersManager from '@/components/WhatsappNumbersManager';
+import QualificationCriteriaManager from '@/components/QualificationCriteriaManager';
 import { PersonasProvider } from '@/hooks/usePersonas';
 import { WhatsappNumbersProvider } from '@/hooks/useWhatsappNumbers';
-type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades';
+import { QualificationCriteriaProvider } from '@/hooks/useQualificationCriteria';
+type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades' | 'criterios';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
   { id: 'funis', label: 'Funis', icon: Zap },
+  { id: 'criterios', label: 'Critérios', icon: ListChecks, adminOnly: true },
   { id: 'personas', label: 'Personas', icon: User, adminOnly: true },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
@@ -1138,6 +1141,8 @@ const ConfigPageInner = () => {
 
         {activeTab === 'personas' && isAdmin && <PersonasManager />}
 
+        {activeTab === 'criterios' && isAdmin && <QualificationCriteriaManager />}
+
         {activeTab === 'numeros' && isAdmin && <WhatsappNumbersManager />}
 
         {activeTab === 'usuarios' && <UsersManager />}
@@ -1167,7 +1172,9 @@ const ConfigPageInner = () => {
 const ConfigPage = () => (
   <PersonasProvider>
     <WhatsappNumbersProvider>
-      <ConfigPageInner />
+      <QualificationCriteriaProvider>
+        <ConfigPageInner />
+      </QualificationCriteriaProvider>
     </WhatsappNumbersProvider>
   </PersonasProvider>
 );
