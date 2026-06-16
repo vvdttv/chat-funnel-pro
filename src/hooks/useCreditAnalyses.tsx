@@ -82,6 +82,16 @@ export interface DevolutivaInput {
   conditions?: string | null;
   reason?: string | null;
   retomadaPrazoDias?: number | null;
+  approvedFinancingAmount?: number | null;
+  requiresEntry?: boolean | null;
+  customFieldsResponse?: Record<string, unknown> | null;
+}
+
+export interface ExtractedDevolutiva {
+  approved_financing_amount: number | null;
+  requires_entry: boolean | null;
+  conditions: string | null;
+  raw_text: string | null;
 }
 
 export function useCreditAnalyses() {
@@ -195,8 +205,22 @@ export function useCreditAnalyses() {
       uploaded_by: profile?.user_id ?? null,
     });
     if (docErr) { console.error('[useCreditAnalyses] inserir anexo', docErr); return { error: docErr.message }; }
-    return {};
+    return { path, mimeType: file.type || '' };
   }, [orgId, profile?.user_id]);
+
+  // Extração assistida por IA: lê o anexo (foto/PDF) e devolve os dados extraídos
+  // para o correspondente conferir antes de submeter. Não submete a devolutiva.
+  const extractFromAttachment = useCallback(async (
+    analysisId: string, documentPath: string, mimeType?: string,
+  ): Promise<{ extracted?: ExtractedDevolutiva; error?: string; fallback?: boolean }> => {
+    const { data, error } = await supabase.functions.invoke('extract-devolutiva-attachment', {
+      body: { analysis_id: analysisId, document_path: documentPath, mime_type: mimeType },
+    });
+    if (error) { console.error('[useCreditAnalyses] extract', error); return { error: error.message }; }
+    if (data?.ok && data?.extracted) return { extracted: data.extracted as ExtractedDevolutiva };
+    if (data?.error) { console.error('[useCreditAnalyses] extract resp', data.error); return { error: String(data.error) }; }
+    return { fallback: true, extracted: (data?.extracted as ExtractedDevolutiva) ?? undefined };
+  }, []);
 
   const startAnalysis = useCallback(async (analysisId: string) => {
     const { error } = await supabase.rpc('start_credit_analysis', { p_analysis_id: analysisId });
@@ -211,6 +235,9 @@ export function useCreditAnalyses() {
       p_conditions: input.conditions ?? null,
       p_reason: input.reason ?? null,
       p_retomada_prazo_dias: input.retomadaPrazoDias ?? null,
+      p_approved_financing_amount: input.approvedFinancingAmount ?? null,
+      p_requires_entry: input.requiresEntry ?? null,
+      p_custom_fields_response: input.customFieldsResponse ?? null,
     });
     if (error) { console.error('[useCreditAnalyses] submitDevolutiva', error); return { error: error.message }; }
     return {};
@@ -218,7 +245,7 @@ export function useCreditAnalyses() {
 
   return {
     analyses, loading, error,
-    loadDocuments, loadComments, addComment, uploadAttendantDoc,
+    loadDocuments, loadComments, addComment, uploadAttendantDoc, extractFromAttachment,
     startAnalysis, submitDevolutiva,
   };
 }

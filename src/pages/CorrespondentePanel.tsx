@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
   Loader2, FileText, Clock, CheckCircle2, XCircle, AlertCircle, LogOut, Landmark,
-  Play, Send, Paperclip, MessageSquarePlus, ExternalLink, ChevronLeft,
+  Play, Send, Paperclip, MessageSquarePlus, ExternalLink, ChevronLeft, Sparkles, DollarSign,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -13,6 +13,7 @@ import {
   type CreditAnalysisComment,
   type CreditAnalysisResult,
 } from '@/hooks/useCreditAnalyses';
+import { useDevolutivaFields, type DevolutivaFieldDef } from '@/hooks/useDevolutivaFields';
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   received: { label: 'Recebida', cls: 'bg-warning/15 text-warning' },
@@ -49,10 +50,58 @@ const Stopwatch = ({ since }: { since: string }) => {
   );
 };
 
+// ========== CAMPO CUSTOMIZÁVEL (Fase 3B) ==========
+
+const CustomFieldInput = ({ field, value, onChange }: {
+  field: DevolutivaFieldDef;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) => {
+  const inputCls = 'w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50';
+  if (field.fieldType === 'text') {
+    return (
+      <div>
+        <label className="text-[11px] text-muted-foreground">{field.label}</label>
+        <input value={typeof value === 'string' ? value : ''} onChange={e => onChange(e.target.value)} className={inputCls} />
+      </div>
+    );
+  }
+  if (field.fieldType === 'single_select') {
+    return (
+      <div>
+        <label className="text-[11px] text-muted-foreground">{field.label}</label>
+        <select value={typeof value === 'string' ? value : ''} onChange={e => onChange(e.target.value)} className={inputCls}>
+          <option value="">—</option>
+          {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    );
+  }
+  // multi_select
+  const arr = Array.isArray(value) ? (value as string[]) : [];
+  const toggle = (o: string) => onChange(arr.includes(o) ? arr.filter(x => x !== o) : [...arr, o]);
+  return (
+    <div>
+      <label className="text-[11px] text-muted-foreground">{field.label}</label>
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {field.options.map(o => (
+          <button key={o} type="button" onClick={() => toggle(o)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] border active:scale-95 ${
+              arr.includes(o) ? 'bg-primary/15 text-primary border-primary/30' : 'bg-secondary text-muted-foreground border-border'
+            }`}>
+            {o}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ========== DETALHE (Dialog/Sheet simples full-screen mobile) ==========
 
 const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClose: () => void }) => {
-  const { loadDocuments, loadComments, addComment, uploadAttendantDoc, startAnalysis, submitDevolutiva } = useCreditAnalysesContext();
+  const { loadDocuments, loadComments, addComment, uploadAttendantDoc, extractFromAttachment, startAnalysis, submitDevolutiva } = useCreditAnalysesContext();
+  const { fields: customFieldDefs } = useDevolutivaFields();
   const [docs, setDocs] = useState<CreditAnalysisDocument[]>([]);
   const [comments, setComments] = useState<CreditAnalysisComment[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -65,6 +114,18 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
   const [conditions, setConditions] = useState('');
   const [reason, setReason] = useState('');
   const [prazo, setPrazo] = useState<string>('');
+  // Fase 3B: valor aprovado, exige entrada, campos custom, extração IA.
+  const [approvedAmount, setApprovedAmount] = useState<string>('');
+  const [requiresEntry, setRequiresEntry] = useState<boolean>(false);
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
+  const [extracting, setExtracting] = useState(false);
+  const [lastUpload, setLastUpload] = useState<{ path: string; mimeType: string } | null>(null);
+  const [extractMsg, setExtractMsg] = useState<string | null>(null);
+
+  const activeCustomFields = useMemo(
+    () => customFieldDefs.filter(f => f.isActive),
+    [customFieldDefs],
+  );
 
   const refresh = useCallback(async () => {
     setLoadingDocs(true);
@@ -103,10 +164,31 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
 
   const handleUpload = async (file: File) => {
     setBusy(true);
-    const { error } = await uploadAttendantDoc(analysis.id, file);
+    const res = await uploadAttendantDoc(analysis.id, file);
     setBusy(false);
-    if (error) { alert(`Erro no upload: ${error}`); return; }
+    if (res.error) { alert(`Erro no upload: ${res.error}`); return; }
+    if (res.path) setLastUpload({ path: res.path, mimeType: res.mimeType ?? file.type ?? '' });
+    setExtractMsg(null);
     await refresh();
+  };
+
+  // Extração assistida por IA sobre o último anexo enviado.
+  const handleExtract = async () => {
+    if (!lastUpload) { alert('Envie um anexo (foto/PDF) da devolutiva primeiro.'); return; }
+    setExtracting(true);
+    setExtractMsg(null);
+    const res = await extractFromAttachment(analysis.id, lastUpload.path, lastUpload.mimeType);
+    setExtracting(false);
+    if (res.error) { setExtractMsg(`Falha na extração: ${res.error}. Preencha manualmente.`); return; }
+    const ex = res.extracted;
+    if (!ex) { setExtractMsg('Não consegui ler o anexo. Preencha manualmente.'); return; }
+    // Pré-preenche o que veio (correspondente confirma/edita).
+    if (typeof ex.approved_financing_amount === 'number') setApprovedAmount(String(ex.approved_financing_amount));
+    if (typeof ex.requires_entry === 'boolean') setRequiresEntry(ex.requires_entry);
+    if (ex.conditions && result === 'approved_conditioned') setConditions(ex.conditions);
+    setExtractMsg(res.fallback
+      ? 'Li o anexo, mas confirme os valores (não foi salvo automaticamente).'
+      : 'Dados pré-preenchidos pela IA. Confira antes de enviar.');
   };
 
   const handleSubmit = async () => {
@@ -116,6 +198,7 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
     if (result === 'rejected' && !reason.trim()) {
       alert('Descreva o motivo da reprovação.'); return;
     }
+    const isApproved = result === 'approved' || result === 'approved_conditioned';
     if (!confirm('Enviar a devolutiva? Esta ação move o lead no funil e não pode ser desfeita pelo painel.')) return;
     setBusy(true);
     const { error } = await submitDevolutiva(analysis.id, {
@@ -123,6 +206,9 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
       conditions: conditions.trim() || null,
       reason: reason.trim() || null,
       retomadaPrazoDias: prazo.trim() ? Math.max(1, parseInt(prazo, 10) || 0) || null : null,
+      approvedFinancingAmount: isApproved && approvedAmount.trim() ? Number(approvedAmount) : null,
+      requiresEntry: isApproved ? requiresEntry : null,
+      customFieldsResponse: Object.keys(customValues).length ? customValues : null,
     });
     setBusy(false);
     if (error) { alert(`Erro ao enviar devolutiva: ${error}`); return; }
@@ -278,6 +364,37 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
                 className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50 resize-none" />
             )}
 
+            {/* Fase 3B: valor aprovado + exige entrada (só em aprovação) */}
+            {result !== 'rejected' && (
+              <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-secondary border border-border rounded-lg px-2.5 flex-1">
+                    <DollarSign size={13} className="text-muted-foreground" />
+                    <input type="number" min={0} value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)}
+                      placeholder="valor aprovado (R$)" className="flex-1 bg-transparent py-2 text-xs text-foreground outline-none" />
+                  </div>
+                  <button onClick={() => setRequiresEntry(v => !v)}
+                    className={`px-3 py-2 rounded-lg text-[11px] font-medium border active:scale-95 ${
+                      requiresEntry ? 'bg-warning/15 text-warning border-warning/30' : 'bg-secondary text-muted-foreground border-border'
+                    }`}>
+                    {requiresEntry ? 'Exige entrada' : 'Sem entrada'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Usado para casar imóveis compatíveis no briefing do corretor.</p>
+              </div>
+            )}
+
+            {/* Fase 3B: campos extras configuráveis */}
+            {activeCustomFields.length > 0 && (
+              <div className="space-y-2">
+                {activeCustomFields.map(f => (
+                  <CustomFieldInput key={f.id} field={f}
+                    value={customValues[f.fieldKey]}
+                    onChange={(v) => setCustomValues(prev => ({ ...prev, [f.fieldKey]: v }))} />
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 bg-secondary border border-border rounded-lg px-2.5 flex-1">
                 <Clock size={13} className="text-muted-foreground" />
@@ -291,6 +408,16 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: CreditAnalysis; onClo
                 <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }} />
               </label>
             </div>
+
+            {/* Fase 3B: extração assistida por IA do anexo */}
+            {lastUpload && (
+              <button onClick={handleExtract} disabled={extracting}
+                className="w-full py-2 rounded-lg bg-secondary border border-primary/30 text-primary text-xs font-medium active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2">
+                {extracting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                Extrair dados do anexo com IA
+              </button>
+            )}
+            {extractMsg && <p className="text-[11px] text-muted-foreground">{extractMsg}</p>}
 
             <button onClick={handleSubmit} disabled={busy}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2">
@@ -396,7 +523,7 @@ const PanelInner = () => {
         </div>
       </div>
 
-      {open && <AnalysisDetail analysis={open} onClose={() => setOpenId(null)} />}
+      {open && <AnalysisDetail key={open.id} analysis={open} onClose={() => setOpenId(null)} />}
     </div>
   );
 };

@@ -42,6 +42,74 @@ const FIELD_LABELS: Record<string, string> = {
   history_link: 'Histórico',
 };
 
+// ========== MATCH DE IMÓVEIS (Fase 3B) ==========
+
+interface MatchItem {
+  id: string; code: string; title?: string; price: number;
+  appraisal_value?: number; entrada?: number; avaliacao_baixa?: boolean;
+  city?: string | null;
+}
+interface PropertyMatch {
+  has_match?: boolean; captacao?: boolean; pending_value?: boolean;
+  approved_amount?: number | null; tier_100?: MatchItem[]; tier_80?: MatchItem[];
+}
+
+const brlMatch = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const MatchCard = ({ item, tier }: { item: MatchItem; tier: 100 | 80 }) => (
+  <div className="bg-secondary/60 border border-border rounded-lg p-2.5">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs font-medium text-foreground truncate">{item.code}{item.title ? ` · ${item.title}` : ''}</span>
+      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${tier === 100 ? 'bg-[hsl(150,40%,25%)]/50 text-[hsl(150,60%,68%)]' : 'bg-warning/15 text-warning'}`}>
+        {tier === 100 ? 'Sem entrada' : 'Com entrada'}
+      </span>
+    </div>
+    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-muted-foreground">
+      <span>Preço {brlMatch(item.price)}</span>
+      {item.appraisal_value != null && <span>Aval. {brlMatch(item.appraisal_value)}</span>}
+      {tier === 80 && item.entrada != null && <span className="text-warning">Entrada {brlMatch(item.entrada)}</span>}
+      {item.city && <span>{item.city}</span>}
+    </div>
+    {item.avaliacao_baixa && (
+      <p className="text-[9px] text-destructive mt-1">⚠ Avaliação abaixo do preço — confirmar com o banco.</p>
+    )}
+  </div>
+);
+
+const PropertyMatchSection = ({ match }: { match: unknown }) => {
+  // Placeholder antigo (cards gerados antes da Fase 3B) ou ausência.
+  if (!match || match === 'a_definir_fase3b' || typeof match !== 'object' || Array.isArray(match)) {
+    return (
+      <div className="pt-2">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Imóveis compatíveis</p>
+        <p className="text-xs text-muted-foreground">Captação a definir.</p>
+      </div>
+    );
+  }
+  const m = match as PropertyMatch;
+  const t100 = m.tier_100 ?? [];
+  const t80 = m.tier_80 ?? [];
+
+  return (
+    <div className="pt-2">
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+        <Home size={12} /> Imóveis compatíveis
+        {m.approved_amount != null && <span className="text-[10px] font-normal normal-case">· crédito {brlMatch(m.approved_amount)}</span>}
+      </p>
+      {m.pending_value ? (
+        <p className="text-xs text-warning">Valor de crédito aprovado pendente — preencher na devolutiva para gerar o match.</p>
+      ) : (t100.length + t80.length) === 0 ? (
+        <p className="text-xs text-destructive">Sem imóvel no orçamento — abrir demanda de captação.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {t100.map(it => <MatchCard key={it.id} item={it} tier={100} />)}
+          {t80.map(it => <MatchCard key={it.id} item={it} tier={80} />)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ========== DETALHE DO BRIEFING ==========
 
 const BriefingDetail = ({ appointment, briefing, onClose }: {
@@ -91,19 +159,18 @@ const BriefingDetail = ({ appointment, briefing, onClose }: {
           ) : (
             <div className="space-y-2">
               {Object.entries(f)
-                .filter(([k, v]) => v !== null && v !== '' && k !== 'appointment' && k !== 'history_link')
+                .filter(([k, v]) => v !== null && v !== '' && k !== 'appointment' && k !== 'history_link' && k !== 'property_match')
                 .map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3 text-xs border-b border-border/50 pb-1.5">
                     <span className="text-muted-foreground shrink-0">{FIELD_LABELS[k] ?? k}</span>
                     <span className="text-foreground text-right break-words">
                       {k === 'value' && typeof v === 'number'
                         ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                        : k === 'property_match' && v === 'a_definir_fase3b'
-                        ? 'Captação a definir'
                         : String(v)}
                     </span>
                   </div>
                 ))}
+              <PropertyMatchSection match={f.property_match} />
               {typeof f.history_link === 'string' && (
                 <a href={f.history_link} className="inline-flex items-center gap-1 text-[11px] text-primary mt-1 active:scale-95">
                   <ExternalLink size={12} /> Abrir histórico do lead

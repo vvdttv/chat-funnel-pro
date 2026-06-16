@@ -24,12 +24,15 @@ import WhatsappNumbersManager from '@/components/WhatsappNumbersManager';
 import QualificationCriteriaManager from '@/components/QualificationCriteriaManager';
 import CorrespondentsManager from '@/components/CorrespondentsManager';
 import BrokersManager from '@/components/BrokersManager';
+import PropertiesManager from '@/components/PropertiesManager';
+import DevolutivaFieldsManager from '@/components/DevolutivaFieldsManager';
 import { PersonasProvider } from '@/hooks/usePersonas';
 import { WhatsappNumbersProvider } from '@/hooks/useWhatsappNumbers';
 import { QualificationCriteriaProvider } from '@/hooks/useQualificationCriteria';
 import { CorrespondentBanksProvider } from '@/hooks/useCorrespondentBanks';
 import { BrokersProvider } from '@/hooks/useBrokers';
-type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades' | 'criterios' | 'correspondentes' | 'corretores';
+import { PropertiesProvider } from '@/hooks/useProperties';
+type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades' | 'criterios' | 'correspondentes' | 'corretores' | 'campos_devolutiva';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
@@ -38,12 +41,13 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'personas', label: 'Personas', icon: User, adminOnly: true },
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'correspondentes', label: 'Correspondentes', icon: Landmark, adminOnly: true },
+  { id: 'campos_devolutiva', label: 'Campos Devolutiva', icon: ListChecks, adminOnly: true },
   { id: 'corretores', label: 'Corretores', icon: UserRound, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
   { id: 'campos', label: 'Campos', icon: Database },
   { id: 'atividades', label: 'Atividades', icon: Clock, adminOnly: true },
-  { id: 'imoveis', label: 'Imóveis', icon: Building2 },
+  { id: 'imoveis', label: 'Imóveis', icon: Building2, adminOnly: true },
   { id: 'numeros', label: 'Números WA', icon: Smartphone, adminOnly: true },
 ];
 
@@ -1133,17 +1137,7 @@ const ConfigPageInner = () => {
           </>
         )}
 
-        {activeTab === 'imoveis' && (
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{properties.length} imóveis cadastrados</span>
-              <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform">
-                <Plus size={14} /> Novo
-              </button>
-            </div>
-            {properties.map(p => <PropertyCard key={p.id} property={p} />)}
-          </>
-        )}
+        {activeTab === 'imoveis' && isAdmin && <PropertiesManager />}
 
         {activeTab === 'personas' && isAdmin && <PersonasManager />}
 
@@ -1152,6 +1146,8 @@ const ConfigPageInner = () => {
         {activeTab === 'numeros' && isAdmin && <WhatsappNumbersManager />}
 
         {activeTab === 'correspondentes' && isAdmin && <CorrespondentsManager />}
+
+        {activeTab === 'campos_devolutiva' && isAdmin && <DevolutivaFieldsManager />}
 
         {activeTab === 'corretores' && isAdmin && <BrokersManager />}
 
@@ -1185,7 +1181,9 @@ const ConfigPage = () => (
       <QualificationCriteriaProvider>
         <CorrespondentBanksProvider>
           <BrokersProvider>
-            <ConfigPageInner />
+            <PropertiesProvider>
+              <ConfigPageInner />
+            </PropertiesProvider>
           </BrokersProvider>
         </CorrespondentBanksProvider>
       </QualificationCriteriaProvider>

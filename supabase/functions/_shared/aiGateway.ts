@@ -50,10 +50,33 @@ export function getAIGatewayConfig(): AIGatewayConfig {
   return { baseUrl, apiKey, fastModel, smartModel, reasoningEffort }
 }
 
+/**
+ * Bloco de conteúdo multimodal (formato OpenAI-compatible).
+ * O kiro-gateway aceita `image_url` com data URL base64 (validado empiricamente).
+ * PDF NÃO é suportado pelo gateway — converter para imagem antes (ver _shared/pdf.ts).
+ */
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
-  content: string
+  /** Texto simples (caso comum) ou array de blocos multimodais (texto + imagem). */
+  content: string | ContentBlock[]
   [key: string]: unknown
+}
+
+/**
+ * Helper: monta um bloco de imagem a partir de um data URL
+ * (ex.: `data:image/png;base64,iVBOR...`).
+ */
+export function imageUrlBlock(dataUrl: string): ContentBlock {
+  return { type: 'image_url', image_url: { url: dataUrl } }
+}
+
+/** Helper: bloco de texto. */
+export function textBlock(text: string): ContentBlock {
+  return { type: 'text', text }
 }
 
 export interface ChatCompletionOptions {
