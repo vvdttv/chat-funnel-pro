@@ -444,6 +444,141 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       }
     }
 
+    // ----- 5c. Agendamento (etapas 6/7 do funil da IA) -----
+    // Quando o crédito está aprovado e estamos nas etapas de agendamento
+    // ('ia-aprovado-aguardando' = 6 ou 'ia-agendamento' = 7), a IA conduz a
+    // marcação da visita: oferece 2 horários por vez ("mais breve possível",
+    // hierarquia presencial>vídeo>ligação) e, quando o lead aceita um horário,
+    // confirma — o que move o deal p/ etapa 8 e cria o card do corretor (RPC).
+    // Só roda no modo interno (worker), com deal_id e org resolvidos, sem handoff.
+    const SCHEDULING_STAGES = new Set(['ia-aprovado-aguardando', 'ia-agendamento']);
+    let scheduling: {
+      action: 'proposed' | 'confirmed' | 'none';
+      slots?: string[];
+      channel?: string;
+      confirmedAt?: string | null;
+      brokerDealId?: string | null;
+    } | null = null;
+
+    if (
+      isInternal && body.deal_id && !handoff.triggered &&
+      SCHEDULING_STAGES.has(body.stage_id)
+    ) {
+      // Detecta, via tool-call, se o lead ACEITOU um horário específico (e qual)
+      // ou se ainda estamos oferecendo. Conservador: só confirma com data/hora clara.
+      const schedHistory = [
+        ...(body.conversation_history ?? []).map(m => `${m.role.toUpperCase()}: ${m.content}`),
+        `LEAD: ${body.lead_message}`,
+      ].join('\n');
+
+      const schedResp = await aiChatCompletion({
+        config: aiConfig,
+        tier: 'fast',
+        messages: [
+          { role: 'system', content: `Você analisa uma conversa de agendamento de visita imobiliária. Decida se o lead JÁ ACEITOU um horário específico (com data e hora claras) ou se ainda não. Seja conservador: só reporte accepted=true com uma data/hora inequívoca. Hoje é ${new Date().toISOString()}. Canal preferido: presencial > vídeo > ligação.` },
+          { role: 'user', content: `Conversa:\n${schedHistory}` },
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'report_scheduling',
+            description: 'Reporta o estado do agendamento a partir da conversa',
+            parameters: {
+              type: 'object',
+              properties: {
+                accepted: { type: 'boolean', description: 'true só se o lead aceitou um horário com data e hora claras' },
+                scheduled_at: { type: 'string', description: 'ISO 8601 (UTC) do horário aceito, se accepted=true; senão vazio' },
+                channel: { type: 'string', enum: ['presencial', 'video', 'ligacao'], description: 'canal combinado (default presencial)' },
+              },
+              required: ['accepted'],
+              additionalProperties: false,
+            },
+          },
+        }],
+        tool_choice: { type: 'function', function: { name: 'report_scheduling' } },
+      });
+
+      let accepted = false;
+      let acceptedAt: string | null = null;
+      let acceptedChannel = 'presencial';
+      if (schedResp.ok) {
+        const sj = await schedResp.json();
+        const tc = sj.choices?.[0]?.message?.tool_calls?.[0];
+        if (tc?.function?.arguments) {
+          try {
+            const a = JSON.parse(tc.function.arguments);
+            accepted = a.accepted === true && typeof a.scheduled_at === 'string' && a.scheduled_at.trim() !== '';
+            acceptedAt = accepted ? a.scheduled_at : null;
+            if (typeof a.channel === 'string' && ['presencial', 'video', 'ligacao'].includes(a.channel)) {
+              acceptedChannel = a.channel;
+            }
+          } catch (e) {
+            console.error('[ia-respond-to-lead] parse scheduling args failed:', e);
+          }
+        }
+      }
+
+      if (accepted && acceptedAt) {
+        // Confirma: move deal p/ 'ia-transferido' (8) + cria card corretor + briefing.
+        const { data: confirmData, error: confirmErr } = await supabase.rpc('confirm_appointment_internal', {
+          p_ia_deal_id: body.deal_id,
+          p_scheduled_at: acceptedAt,
+          p_channel: acceptedChannel,
+          p_location: null,
+        });
+        if (confirmErr) {
+          console.error('[ia-respond-to-lead] confirm_appointment_internal err:', confirmErr);
+          scheduling = { action: 'none' };
+        } else {
+          const row = Array.isArray(confirmData) ? confirmData[0] : confirmData;
+          if (!row) {
+            console.error('[ia-respond-to-lead] confirm_appointment_internal retornou vazio — deal não encontrado ou já confirmado:', body.deal_id);
+            scheduling = { action: 'none' };
+          } else {
+            scheduling = {
+              action: 'confirmed',
+              channel: acceptedChannel,
+              confirmedAt: acceptedAt,
+              brokerDealId: (row as { broker_deal_id?: string })?.broker_deal_id ?? null,
+            };
+          }
+        }
+      } else {
+        // Ainda oferecendo: calcula 2 slots "mais breve" e incrementa tentativas.
+        // Resolve o corretor já atribuído ao appointment aberto deste deal.
+        const { data: appt } = await supabase
+          .from('appointments')
+          .select('id, broker_id, attempts')
+          .eq('ia_deal_id', body.deal_id)
+          .in('status', ['proposed', 'confirmed'])
+          .maybeSingle();
+        const apptRow = appt as { id?: string; broker_id?: string | null; attempts?: number } | null;
+        if (!apptRow) {
+          console.warn('[ia-respond-to-lead] sem appointment aberto p/ deal', body.deal_id, '— não há corretor/slots p/ propor (trigger de kickoff deveria ter criado)');
+        }
+        const { data: slotsData } = await supabase.rpc('propose_appointment_slots', {
+          p_broker_id: apptRow?.broker_id ?? null,
+          p_from: new Date().toISOString(),
+          p_count: 2,
+        });
+        const slots = Array.isArray(slotsData)
+          ? (slotsData as Array<{ at: string }>).map(s => s.at)
+          : [];
+        // Persiste os slots oferecidos + incrementa tentativas (cadência §9-E).
+        if (apptRow?.id) {
+          await supabase
+            .from('appointments')
+            .update({
+              proposed_slots: (slotsData ?? []),
+              attempts: (apptRow.attempts ?? 0) + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', apptRow.id);
+        }
+        scheduling = { action: 'proposed', slots, channel: 'presencial' };
+      }
+    }
+
     // ----- 6. Log -----
     let logId: string | null = null;
     if (!body.dry_run) {
@@ -468,6 +603,7 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
           system_prompt_used: systemPrompt,
           qualification: qualificationEval,
           suggested_stage_transition: stageTransition,
+          scheduling,
         },
         archetype_code: pb.provenance?.archetypeCode ?? null,
         status_overlay_code: pb.provenance?.statusOverlayCode ?? null,
@@ -497,6 +633,7 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       logId,
       stageTransition,
       qualification: qualificationEval,
+      scheduling,
       dryRun: body.dry_run === true,
       userId,
     });

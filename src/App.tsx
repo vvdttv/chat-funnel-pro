@@ -10,6 +10,7 @@ import Index from "./pages/Index.tsx";
 import AuthPage from "./pages/AuthPage.tsx";
 import ConfigurarIaPage from "./pages/ConfigurarIaPage.tsx";
 import CorrespondentePanel from "./pages/CorrespondentePanel.tsx";
+import BrokerPanel from "./pages/BrokerPanel.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={<ProtectedRoute><HomeByRole /></ProtectedRoute>} />
             <Route path="/correspondente" element={<CorrespondentePanel />} />
+            <Route path="/corretor" element={<BrokerPanel />} />
             <Route path="/configurar-ia" element={<ProtectedRoute><ConfigurarIaPage /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
