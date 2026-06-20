@@ -6,7 +6,7 @@ export interface Lead {
   origin: string;
 }
 
-import type { Tag } from '@/integrations/supabase/types';
+import type { Tag } from '@/types/tags';
 
 export type TouchpointExecutor = 'agent' | 'ai' | 'both';
 export type MessageType = 'text' | 'image' | 'audio' | 'video';

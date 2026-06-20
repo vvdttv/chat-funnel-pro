@@ -116,6 +116,20 @@ export function useDeals(funnels: Funnel[]) {
       const mapped = (data || []).map(row => rowToDeal(row as DBDealRow, funnelsRef.current));
       setDeals(mapped);
       setLoading(false);
+      // Carrega tags por deal em batch (RPC get_deal_tags_json, escopada por
+      // org). Best-effort: falha não derruba o board. Popula deal.tags p/ o
+      // KanbanCard renderizar os badges.
+      void (async () => {
+        const results = await Promise.all(
+          mapped.map(async (d) => {
+            const { data: tagData } = await supabase.rpc('get_deal_tags_json', { p_deal_id: d.id });
+            return [d.id, Array.isArray(tagData) ? (tagData as Deal['tags']) : []] as const;
+          }),
+        );
+        if (cancelled) return;
+        const byId = new Map(results);
+        setDeals(prev => prev.map(d => byId.has(d.id) ? { ...d, tags: byId.get(d.id) } : d));
+      })();
     })();
 
     // Subscription realtime — RLS continua filtrando o que cada usuário recebe

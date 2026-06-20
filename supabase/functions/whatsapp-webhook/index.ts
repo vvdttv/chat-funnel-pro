@@ -24,8 +24,44 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-wa-provider, x-webhook-token",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-wa-provider, x-webhook-token, x-webhook-signature",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
+/**
+ * Verifica assinatura HMAC SHA-256 do corpo cru contra o header
+ * `x-webhook-signature`. Aceita formatos `sha256=<hex>` ou `<hex>` puro.
+ * Comparação em tempo constante para não vazar timing.
+ */
+const verifyHmac = async (rawBody: string, signature: string, secret: string): Promise<boolean> => {
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+    const expected = Array.from(new Uint8Array(sigBuf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const got = signature.trim().replace(/^sha256=/i, "").toLowerCase();
+    if (got.length !== expected.length) return false;
+    // Comparação em tempo constante.
+    let diff = 0;
+    for (let i = 0; i < expected.length; i++) diff |= got.charCodeAt(i) ^ expected.charCodeAt(i);
+    return diff === 0;
+  } catch (e) {
+    console.error("[whatsapp-webhook] HMAC verify error:", e);
+    return false;
+  }
+};
+
+/** SHA-256 hex de uma string (para payload_hash de idempotência). */
+const sha256Hex = async (s: string): Promise<string> => {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 };
 
 const json = (status: number, body: unknown) =>
@@ -192,13 +228,61 @@ serve(async (req) => {
       if (got !== expectedToken) return json(401, { error: "invalid_webhook_token" });
     }
 
+    // Cliente admin (service_role) — usado já no rate-limit/idempotency e depois
+    // em toda a persistência. service_role bypassa RLS (tabelas internas agora
+    // têm RLS habilitado na Fase 5).
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // --- Rate limit por IP (100 req/min, fail-open em erro de infra) ---------
+    // IP do proxy reverso (Kong/Nginx) via x-forwarded-for; primeiro da lista.
+    const clientIp = (req.headers.get("x-forwarded-for")?.split(",")[0].trim())
+      || req.headers.get("x-real-ip")
+      || "unknown";
+    try {
+      const { data: allowed, error: rlErr } = await admin.rpc("check_rate_limit", {
+        p_ip: clientIp,
+        p_endpoint: "whatsapp-webhook",
+        p_max_req: 100,
+        p_window_sec: 60,
+      });
+      if (rlErr) {
+        console.error("[whatsapp-webhook] rate-limit RPC err (fail-open):", rlErr);
+      } else if (allowed === false) {
+        console.warn("[whatsapp-webhook] rate limit excedido", { ip: clientIp });
+        return json(429, { error: "rate_limited" });
+      }
+    } catch (e) {
+      console.error("[whatsapp-webhook] rate-limit exceção (fail-open):", e);
+    }
+
+    // Lê o corpo CRU uma única vez — necessário p/ verificação HMAC e hash de
+    // idempotência. Depois parseamos a partir desta string.
+    const rawBody = await req.text();
+
+    // --- HMAC opcional -------------------------------------------------------
+    // Se WHATSAPP_WEBHOOK_HMAC_SECRET estiver setado, exige assinatura válida
+    // em x-webhook-signature (SHA-256 do corpo cru). Sem o secret, mantém o
+    // comportamento atual (proteção por token compartilhado) — fail-open para
+    // não derrubar produção antes do provedor passar a assinar.
+    const hmacSecret = Deno.env.get("WHATSAPP_WEBHOOK_HMAC_SECRET");
+    if (hmacSecret) {
+      const sig = req.headers.get("x-webhook-signature");
+      if (!sig || !(await verifyHmac(rawBody, sig, hmacSecret))) {
+        console.warn("[whatsapp-webhook] assinatura HMAC inválida/ausente", { ip: clientIp });
+        return json(401, { error: "invalid_signature" });
+      }
+    }
+
     let payload: any;
     try {
       const ct = req.headers.get("content-type") ?? "";
-      if (ct.includes("application/json")) payload = await req.json();
-      else {
-        const form = await req.formData();
-        payload = Object.fromEntries(form.entries());
+      if (ct.includes("application/json")) {
+        payload = JSON.parse(rawBody);
+      } else {
+        // x-www-form-urlencoded (ex.: Twilio). Parseia a partir do raw.
+        payload = Object.fromEntries(new URLSearchParams(rawBody).entries());
       }
     } catch {
       return json(400, { error: "invalid_payload" });
@@ -214,9 +298,35 @@ serve(async (req) => {
       return json(200, { ok: true, ignored: "sem_mensagem" });
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    // --- Idempotência --------------------------------------------------------
+    // Usa o external_id do provedor (id único da mensagem) como chave. Reentrega
+    // da mesma mensagem retorna a resposta anterior sem reprocessar. Sem
+    // external_id (provedor não forneceu), cai no dedup de banco por messages.
+    if (msg.externalId) {
+      const idemKey = `wa:${provider}:${msg.externalId}`;
+      try {
+        const payloadHash = await sha256Hex(rawBody);
+        const { data: idemRow, error: idemErr } = await admin.rpc("upsert_webhook_idempotency", {
+          p_key: idemKey,
+          p_hash: payloadHash,
+          p_status: 200,
+          p_body: { ok: true, accepted: true },
+        });
+        // upsert_webhook_idempotency faz INSERT ... ON CONFLICT DO NOTHING e
+        // retorna SEMPRE a linha vigente. Se created_at < agora (linha já
+        // existia), é reentrega → responde idempotente sem reprocessar.
+        const row = idemRow as { created_at?: string; response_body?: unknown } | null;
+        if (row?.created_at) {
+          const ageMs = Date.now() - new Date(row.created_at).getTime();
+          if (ageMs > 2000) {
+            console.log("[whatsapp-webhook] reentrega idempotente", { idemKey, ageMs });
+            return json(200, { ok: true, idempotent: true });
+          }
+        }
+      } catch (e) {
+        console.error("[whatsapp-webhook] idempotency exceção (fail-open):", e);
+      }
+    }
 
     // Resolução de LID (WhatsApp usa Linked ID opaco, não telefone, no `from`).
     // Se vier <id>@lid, resolve para o contato real via API de contatos do WAHA.

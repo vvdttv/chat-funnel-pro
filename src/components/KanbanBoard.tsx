@@ -2,7 +2,7 @@ import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, use
 import { Users } from 'lucide-react';
 import type { Deal } from '@/data/mockData';
 import type { CardWidget } from '@/components/CardWidgetConfig';
-import type { Tag } from '@/integrations/supabase/types';
+import type { Tag } from '@/types/tags';
 import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 import { formatCurrency } from '@/data/mockData';

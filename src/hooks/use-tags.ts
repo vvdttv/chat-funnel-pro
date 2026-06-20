@@ -1,13 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tag } from '@/types/tags';
 
-export interface Tag {
-  id: number;
-  organization_id: string;
-  name: string;
-  color: string;
-  created_at: string;
-}
+export type { Tag };
 
 interface UseTagsResult {
   tags: Tag[];
@@ -42,30 +37,36 @@ export function useTags(pipelineId?: string): UseTagsResult {
   return { tags, isLoading, error, refetch: fetchTags };
 }
 
+/**
+ * Tags de um deal específico. Lê via RPC get_deal_tags_json (SECURITY DEFINER,
+ * escopada por org) e persiste em deal_tag_assignments. Usado no detalhe do
+ * deal (Kanban) para adicionar/remover tags.
+ */
 export function useDealTags(dealId: string) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTags = async () => {
-    if (!dealId) return;
+  const fetchTags = useCallback(async () => {
+    if (!dealId) { setTags([]); setIsLoading(false); return; }
+    setIsLoading(true);
     const { data } = await supabase.rpc('get_deal_tags_json', { p_deal_id: dealId });
-    setTags(Array.isArray(data) ? data : []);
-  };
+    setTags(Array.isArray(data) ? (data as Tag[]) : []);
+    setIsLoading(false);
+  }, [dealId]);
 
-  useEffect(() => { fetchTags(); }, [dealId]);
-  setIsLoading(false);
+  useEffect(() => { fetchTags(); }, [fetchTags]);
 
-  const assignTag = async (tagId: number, userId?: string) => {
+  const assignTag = useCallback(async (tagId: number, userId?: string) => {
     const { error } = await supabase.from('deal_tag_assignments').insert({ deal_id: dealId, tag_id: tagId, assigned_by: userId || null });
-    if (!error) fetchTags();
+    if (!error) await fetchTags();
     return !error;
-  };
+  }, [dealId, fetchTags]);
 
-  const removeTag = async (tagId: number) => {
+  const removeTag = useCallback(async (tagId: number) => {
     const { error } = await supabase.from('deal_tag_assignments').delete().eq('deal_id', dealId).eq('tag_id', tagId);
     if (!error) setTags(prev => prev.filter(t => t.id !== tagId));
     return !error;
-  };
+  }, [dealId]);
 
-  return { tags, isLoading, assignTag, removeTag };
+  return { tags, isLoading, assignTag, removeTag, refetch: fetchTags };
 }

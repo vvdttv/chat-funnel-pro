@@ -17,6 +17,7 @@ import { RegisterActivityPopup } from '@/components/RegisterActivityPopup';
 import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 import { KanbanBoard, type KanbanColumn } from '@/components/KanbanBoard';
+import TagSelector from '@/components/dashboard/TagSelector';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -1071,6 +1072,10 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
               <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
                 <ReassignDealRow deal={deal} />
                 <DealStatusActions deal={deal} onLost={() => onLost?.(deal)} />
+                <div className="bg-secondary rounded-xl p-3 mb-4">
+                  <p className="text-xs text-muted-foreground mb-2">Tags</p>
+                  <TagSelector dealId={deal.id} />
+                </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>
