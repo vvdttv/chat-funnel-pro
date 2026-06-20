@@ -8,6 +8,7 @@ export interface UserProfile {
   organization_id: string;
   username: string;
   display_name: string | null;
+  role: string | null;
 }
 
 export type AppRole = 'admin' | 'corretor' | 'correspondente' | 'atendente';
@@ -103,7 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         roles,
-        isAdmin: roles.includes('admin'),
+        // Admin = papel 'admin' em user_roles OU profiles.role admin/superadmin.
+        // Espelha public.is_org_admin() no banco; user_roles pode estar vazia e
+        // profiles.role e a fonte real de papel neste deploy.
+        isAdmin: roles.includes('admin')
+          || profile?.role === 'admin'
+          || profile?.role === 'superadmin',
         loading,
         signInWithUsername,
         signOut,
