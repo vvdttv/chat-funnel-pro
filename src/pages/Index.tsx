@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import BottomNav from '@/components/BottomNav';
+import { NotificationBell } from '@/components/NotificationBell';
 import FunisPage from '@/pages/FunisPage';
 import AtividadesPage from '@/pages/AtividadesPage';
 import IndicadoresPage from '@/pages/IndicadoresPage';
@@ -43,6 +44,9 @@ const Index = () => {
       <DealsProvider value={dealsState}>
         <ActivityTypesProvider>
           <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+            <div className="absolute top-2 right-2 z-50">
+              <NotificationBell />
+            </div>
             <div className="flex-1 min-h-0 overflow-hidden pb-[var(--bottom-nav-h)]">
               {renderPage()}
             </div>
