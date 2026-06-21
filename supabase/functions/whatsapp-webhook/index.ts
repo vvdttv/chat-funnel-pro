@@ -430,6 +430,7 @@ serve(async (req) => {
       const toDigits = (msg.toNumber ?? "").replace(/\D/g, "");
       const sess = String(msg.session ?? "").replace(/[^0-9a-zA-Z._-]/g, "");
       let newLeadOrg: string | null = null;
+      let newLeadFunnelPref: string | null = null;
       if (toDigits || sess) {
         const numOr: string[] = [];
         if (toDigits) {
@@ -439,11 +440,12 @@ serve(async (req) => {
         if (sess) numOr.push(`waha_session.eq.${sess}`);
         const { data: numRow } = await admin
           .from("whatsapp_numbers")
-          .select("organization_id")
+          .select("organization_id, default_funnel_id")
           .eq("is_active", true)
           .or(numOr.join(","))
           .maybeSingle();
         newLeadOrg = (numRow as { organization_id?: string } | null)?.organization_id ?? null;
+        newLeadFunnelPref = (numRow as { default_funnel_id?: string | null } | null)?.default_funnel_id ?? null;
       }
 
       if (!newLeadOrg) {
@@ -457,14 +459,27 @@ serve(async (req) => {
         return json(200, { ok: true, ignored: "canal_nao_mapeado" });
       }
 
-      // 2) Funil da IA da org + etapa de menor position (etapa 1).
-      const { data: aiFunnel } = await admin
-        .from("funnels")
-        .select("id")
-        .eq("organization_id", newLeadOrg)
-        .eq("is_ai_funnel", true)
-        .maybeSingle();
-      const aiFunnelId = (aiFunnel as { id?: string } | null)?.id ?? null;
+      // 2) Funil do lead novo: preferência do número (default_funnel_id, ex.: venda
+      //    vs locação) e, como fallback, o funil is_ai_funnel da org (retrocompat).
+      let aiFunnelId: string | null = null;
+      if (newLeadFunnelPref) {
+        const { data: prefF } = await admin
+          .from("funnels")
+          .select("id")
+          .eq("organization_id", newLeadOrg)
+          .eq("id", newLeadFunnelPref)
+          .maybeSingle();
+        aiFunnelId = (prefF as { id?: string } | null)?.id ?? null;
+      }
+      if (!aiFunnelId) {
+        const { data: aiFunnel } = await admin
+          .from("funnels")
+          .select("id")
+          .eq("organization_id", newLeadOrg)
+          .eq("is_ai_funnel", true)
+          .maybeSingle();
+        aiFunnelId = (aiFunnel as { id?: string } | null)?.id ?? null;
+      }
       if (!aiFunnelId) {
         console.warn("[whatsapp-webhook] org sem funil de IA configurado", { org: newLeadOrg });
         return json(200, { ok: true, ignored: "sem_funil_ia" });
