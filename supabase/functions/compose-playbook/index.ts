@@ -270,7 +270,7 @@ serve(async (req) => {
     const stageScopeId = `${funnelId}::${stageId}`;
     // deno-lint-ignore no-explicit-any
     const stageOverrides = (overrides.data ?? []).filter((o: any) =>
-      o.layer === 'stage' &&
+      o.layer === 'stage_override' &&
       (o.scope_type === 'stage' ? o.scope_id === stageScopeId :
        o.scope_type === 'funnel' ? o.scope_id === funnelId : true));
     const overrideIds: string[] = [];

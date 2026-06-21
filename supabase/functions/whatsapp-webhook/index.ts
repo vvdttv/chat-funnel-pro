@@ -21,6 +21,14 @@ import {
   extFromMime,
   contentTypeFromMime,
 } from "../_shared/waha.ts";
+import { handleFeedbackMode } from "../_shared/feedbackMode.ts";
+
+/** Normaliza um phoneE164 possivelmente nulo para o formato +<digitos>, ou null. */
+const phoneDigitsForFb = (p?: string): string | null => {
+  if (!p) return null;
+  const d = String(p).replace(/\D/g, "");
+  return d ? `+${d}` : null;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -362,6 +370,29 @@ serve(async (req) => {
       } else {
         console.warn("[whatsapp-webhook] LID não resolvido:", msg.externalContactId);
       }
+    }
+
+    // --- Modo Treinador via WhatsApp (Fase I-B) ---
+    // Intercepta ANTES do fluxo de lead: se o remetente é um número com permissão
+    // e está em sessão de feedback (ou enviou #modofeedback), a mensagem é tratada
+    // como TREINO (interpret/apply de override) e NÃO vira lead/fila. Best-effort:
+    // qualquer erro aqui cai no fluxo normal (não derruba o recebimento).
+    try {
+      const fbPhone = lookupPhone ?? (phoneDigitsForFb(msg.phoneE164));
+      if (fbPhone) {
+        const replyChatId = String(lookupContactId || msg.externalContactId || "").includes("@")
+          ? String(lookupContactId || msg.externalContactId)
+          : `${fbPhone.replace(/\D/g, "")}@c.us`;
+        const fb = await handleFeedbackMode({
+          admin, SUPABASE_URL, SERVICE_ROLE: SERVICE_KEY, INTERNAL_TOKEN: Deno.env.get("INTERNAL_FUNCTION_TOKEN") ?? "",
+          phoneE164: fbPhone, text: msg.text ?? "", replyChatId, wahaSession: msg.session ?? null,
+        });
+        if (fb.handled) {
+          return json(200, { ok: true, feedback_mode: true });
+        }
+      }
+    } catch (e) {
+      console.error("[whatsapp-webhook] feedbackMode exceção (fail-open):", e);
     }
 
     // Localiza canal (lead_channels) → deal. Casa por external_contact_id OU phone.

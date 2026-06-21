@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, Check, X, Pencil, RefreshCw, Tag as TagIcon } from 'lucide-react';
+import { Bot, Check, X, Pencil, RefreshCw, Tag as TagIcon, GraduationCap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAISuggestions, type AISuggestion } from '@/hooks/use-ai-suggestions';
 import { useTagSuggestions, type TagSuggestion } from '@/hooks/use-tag-suggestions';
+import { TrainIADialog } from '@/components/TrainIADialog';
 
 /** Mapa amigável de etapas do funil da IA. */
 const STAGE_LABELS: Record<string, string> = {
@@ -31,6 +32,7 @@ function SuggestionCard({ s, onApprove, onReject }: {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(s.suggested_response ?? '');
   const [busy, setBusy] = useState(false);
+  const [trainOpen, setTrainOpen] = useState(false);
 
   const handleApprove = async () => {
     setBusy(true);
@@ -91,10 +93,21 @@ function SuggestionCard({ s, onApprove, onReject }: {
         <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)} disabled={busy} className="gap-1">
           <Pencil size={15} /> {editing ? 'Cancelar edição' : 'Editar'}
         </Button>
-        <Button size="sm" variant="ghost" onClick={handleReject} disabled={busy} className="gap-1 text-destructive ml-auto">
+        <Button size="sm" variant="ghost" onClick={() => setTrainOpen(true)} disabled={busy} className="gap-1 ml-auto">
+          <GraduationCap size={15} /> Treinar
+        </Button>
+        <Button size="sm" variant="ghost" onClick={handleReject} disabled={busy} className="gap-1 text-destructive">
           <X size={15} /> Descartar
         </Button>
       </div>
+      <TrainIADialog
+        open={trainOpen}
+        onOpenChange={setTrainOpen}
+        funnelId="fun-ia-mcmv"
+        stageId={s.stage_id}
+        dealId={s.deal_id}
+        stageLabel={STAGE_LABELS[s.stage_id] ?? s.stage_id}
+      />
     </Card>
   );
 }
