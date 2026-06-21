@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, Check, X, Pencil, RefreshCw } from 'lucide-react';
+import { Bot, Check, X, Pencil, RefreshCw, Tag as TagIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAISuggestions, type AISuggestion } from '@/hooks/use-ai-suggestions';
+import { useTagSuggestions, type TagSuggestion } from '@/hooks/use-tag-suggestions';
 
 /** Mapa amigável de etapas do funil da IA. */
 const STAGE_LABELS: Record<string, string> = {
@@ -98,9 +99,19 @@ function SuggestionCard({ s, onApprove, onReject }: {
   );
 }
 
-/** Caixa de Sugestões da IA — modo assistido (Fase I-A). */
+/** Caixa de Sugestões da IA — modo assistido (Fase I-A) + tags sugeridas (G-2). */
 export function AISuggestionsPanel() {
   const { suggestions, isLoading, error, refetch, approve, reject } = useAISuggestions();
+  const { tagSuggestions, review, refetch: refetchTags } = useTagSuggestions();
+  const { toast } = useToast();
+
+  const handleTagReview = async (s: TagSuggestion, approveTag: boolean) => {
+    const ok = await review(s.assignment_id, approveTag);
+    toast({
+      title: ok ? (approveTag ? 'Tag aplicada' : 'Tag descartada') : 'Erro',
+      variant: ok ? undefined : 'destructive',
+    });
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -110,7 +121,7 @@ export function AISuggestionsPanel() {
           <h2 className="font-semibold">Sugestões da IA</h2>
           {suggestions.length > 0 && <Badge>{suggestions.length}</Badge>}
         </div>
-        <Button size="icon" variant="ghost" onClick={refetch} aria-label="Atualizar">
+        <Button size="icon" variant="ghost" onClick={() => { refetch(); refetchTags(); }} aria-label="Atualizar">
           <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
         </Button>
       </div>
@@ -118,7 +129,34 @@ export function AISuggestionsPanel() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3 max-w-2xl mx-auto">
           {error && <p className="text-sm text-destructive">Erro: {error}</p>}
-          {!isLoading && suggestions.length === 0 && !error && (
+
+          {/* Tags sugeridas pela IA (G-2) */}
+          {tagSuggestions.length > 0 && (
+            <Card className="p-4 space-y-3 border-primary/30">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                <TagIcon size={15} /> Tags sugeridas ({tagSuggestions.length})
+              </div>
+              <div className="space-y-2">
+                {tagSuggestions.map((s) => (
+                  <div key={s.assignment_id} className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="shrink-0">{s.group_name}</Badge>
+                    <span className="font-medium">{s.tag_name}</span>
+                    <span className="text-muted-foreground truncate flex-1 min-w-0">
+                      {s.lead_name ?? s.deal_id}{s.rationale ? ` — ${s.rationale}` : ''}
+                    </span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-primary shrink-0" onClick={() => handleTagReview(s, true)} aria-label="Aplicar tag">
+                      <Check size={15} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive shrink-0" onClick={() => handleTagReview(s, false)} aria-label="Descartar tag">
+                      <X size={15} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {!isLoading && suggestions.length === 0 && tagSuggestions.length === 0 && !error && (
             <div className="text-center text-muted-foreground py-12">
               <Bot size={32} className="mx-auto mb-2 opacity-40" />
               <p className="text-sm">Nenhuma sugestão aguardando aprovação.</p>

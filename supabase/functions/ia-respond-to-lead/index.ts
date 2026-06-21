@@ -444,6 +444,100 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       }
     }
 
+    // ----- 5b2. Sugestão de TAGS pela IA (Fase G-2, §4.7) -----
+    // Roda só no worker (isInternal), não impacta latência do cliente. Avalia a
+    // conversa contra as tags dos grupos vinculados à etapa e SUGERE (não aplica)
+    // via suggest_deal_tag_internal — tudo entra como 'suggested' p/ aprovação humana.
+    if (isInternal && body.deal_id && !handoff.triggered) {
+      try {
+        // Tags candidatas: dos grupos com requisito nesta etapa (temperatura sempre;
+        // objeções/decisão conforme stage_tag_requirements). Junta nome+critérios.
+        const { data: reqGroups } = await supabase
+          .from('stage_tag_requirements')
+          .select('group_id')
+          .eq('organization_id', organizationId)
+          .eq('funnel_id', body.funnel_id)
+          .eq('stage_id', body.stage_id);
+        const groupIds = (reqGroups ?? []).map((r: { group_id: number }) => r.group_id);
+        if (groupIds.length > 0) {
+          const { data: candTags } = await supabase
+            .from('deal_tags')
+            .select('id, name, criteria, group_id')
+            .eq('organization_id', organizationId)
+            .in('group_id', groupIds)
+            .eq('status', 'approved');
+          const tags = (candTags ?? []) as Array<{ id: number; name: string; criteria: Record<string, unknown> }>;
+          if (tags.length > 0) {
+            const tagCatalog = tags.map(t =>
+              `- id:${t.id} "${t.name}"${t.criteria?.regra ? ` (aplicar quando: ${t.criteria.regra})` : ''}`
+            ).join('\n');
+            const tagHistory = [
+              ...(body.conversation_history ?? []).map(m => `${m.role.toUpperCase()}: ${m.content}`),
+              `LEAD: ${body.lead_message}`,
+            ].join('\n');
+            const tagResp = await aiChatCompletion({
+              config: aiConfig,
+              tier: 'fast',
+              messages: [
+                { role: 'system', content: `Você classifica tags de um lead imobiliário a partir da conversa. Use SOMENTE as tags do catálogo. Aplique uma tag apenas com evidência clara no diálogo (seja conservador). Catálogo:\n${tagCatalog}` },
+                { role: 'user', content: `Conversa:\n${tagHistory}` },
+              ],
+              tools: [{
+                type: 'function',
+                function: {
+                  name: 'report_tags',
+                  description: 'Reporta as tags aplicáveis ao lead com confiança e justificativa',
+                  parameters: {
+                    type: 'object',
+                    properties: {
+                      tags: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'number', description: 'id da tag do catálogo' },
+                            confidence: { type: 'number', description: '0..1' },
+                            rationale: { type: 'string', description: 'evidência curta da conversa' },
+                          },
+                          required: ['id'],
+                          additionalProperties: false,
+                        },
+                      },
+                    },
+                    required: ['tags'],
+                    additionalProperties: false,
+                  },
+                },
+              }],
+              tool_choice: { type: 'function', function: { name: 'report_tags' } },
+            });
+            if (tagResp.ok) {
+              const tj = await tagResp.json();
+              const tc = tj.choices?.[0]?.message?.tool_calls?.[0];
+              if (tc?.function?.arguments) {
+                const args = JSON.parse(tc.function.arguments);
+                const validIds = new Set(tags.map(t => t.id));
+                for (const sug of (args.tags ?? [])) {
+                  if (!validIds.has(sug.id)) continue; // só tags do catálogo
+                  await supabase.rpc('suggest_deal_tag_internal', {
+                    p_deal_id: body.deal_id,
+                    p_tag_id: sug.id,
+                    p_confidence: typeof sug.confidence === 'number' ? sug.confidence : null,
+                    p_rationale: typeof sug.rationale === 'string' ? sug.rationale.slice(0, 300) : null,
+                  });
+                }
+              }
+            } else {
+              console.error('[ia-respond-to-lead] tag classify failed:', await tagResp.text());
+            }
+          }
+        }
+      } catch (e) {
+        // Sugestão de tags é best-effort: nunca derruba a resposta ao lead.
+        console.error('[ia-respond-to-lead] sugestão de tags exceção:', e);
+      }
+    }
+
     // ----- 5c. Agendamento (etapas 6/7 do funil da IA) -----
     // Quando o crédito está aprovado e estamos nas etapas de agendamento
     // ('ia-aprovado-aguardando' = 6 ou 'ia-agendamento' = 7), a IA conduz a

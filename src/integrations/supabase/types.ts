@@ -1431,6 +1431,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_pending_tag_suggestions: {
+        Args: never
+        Returns: {
+          assignment_id: number
+          deal_id: string
+          lead_name: string
+          tag_id: number
+          tag_name: string
+          group_name: string
+          confidence: number
+          rationale: string
+          created_at: string
+        }[]
+      }
+      review_tag_suggestion: {
+        Args: { p_assignment_id: number; p_approve: boolean }
+        Returns: { assignment_id: number; status: string }[]
+      }
       get_pending_ai_responses: {
         Args: never
         Returns: {
