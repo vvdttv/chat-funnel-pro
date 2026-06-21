@@ -6,6 +6,7 @@ export interface AISuggestion {
   queue_id: string;
   deal_id: string;
   lead_name: string | null;
+  funnel_id: string;
   stage_id: string;
   lead_message: string | null;
   suggested_response: string | null;

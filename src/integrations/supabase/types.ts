@@ -1455,6 +1455,7 @@ export type Database = {
           queue_id: string
           deal_id: string
           lead_name: string
+          funnel_id: string
           stage_id: string
           lead_message: string
           suggested_response: string

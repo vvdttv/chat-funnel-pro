@@ -103,7 +103,7 @@ function SuggestionCard({ s, onApprove, onReject }: {
       <TrainIADialog
         open={trainOpen}
         onOpenChange={setTrainOpen}
-        funnelId="fun-ia-mcmv"
+        funnelId={s.funnel_id}
         stageId={s.stage_id}
         dealId={s.deal_id}
         stageLabel={STAGE_LABELS[s.stage_id] ?? s.stage_id}
