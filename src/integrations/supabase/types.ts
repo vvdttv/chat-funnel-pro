@@ -1431,6 +1431,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      list_feedback_permissions: {
+        Args: never
+        Returns: {
+          id: number
+          phone_e164: string
+          label: string
+          is_active: boolean
+          created_at: string
+        }[]
+      }
+      upsert_feedback_permission: {
+        Args: { p_phone_e164: string; p_password: string; p_user_id?: string; p_label?: string }
+        Returns: { permission_id: number }[]
+      }
+      delete_feedback_permission: {
+        Args: { p_id: number }
+        Returns: undefined
+      }
       get_pending_tag_suggestions: {
         Args: never
         Returns: {
