@@ -1,14 +1,23 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import BottomNav from '@/components/BottomNav';
 import { NotificationBell } from '@/components/NotificationBell';
-import FunisPage from '@/pages/FunisPage';
-import AtividadesPage from '@/pages/AtividadesPage';
-import IndicadoresPage from '@/pages/IndicadoresPage';
-import ConfigPage from '@/pages/ConfigPage';
 import { useToast } from '@/hooks/use-toast';
 import { FunnelsProvider, useFunnels } from '@/hooks/useFunnels';
 import { DealsProvider, useDeals } from '@/hooks/useDeals';
 import { ActivityTypesProvider } from '@/hooks/useActivityTypes';
+
+// Cada aba é um chunk próprio: o usuário só baixa a tela que abrir. Indicadores
+// (recharts) e ConfigPage são os mais pesados — não entram no bundle inicial.
+const FunisPage = lazy(() => import('@/pages/FunisPage'));
+const AtividadesPage = lazy(() => import('@/pages/AtividadesPage'));
+const IndicadoresPage = lazy(() => import('@/pages/IndicadoresPage'));
+const ConfigPage = lazy(() => import('@/pages/ConfigPage'));
+
+const TabFallback = () => (
+  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+    Carregando…
+  </div>
+);
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('leads');
@@ -48,7 +57,9 @@ const Index = () => {
               <NotificationBell />
             </div>
             <div className="flex-1 min-h-0 overflow-hidden pb-[var(--bottom-nav-h)]">
-              {renderPage()}
+              <Suspense fallback={<TabFallback />}>
+                {renderPage()}
+              </Suspense>
             </div>
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
