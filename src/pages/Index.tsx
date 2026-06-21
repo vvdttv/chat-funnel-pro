@@ -12,6 +12,7 @@ const FunisPage = lazy(() => import('@/pages/FunisPage'));
 const AtividadesPage = lazy(() => import('@/pages/AtividadesPage'));
 const IndicadoresPage = lazy(() => import('@/pages/IndicadoresPage'));
 const ConfigPage = lazy(() => import('@/pages/ConfigPage'));
+const AISuggestionsPanel = lazy(() => import('@/components/AISuggestionsPanel'));
 
 const TabFallback = () => (
   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -41,6 +42,7 @@ const Index = () => {
   const renderPage = () => {
     switch (activeTab) {
       case 'leads': return <FunisPage onPendingStepChange={setHasPendingStep} />;
+      case 'suggestions': return <AISuggestionsPanel />;
       case 'activities': return <AtividadesPage />;
       case 'indicators': return <IndicadoresPage />;
       case 'settings': return <ConfigPage />;

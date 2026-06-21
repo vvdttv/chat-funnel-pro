@@ -1431,6 +1431,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_pending_ai_responses: {
+        Args: never
+        Returns: {
+          queue_id: string
+          deal_id: string
+          lead_name: string
+          stage_id: string
+          lead_message: string
+          suggested_response: string
+          autonomy_mode: string
+          created_at: string
+        }[]
+      }
+      approve_ai_response: {
+        Args: { p_queue_id: string; p_edited_text?: string }
+        Returns: { queue_id: string; status: string }[]
+      }
+      reject_ai_response: {
+        Args: { p_queue_id: string; p_reason?: string }
+        Returns: { queue_id: string; status: string }[]
+      }
       change_deal_status: {
         Args: {
           p_deal_id: string

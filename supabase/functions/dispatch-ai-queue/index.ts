@@ -75,9 +75,15 @@ serve(async (req) => {
   const INTERNAL_TOKEN = Deno.env.get("INTERNAL_FUNCTION_TOKEN") ?? "";
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  const summary = { claimed: 0, sent: 0, awaiting: 0, cancelled: 0, failed: 0, retried: 0, errors: [] as string[] };
+  const summary = { claimed: 0, sent: 0, awaiting: 0, cancelled: 0, failed: 0, retried: 0, errors: [] as string[], approvedSent: 0 };
 
   try {
+    // 0) Envia respostas APROVADAS por humano (modo assistido, Fase I-A).
+    //    São itens status='approved' com final_response definido pela aprovação.
+    //    NÃO reprocessa pela IA — só envia o texto aprovado/editado. Reusa o mesmo
+    //    caminho de send-whatsapp-message do envio autônomo.
+    await sendApprovedResponses({ admin, SUPABASE_URL, SERVICE_ROLE, INTERNAL_TOKEN, summary });
+
     // 1) Reivindica um lote atômico (marca processing). RPC usa SKIP LOCKED.
     const { data: batch, error: claimErr } = await admin.rpc("claim_ai_queue_batch", {
       p_limit: BATCH_SIZE,
@@ -113,7 +119,7 @@ interface Ctx {
   SUPABASE_URL: string;
   SERVICE_ROLE: string;
   INTERNAL_TOKEN: string;
-  summary: { sent: number; awaiting: number; cancelled: number; failed: number; retried: number; errors: string[] };
+  summary: { sent: number; awaiting: number; cancelled: number; failed: number; retried: number; errors: string[]; approvedSent: number };
 }
 
 async function processItem(item: QueueItem, ctx: Ctx) {
@@ -263,6 +269,77 @@ async function processItem(item: QueueItem, ctx: Ctx) {
     .update({ ...baseUpdate, status: "awaiting_approval" })
     .eq("id", item.id);
   summary.awaiting++;
+}
+
+/**
+ * Envia as respostas APROVADAS por humano (status='approved', modo assistido).
+ * Para cada item: localiza a conversa do deal e dispara send-whatsapp-message com
+ * o final_response (texto aprovado/editado). Sucesso → 'sent'; falha → volta a
+ * 'awaiting_approval' com failure_reason (humano reavalia). NÃO chama a IA.
+ */
+async function sendApprovedResponses(ctx: Ctx): Promise<void> {
+  const { admin, SUPABASE_URL, SERVICE_ROLE, INTERNAL_TOKEN, summary } = ctx;
+  const { data: approved } = await admin
+    .from("ai_response_queue")
+    .select("id, deal_id, final_response, context")
+    .eq("status", "approved")
+    .order("approved_at", { ascending: true })
+    .limit(BATCH_SIZE);
+  const list = (approved ?? []) as Array<{ id: string; deal_id: string; final_response: string | null; context: Record<string, unknown> | null }>;
+  for (const it of list) {
+    try {
+      const text = (it.final_response ?? "").trim();
+      if (!text) {
+        await admin.from("ai_response_queue")
+          .update({ status: "awaiting_approval", failure_reason: "final_response_vazio", updated_at: new Date().toISOString() })
+          .eq("id", it.id);
+        continue;
+      }
+      // localiza a conversa do deal (prioriza a do context)
+      const ctxConvId = (it.context?.conversationId as string | undefined) ?? null;
+      let conv: ConversationRow | null = null;
+      if (ctxConvId) {
+        const { data } = await admin.from("conversations")
+          .select("id, contact_phone_e164, persona_id, whatsapp_number_id").eq("id", ctxConvId).maybeSingle();
+        conv = (data as ConversationRow | null) ?? null;
+      }
+      if (!conv) {
+        const { data } = await admin.from("conversations")
+          .select("id, contact_phone_e164, persona_id, whatsapp_number_id")
+          .eq("deal_id", it.deal_id).order("last_message_at", { ascending: false, nullsFirst: false })
+          .limit(1).maybeSingle();
+        conv = (data as ConversationRow | null) ?? null;
+      }
+      if (!conv?.id) {
+        await admin.from("ai_response_queue")
+          .update({ status: "awaiting_approval", failure_reason: "sem_conversa", updated_at: new Date().toISOString() })
+          .eq("id", it.id);
+        continue;
+      }
+      const sendResp = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp-message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_ROLE}`, "x-internal-token": INTERNAL_TOKEN },
+        body: JSON.stringify({
+          conversation_id: conv.id, text, sender_type: "ai",
+          ...(conv.whatsapp_number_id ? { whatsapp_number_id: conv.whatsapp_number_id } : {}),
+        }),
+      });
+      const sendJson = await sendResp.json().catch(() => ({}));
+      if (sendResp.ok && sendJson?.ok) {
+        await admin.from("ai_response_queue")
+          .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", it.id);
+        summary.approvedSent++;
+      } else {
+        const reason = sendJson?.reason ?? `send_${sendResp.status}`;
+        await admin.from("ai_response_queue")
+          .update({ status: "awaiting_approval", failure_reason: reason, updated_at: new Date().toISOString() })
+          .eq("id", it.id);
+      }
+    } catch (e) {
+      console.error("[dispatch-ai-queue] sendApproved erro:", it.id, e);
+    }
+  }
 }
 
 /**

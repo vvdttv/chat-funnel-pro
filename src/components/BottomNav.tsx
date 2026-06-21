@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Clock, BarChart3, Settings, RefreshCw } from 'lucide-react';
+import { Users, Clock, BarChart3, Settings, RefreshCw, Bot } from 'lucide-react';
 import { forceRefresh } from '@/lib/force-refresh';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,6 +10,7 @@ interface BottomNavProps {
 
 const leftTabs = [
   { id: 'leads', icon: Users, label: 'Leads' },
+  { id: 'suggestions', icon: Bot, label: 'IA' },
   { id: 'activities', icon: Clock, label: 'Atividades' },
 ];
 
