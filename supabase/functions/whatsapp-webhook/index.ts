@@ -24,21 +24,33 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-wa-provider, x-webhook-token, x-webhook-signature",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-wa-provider, x-webhook-token, x-webhook-signature, x-webhook-hmac, x-webhook-hmac-algorithm",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
 /**
- * Verifica assinatura HMAC SHA-256 do corpo cru contra o header
- * `x-webhook-signature`. Aceita formatos `sha256=<hex>` ou `<hex>` puro.
+ * Verifica assinatura HMAC do corpo cru.
+ *
+ * Suporta dois formatos:
+ *  - WAHA (preferido): header `X-Webhook-Hmac` (hex puro) + `X-Webhook-Hmac-Algorithm`
+ *    (geralmente `sha512`). Doc: devlikeapro — config.hmac.key na sessão.
+ *  - Genérico/legado: header `x-webhook-signature` no formato `sha256=<hex>` ou
+ *    `<hex>` puro, sempre SHA-256.
+ *
+ * `algorithm` define o hash usado (sha512 do WAHA ou sha256 legado).
  * Comparação em tempo constante para não vazar timing.
  */
-const verifyHmac = async (rawBody: string, signature: string, secret: string): Promise<boolean> => {
+const verifyHmac = async (
+  rawBody: string,
+  signature: string,
+  secret: string,
+  algorithm: "SHA-256" | "SHA-512" = "SHA-256",
+): Promise<boolean> => {
   try {
     const key = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
+      { name: "HMAC", hash: algorithm },
       false,
       ["sign"],
     );
@@ -46,7 +58,7 @@ const verifyHmac = async (rawBody: string, signature: string, secret: string): P
     const expected = Array.from(new Uint8Array(sigBuf))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    const got = signature.trim().replace(/^sha256=/i, "").toLowerCase();
+    const got = signature.trim().replace(/^sha(256|512)=/i, "").toLowerCase();
     if (got.length !== expected.length) return false;
     // Comparação em tempo constante.
     let diff = 0;
@@ -262,15 +274,24 @@ serve(async (req) => {
     const rawBody = await req.text();
 
     // --- HMAC opcional -------------------------------------------------------
-    // Se WHATSAPP_WEBHOOK_HMAC_SECRET estiver setado, exige assinatura válida
-    // em x-webhook-signature (SHA-256 do corpo cru). Sem o secret, mantém o
-    // comportamento atual (proteção por token compartilhado) — fail-open para
-    // não derrubar produção antes do provedor passar a assinar.
+    // Se WHATSAPP_WEBHOOK_HMAC_SECRET estiver setado, exige assinatura válida.
+    // Suporta o formato do WAHA (header `X-Webhook-Hmac` + `X-Webhook-Hmac-Algorithm`,
+    // tipicamente sha512) e o legado (`x-webhook-signature`, sha256). Sem o secret,
+    // mantém a proteção por token compartilhado (fail-open) — não derruba produção.
     const hmacSecret = Deno.env.get("WHATSAPP_WEBHOOK_HMAC_SECRET");
     if (hmacSecret) {
-      const sig = req.headers.get("x-webhook-signature");
-      if (!sig || !(await verifyHmac(rawBody, sig, hmacSecret))) {
-        console.warn("[whatsapp-webhook] assinatura HMAC inválida/ausente", { ip: clientIp });
+      // WAHA assina em X-Webhook-Hmac (hex puro); algoritmo em X-Webhook-Hmac-Algorithm.
+      const wahaSig = req.headers.get("x-webhook-hmac");
+      const legacySig = req.headers.get("x-webhook-signature");
+      const sig = wahaSig ?? legacySig;
+      const algoHdr = (req.headers.get("x-webhook-hmac-algorithm") ?? "").toLowerCase();
+      const algorithm: "SHA-256" | "SHA-512" =
+        algoHdr.includes("512") ? "SHA-512"
+        : algoHdr.includes("256") ? "SHA-256"
+        : wahaSig ? "SHA-512"   // WAHA default é sha512
+        : "SHA-256";            // legado
+      if (!sig || !(await verifyHmac(rawBody, sig, hmacSecret, algorithm))) {
+        console.warn("[whatsapp-webhook] assinatura HMAC inválida/ausente", { ip: clientIp, algorithm, hasWahaSig: !!wahaSig });
         return json(401, { error: "invalid_signature" });
       }
     }
