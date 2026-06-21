@@ -210,9 +210,9 @@ serve(async (req) => {
     const [
       funnel, archetypes, statusArchetypes, physicalStages,
       catalogPlaybooks, overrides, rules, behaviors, ladders, triggers,
-      skills, skillNodes, skillGuardrails, personaRow,
+      skills, skillNodes, skillGuardrails, personaRow, segmentProfiles,
     ] = await Promise.all([
-      supabase.from('funnels').select('id,context_tags').eq('id', funnelId).eq('organization_id', organizationId).maybeSingle(),
+      supabase.from('funnels').select('id,context_tags,segment_code').eq('id', funnelId).eq('organization_id', organizationId).maybeSingle(),
       supabase.from('stage_archetypes').select('id,code,default_playbook_code,context_tags').eq('is_active', true),
       supabase.from('status_archetypes').select('id,code').eq('is_active', true),
       supabase.from('funnel_stages').select('funnel_id,stage_id,stage_archetype_id,purpose,context_tags').eq('funnel_id', funnelId).eq('stage_id', stageId).eq('organization_id', organizationId).maybeSingle(),
@@ -228,6 +228,7 @@ serve(async (req) => {
       personaId
         ? supabase.from('agent_personas').select('name,gender,personality,style,tone,mission,identity_notes').eq('id', personaId).eq('organization_id', organizationId).eq('is_active', true).maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase.from('segment_profiles').select('code,name,income_range,tone,vocabulary,notes,context_tag').eq('organization_id', organizationId).eq('is_active', true),
     ]);
 
     const physical = physicalStages.data;
@@ -241,6 +242,16 @@ serve(async (req) => {
     const stageTags: string[] = Array.isArray(physical?.context_tags) ? physical.context_tags as string[] : [];
     const archTags: string[] = Array.isArray(archetype?.context_tags) ? archetype.context_tags : [];
     const contextTags = uniq([...funnelTags, ...stageTags, ...archTags]);
+
+    // Perfil de SEGMENTO/FAIXA (Fase H): o funil declara segment_code; o perfil
+    // define tom/vocabulário/faixa de renda aplicados COMO CAMADA à persona (§4.14
+    // — NÃO troca a persona). Injetado no system prompt mais abaixo (bloco SEGMENTO).
+    // deno-lint-ignore no-explicit-any
+    const segmentCode: string | null = (funnel.data as any)?.segment_code ?? null;
+    // deno-lint-ignore no-explicit-any
+    const segmentProfile: any = segmentCode
+      ? (segmentProfiles.data ?? []).find((sp: { code: string }) => sp.code === segmentCode)
+      : null;
 
     // deno-lint-ignore no-explicit-any
     const archetypePb: any = archetype?.default_playbook_code
@@ -453,8 +464,12 @@ serve(async (req) => {
 Persona: ${identity.persona}
 Tom: ${identity.tone}
 Missão: ${identity.mission}
-${identity.identityNotes ? `Notas: ${identity.identityNotes}\n` : ''}
-# OBJETIVO
+${identity.identityNotes ? `Notas: ${identity.identityNotes}\n` : ''}${segmentProfile ? `# SEGMENTO (faixa de mercado — adapte tom e vocabulário, mantendo a MESMA persona)
+Faixa: ${segmentProfile.name}${segmentProfile.income_range ? ` (${segmentProfile.income_range})` : ''}
+Tom para esta faixa: ${segmentProfile.tone}
+Vocabulário: ${segmentProfile.vocabulary}
+${segmentProfile.notes ? `Orientações: ${segmentProfile.notes}\n` : ''}
+` : ''}# OBJETIVO
 ${goal || '(não definido)'}
 
 # SUCESSO
@@ -484,6 +499,7 @@ ${skillsBlock}
 
 # CONTEXTO
 arquétipo: ${archetypeCode ?? '(nenhum)'} | overlay: ${statusOverlayCode ?? '(nenhum)'}
+segmento: ${segmentProfile?.name ?? segmentCode ?? '(nenhum)'}
 context tags: ${contextTags.join(', ') || '(nenhum)'}
 status: ${dealStatus}
 overrides: ${overrideIds.join(' | ') || '(nenhum)'}`;
