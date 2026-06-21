@@ -517,7 +517,7 @@ serve(async (req) => {
     }
 
     // Carrega deal (status, funnel_id, stage_id)
-    const { data: deal, error: dealErr } = await admin
+    let { data: deal, error: dealErr } = await admin
       .from("deals")
       .select("id, organization_id, funnel_id, stage_id, status")
       .eq("id", channel.deal_id)
@@ -525,6 +525,29 @@ serve(async (req) => {
     if (dealErr || !deal) {
       console.error("[whatsapp-webhook] deal não encontrado", dealErr);
       return json(200, { ok: true, ignored: "deal_nao_encontrado" });
+    }
+
+    // --- Reativação da Nutrição (§4.5) ---
+    // Se o lead que respondeu está com o deal PERDIDO (lost) — tipicamente em
+    // nutrição/resgate — reabre o deal e devolve à IA na etapa 2 (ia-atendimento),
+    // encerrando o card de nutrição. Contexto preservado (é o MESMO deal).
+    if (deal.status === "lost") {
+      const { error: reactErr } = await admin.rpc("reactivate_deal_from_nurture_internal", {
+        p_deal_id: deal.id,
+        p_target_stage: "ia-atendimento",
+      });
+      if (reactErr) {
+        console.error("[whatsapp-webhook] reativação falhou:", reactErr);
+      } else {
+        console.log("[whatsapp-webhook] lead reativado da nutrição", { deal: deal.id });
+        // recarrega o deal já reaberto (open + ia-atendimento) p/ o resto do fluxo
+        const { data: reloaded } = await admin
+          .from("deals")
+          .select("id, organization_id, funnel_id, stage_id, status")
+          .eq("id", channel.deal_id)
+          .maybeSingle();
+        if (reloaded) deal = reloaded;
+      }
     }
 
     // --- Resolve persona/número receptor (Fase 2A) ---
