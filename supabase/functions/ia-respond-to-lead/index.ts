@@ -324,7 +324,7 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
       // Critérios obrigatórios da etapa atual.
       const { data: criteria } = await supabase
         .from('stage_qualification_criteria')
-        .select('key, label, criterion_type, config, question_hint, is_required')
+        .select('id, key, label, criterion_type, config, question_hint, is_required, owner')
         .eq('organization_id', organizationId)
         .eq('funnel_id', body.funnel_id)
         .eq('stage_id', body.stage_id)
@@ -333,9 +333,22 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
 
       if (criteria && criteria.length > 0) {
         // deno-lint-ignore no-explicit-any
-        const critList = (criteria as any[]).map(c =>
-          `- ${c.key} (${c.is_required ? 'obrigatório' : 'opcional'}): ${c.label}${c.question_hint ? ` — ${c.question_hint}` : ''}`
-        ).join('\n');
+        const critList = (criteria as any[]).map(c => {
+          // Para tipos de seleção, expõe as opções padronizadas (config.options)
+          // para a IA escolher entre elas — nunca valor livre.
+          const opts = Array.isArray(c.config?.options)
+            ? (c.config.options as Array<{ value?: unknown; label?: unknown }>)
+                .map(o => `${o.value ?? ''}${o.label ? ` (${o.label})` : ''}`)
+                .filter(Boolean)
+            : [];
+          const typeHint =
+            c.criterion_type === 'boolean' ? 'true/false'
+            : c.criterion_type === 'threshold' ? 'número'
+            : c.criterion_type === 'select_single' ? `escolha UMA das opções: [${opts.join(', ')}]`
+            : c.criterion_type === 'select_multi' ? `escolha UMA OU MAIS das opções (array): [${opts.join(', ')}]`
+            : 'texto';
+          return `- ${c.key} (${c.is_required ? 'obrigatório' : 'opcional'}, tipo ${c.criterion_type} → ${typeHint}): ${c.label}${c.question_hint ? ` — ${c.question_hint}` : ''}`;
+        }).join('\n');
 
         const fullHistoryTxt = [
           ...(body.conversation_history ?? []).map(m => `${m.role.toUpperCase()}: ${m.content}`),
@@ -400,6 +413,63 @@ ${matchedSkill.guardrailRuleCodes?.length ? `Restrições obrigatórias: ${match
               });
               const qualified = missing.length === 0;
               qualificationEval = { qualified, collected, missing };
+
+              // ----- 5b1. PERSISTE o dado factual coletado em deal_field_values -----
+              // (Fase 1.4c) Grava SEMPRE que há deal_id no modo interno (worker).
+              // É dado factual, não envio de mensagem — independe de autonomia.
+              // Coage cada valor ao formato do tipo do critério; só campos owner
+              // ia|ambos (a IA não escreve em campos do corretor). Best-effort.
+              if (isInternal && body.deal_id) {
+                // deno-lint-ignore no-explicit-any
+                for (const c of (criteria as any[])) {
+                  if (c.owner !== 'ia' && c.owner !== 'ambos') continue;
+                  const raw = collected[c.key];
+                  if (raw === undefined || raw === null) continue;
+                  const opts = Array.isArray(c.config?.options)
+                    ? (c.config.options as Array<{ value?: unknown }>).map(o => o.value)
+                    : [];
+                  let coerced: unknown = null;
+                  switch (c.criterion_type) {
+                    case 'boolean':
+                      coerced = raw === true || raw === 'true' || raw === 1;
+                      break;
+                    case 'threshold': {
+                      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/[^\d.,-]/g, '').replace(',', '.'));
+                      coerced = Number.isFinite(n) ? n : null;
+                      break;
+                    }
+                    case 'select_single': {
+                      // só aceita valor presente nas opções padronizadas
+                      coerced = opts.length === 0 || opts.includes(raw) ? raw : null;
+                      break;
+                    }
+                    case 'select_multi': {
+                      const arr = Array.isArray(raw) ? raw : [raw];
+                      const filtered = opts.length === 0 ? arr : arr.filter(x => opts.includes(x));
+                      coerced = filtered;
+                      break;
+                    }
+                    default: // text, enum
+                      coerced = typeof raw === 'string' ? raw : JSON.stringify(raw);
+                  }
+                  // pula valores vazios (não polui a tabela / não "preenche" trava)
+                  if (coerced === null) continue;
+                  if (typeof coerced === 'string' && coerced.trim() === '') continue;
+                  if (Array.isArray(coerced) && coerced.length === 0) continue;
+                  try {
+                    await supabase.rpc('set_deal_field_value_internal', {
+                      p_deal_id: body.deal_id,
+                      p_field_key: c.key,
+                      p_value: coerced,
+                      p_org: organizationId,
+                      p_criterion_id: c.id,
+                      p_owner: c.owner,
+                    });
+                  } catch (e) {
+                    console.error('[ia-respond-to-lead] set_deal_field_value_internal falhou p/', c.key, e);
+                  }
+                }
+              }
 
               if (qualified) {
                 // Próxima etapa = position+1 no funil (linear). Resolve via funnel_stages.
