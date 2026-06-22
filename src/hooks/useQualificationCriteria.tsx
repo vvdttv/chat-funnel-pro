@@ -15,7 +15,8 @@ export interface QualificationCriterion {
   stageId: string;
   key: string;
   label: string;
-  criterionType: 'boolean' | 'threshold' | 'enum' | 'text';
+  criterionType: 'boolean' | 'threshold' | 'enum' | 'text' | 'select_single' | 'select_multi';
+  owner: 'ia' | 'corretor' | 'ambos';
   config: Record<string, unknown>;
   questionHint: string;
   isRequired: boolean;
@@ -31,6 +32,7 @@ type DBCriterionRow = {
   key: string;
   label: string;
   criterion_type: string;
+  owner: string | null;
   config: Record<string, unknown> | null;
   question_hint: string;
   is_required: boolean;
@@ -47,6 +49,7 @@ function rowToCriterion(row: DBCriterionRow): QualificationCriterion {
     key: row.key,
     label: row.label,
     criterionType: (row.criterion_type as QualificationCriterion['criterionType']) ?? 'boolean',
+    owner: (row.owner as QualificationCriterion['owner']) ?? 'ia',
     config: row.config ?? {},
     questionHint: row.question_hint ?? '',
     isRequired: row.is_required,
@@ -62,6 +65,7 @@ export interface CriterionInput {
   key: string;
   label: string;
   criterionType?: QualificationCriterion['criterionType'];
+  owner?: QualificationCriterion['owner'];
   config?: Record<string, unknown>;
   questionHint?: string;
   isRequired?: boolean;
@@ -74,6 +78,7 @@ const toDBPatch = (input: Partial<CriterionInput>) => ({
   ...(input.key !== undefined ? { key: input.key } : {}),
   ...(input.label !== undefined ? { label: input.label } : {}),
   ...(input.criterionType !== undefined ? { criterion_type: input.criterionType } : {}),
+  ...(input.owner !== undefined ? { owner: input.owner } : {}),
   ...(input.config !== undefined ? { config: input.config } : {}),
   ...(input.questionHint !== undefined ? { question_hint: input.questionHint } : {}),
   ...(input.isRequired !== undefined ? { is_required: input.isRequired } : {}),

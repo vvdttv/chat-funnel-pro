@@ -11,6 +11,9 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { translate } from '@/lib/transitionMessages';
+
+export { translate };
 
 export type DealStatus = 'open' | 'won' | 'lost';
 
@@ -27,21 +30,6 @@ export interface ChangeStatusResult {
   toStatus: DealStatus;
   changedAt: string;
 }
-
-const ERROR_MESSAGES: Record<string, string> = {
-  deal_nao_encontrado: 'Esse deal não existe mais ou foi reatribuído.',
-  sem_permissao: 'Você não tem permissão para alterar este deal.',
-  sem_organizacao: 'Sua sessão não está vinculada a uma organização.',
-  status_invalido: 'Status inválido.',
-};
-
-const translate = (raw: string | null | undefined): string => {
-  if (!raw) return 'Erro desconhecido';
-  for (const key of Object.keys(ERROR_MESSAGES)) {
-    if (raw.includes(key)) return ERROR_MESSAGES[key];
-  }
-  return raw;
-};
 
 export async function moveDealStageAtomic(
   dealId: string,

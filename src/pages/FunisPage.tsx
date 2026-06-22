@@ -18,6 +18,7 @@ import { DealActivityOverlay } from '@/components/DealActivityOverlay';
 import { inferForcedStep, type ForcedStep } from '@/lib/activityBlocking';
 import { KanbanBoard, type KanbanColumn } from '@/components/KanbanBoard';
 import TagSelector from '@/components/dashboard/TagSelector';
+import StageFieldsPanel from '@/components/StageFieldsPanel';
 
 // ========== VIEW MODE ==========
 type ViewMode = 'lead' | 'funnel';
@@ -1076,6 +1077,9 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
                   <p className="text-xs text-muted-foreground mb-2">Tags</p>
                   <TagSelector dealId={deal.id} />
                 </div>
+                {deal.stageId && (
+                  <StageFieldsPanel dealId={deal.id} funnelId={deal.funnelId} stageId={deal.stageId} />
+                )}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-secondary rounded-xl p-3">
                     <p className="text-xs text-muted-foreground">Valor</p>

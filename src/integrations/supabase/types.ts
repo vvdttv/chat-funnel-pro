@@ -1532,6 +1532,22 @@ export type Database = {
           to_stage_id: string
         }[]
       }
+      set_deal_field_value: {
+        Args: {
+          p_deal_id: string
+          p_field_key: string
+          p_value: Json
+          p_criterion_id?: string
+        }
+        Returns: {
+          out_id: string
+          out_deal_id: string
+          out_field_key: string
+          out_value: Json
+          out_owner: string
+          out_source: string
+        }[]
+      }
       resolve_deal_activity: {
         Args: {
           p_archive?: boolean

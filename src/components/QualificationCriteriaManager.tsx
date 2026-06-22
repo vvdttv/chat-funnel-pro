@@ -23,10 +23,32 @@ const CriterionForm = ({ criterion, funnelId, stageId, onSave, onCancel }: {
   const [label, setLabel] = useState(criterion?.label ?? '');
   const [questionHint, setQuestionHint] = useState(criterion?.questionHint ?? '');
   const [isRequired, setIsRequired] = useState(criterion?.isRequired ?? true);
+  const [criterionType, setCriterionType] = useState<QualificationCriterion['criterionType']>(criterion?.criterionType ?? 'boolean');
+  const [owner, setOwner] = useState<QualificationCriterion['owner']>(criterion?.owner ?? 'ia');
+  // options só p/ select_single|select_multi — editadas como "valor|rótulo" por linha.
+  const initialOptions = Array.isArray((criterion?.config as { options?: unknown })?.options)
+    ? ((criterion!.config as { options: Array<{ value?: unknown; label?: unknown }> }).options)
+        .map(o => `${o.value ?? ''}${o.label != null && o.label !== o.value ? `|${o.label}` : ''}`)
+        .join('\n')
+    : '';
+  const [optionsText, setOptionsText] = useState(initialOptions);
   const [saving, setSaving] = useState(false);
+
+  const isSelect = criterionType === 'select_single' || criterionType === 'select_multi';
+
+  const parseOptions = () => optionsText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(l => {
+      const [value, label] = l.split('|').map(s => s.trim());
+      return { value: value, label: label || value };
+    })
+    .filter(o => o.value);
 
   const handleSave = async () => {
     if (!key.trim() || !label.trim() || saving) return;
+    if (isSelect && parseOptions().length === 0) return;
     setSaving(true);
     try {
       await onSave({
@@ -34,13 +56,27 @@ const CriterionForm = ({ criterion, funnelId, stageId, onSave, onCancel }: {
         stageId,
         key: key.trim().toLowerCase().replace(/\s+/g, '_'),
         label: label.trim(),
-        criterionType: 'boolean',
+        criterionType,
+        owner,
+        config: isSelect ? { options: parseOptions() } : {},
         questionHint: questionHint.trim(),
         isRequired,
       });
     } finally {
       setSaving(false);
     }
+  };
+
+  const TYPE_LABELS: Record<QualificationCriterion['criterionType'], string> = {
+    boolean: 'Sim/Não',
+    threshold: 'Número',
+    enum: 'Texto (enum)',
+    text: 'Texto livre',
+    select_single: 'Lista (única)',
+    select_multi: 'Lista (múltipla)',
+  };
+  const OWNER_LABELS: Record<QualificationCriterion['owner'], string> = {
+    ia: 'IA', corretor: 'Corretor', ambos: 'Ambos',
   };
 
   return (
@@ -69,13 +105,37 @@ const CriterionForm = ({ criterion, funnelId, stageId, onSave, onCancel }: {
           <label className={labelCls}>Rótulo</label>
           <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Renda compatível com a faixa MCMV" className={inputCls} />
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelCls}>Tipo do campo</label>
+            <select value={criterionType} onChange={e => setCriterionType(e.target.value as QualificationCriterion['criterionType'])} className={inputCls}>
+              {(Object.keys(TYPE_LABELS) as QualificationCriterion['criterionType'][]).map(t => (
+                <option key={t} value={t}>{TYPE_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Quem preenche</label>
+            <select value={owner} onChange={e => setOwner(e.target.value as QualificationCriterion['owner'])} className={inputCls}>
+              {(Object.keys(OWNER_LABELS) as QualificationCriterion['owner'][]).map(o => (
+                <option key={o} value={o}>{OWNER_LABELS[o]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {isSelect && (
+          <div>
+            <label className={labelCls}>Opções (uma por linha — "valor" ou "valor|rótulo")</label>
+            <textarea value={optionsText} onChange={e => setOptionsText(e.target.value)} rows={3} placeholder={'whatsapp|WhatsApp\nligacao|Ligação'} className={`${inputCls} resize-none font-mono text-[11px]`} />
+          </div>
+        )}
         <div>
           <label className={labelCls}>Dica para a IA avaliar</label>
           <textarea value={questionHint} onChange={e => setQuestionHint(e.target.value)} rows={2} placeholder="Como a IA deve confirmar este critério na conversa, de forma consultiva." className={`${inputCls} resize-none`} />
         </div>
         <button
           onClick={handleSave}
-          disabled={!key.trim() || !label.trim() || saving}
+          disabled={!key.trim() || !label.trim() || (isSelect && parseOptions().length === 0) || saving}
           className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-40 flex items-center justify-center gap-2"
         >
           {saving && <Loader2 size={14} className="animate-spin" />}
@@ -179,7 +239,9 @@ const QualificationCriteriaManager = () => {
                               {c.isRequired ? 'obrigatório' : 'opcional'}
                             </span>
                           </p>
-                          <p className="text-[10px] text-muted-foreground truncate">{c.key}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {c.key} · {c.owner} · {c.criterionType}
+                          </p>
                         </div>
                         <button
                           onClick={() => updateCriterion(c.id, { isActive: !c.isActive })}
