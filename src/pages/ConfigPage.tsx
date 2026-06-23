@@ -308,7 +308,7 @@ const StageMetricsPanel = ({ funnel, stageId }: { funnel: Funnel; stageId: strin
 
 // ========== STAGE EDITOR ==========
 
-const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void }) => {
+const StageEditor = ({ funnel, stage, onUpdate, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown, roles }: { funnel: Funnel; stage: FunnelStage; onUpdate: (s: FunnelStage) => void; onDelete: () => void; onMoveUp?: () => void; onMoveDown?: () => void; canMoveUp?: boolean; canMoveDown?: boolean; roles?: StageRole[] }) => {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stage.name);
@@ -342,7 +342,10 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
     <>
     <div className="bg-card rounded-xl mb-2 overflow-hidden">
       <div className="flex items-center gap-3 p-4">
-        <GripVertical size={16} className="text-muted-foreground shrink-0" />
+        <div className="flex flex-col shrink-0">
+          <button onClick={onMoveUp} disabled={!canMoveUp} className="p-0.5 text-muted-foreground disabled:opacity-30 active:scale-90"><ChevronUp size={14} /></button>
+          <button onClick={onMoveDown} disabled={!canMoveDown} className="p-0.5 text-muted-foreground disabled:opacity-30 active:scale-90"><ChevronDown size={14} /></button>
+        </div>
         {editingName ? (
           <input
             autoFocus
@@ -369,6 +372,24 @@ const StageEditor = ({ funnel, stage, onUpdate, onDelete }: { funnel: Funnel; st
         <div className="px-3 pb-3">
           {/* Métricas */}
           <StageMetricsPanel funnel={funnel} stageId={stage.id} />
+
+          {/* Papel semântico da etapa (J-2b-0a/0b) — amarra automações */}
+          <div className="bg-secondary/40 rounded-lg p-2.5 mb-3">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Papel nas automações</label>
+            <select
+              value={stage.role || ''}
+              onChange={e => onUpdate({ ...stage, role: e.target.value || undefined })}
+              className="w-full bg-card rounded-md px-2 py-1.5 text-xs text-foreground outline-none border border-border focus:border-primary/50"
+            >
+              <option value="">Nenhum (etapa sem automação)</option>
+              {(roles || []).map(r => (
+                <option key={r.role} value={r.role}>{r.label}{r.is_critical ? ' (crítico)' : ''}</option>
+              ))}
+            </select>
+            {stage.role && (roles || []).find(r => r.role === stage.role)?.description && (
+              <p className="text-[10px] text-muted-foreground mt-1">{(roles || []).find(r => r.role === stage.role)?.description}</p>
+            )}
+          </div>
 
           {/* Comportamento da IA nesta etapa */}
           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -482,6 +503,21 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
   const [editingMeta, setEditingMeta] = useState(false);
   const [draftName, setDraftName] = useState(funnel.name);
   const [draftDesc, setDraftDesc] = useState(funnel.description);
+  const { roles } = useStageRoles();
+  const { syncStages, saving } = useFunnelStageSync();
+
+  // Persiste a NOVA lista de etapas via RPC (reconcilia jsonb + tabela do motor).
+  // Otimista: atualiza a UI; em erro, reverte e avisa.
+  const persistStages = async (nextStages: FunnelStage[]) => {
+    const prev = funnel.stages;
+    onUpdate({ ...funnel, stages: nextStages });
+    const ok = await syncStages(funnel.id, nextStages);
+    if (!ok) {
+      onUpdate({ ...funnel, stages: prev }); // reverte
+      const { toast } = await import('sonner');
+      toast.error('Não foi possível salvar as etapas. Verifique os papéis das automações.');
+    }
+  };
 
   const addStage = () => {
     const newStage: FunnelStage = {
@@ -491,17 +527,25 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
       maxDaysInStage: 7,
       touchpoints: [],
     };
-    onUpdate({ ...funnel, stages: [...funnel.stages, newStage] });
+    persistStages([...funnel.stages, newStage]);
   };
 
   const updateStage = (idx: number, stage: FunnelStage) => {
     const stages = [...funnel.stages];
     stages[idx] = stage;
-    onUpdate({ ...funnel, stages });
+    persistStages(stages);
   };
 
   const deleteStage = (idx: number) => {
-    onUpdate({ ...funnel, stages: funnel.stages.filter((_, i) => i !== idx) });
+    persistStages(funnel.stages.filter((_, i) => i !== idx));
+  };
+
+  const moveStage = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= funnel.stages.length) return;
+    const stages = [...funnel.stages];
+    [stages[idx], stages[j]] = [stages[j], stages[idx]];
+    persistStages(stages);
   };
 
   return (
@@ -543,7 +587,9 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
 
       {/* Stages Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{funnel.stages.length} Etapas</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {funnel.stages.length} Etapas{saving ? ' · salvando…' : ''}
+        </span>
         <button
           onClick={addStage}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-transform"
@@ -558,8 +604,13 @@ const FunnelEditor = ({ funnel, onUpdate }: { funnel: Funnel; onUpdate: (f: Funn
           key={stage.id}
           funnel={funnel}
           stage={stage}
+          roles={roles}
           onUpdate={(s) => updateStage(idx, s)}
           onDelete={() => deleteStage(idx)}
+          onMoveUp={() => moveStage(idx, -1)}
+          onMoveDown={() => moveStage(idx, 1)}
+          canMoveUp={idx > 0}
+          canMoveDown={idx < funnel.stages.length - 1}
         />
       ))}
     </div>

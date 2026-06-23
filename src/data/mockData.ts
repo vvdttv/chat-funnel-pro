@@ -55,6 +55,8 @@ export interface FunnelStage {
   id: string;
   name: string;
   probability: number;
+  /** Papel semantico p/ automacoes (J-2b-0a). Resolvido por funnel_stages.role no motor. */
+  role?: string;
   /** Tempo máximo (em dias) que uma oportunidade pode ficar na etapa */
   maxDaysInStage: number;
   touchpoints: Touchpoint[];

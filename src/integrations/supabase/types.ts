@@ -1532,6 +1532,18 @@ export type Database = {
           to_stage_id: string
         }[]
       }
+      sync_funnel_stages: {
+        Args: {
+          p_funnel_id: string
+          p_stages: Json
+        }
+        Returns: {
+          out_stage_id: string
+          out_position: number
+          out_role: string
+          out_action: string
+        }[]
+      }
       start_guarantee_analysis: {
         Args: {
           p_analysis_id: string
