@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { useAuth } from '@/hooks/useAuth';
+import { useFunnelAccess } from '@/hooks/useFunnelAccess';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useToast } from '@/hooks/use-toast';
 import type { CardWidget } from '@/components/CardWidgetConfig';
@@ -1619,7 +1620,15 @@ const StageFilters = ({ filters, onChange, onClose }: { filters: StageFilterStat
 
 const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: boolean) => void }) => {
   const { widgets: cardWidgets } = useCardWidgets();
-  const { funnels } = useFunnelsContext();
+  const { funnels: allFunnels } = useFunnelsContext();
+  const { isAdmin, profile } = useAuth();
+  const { funnelsForUser } = useFunnelAccess();
+  // J-2b-1c: corretor/atendente so ve funis a que tem acesso; admin ve todos.
+  const funnels = useMemo(() => {
+    if (isAdmin) return allFunnels;
+    const allowed = funnelsForUser(profile?.id ?? null);
+    return allFunnels.filter(f => allowed.includes(f.id));
+  }, [allFunnels, isAdmin, profile?.id, funnelsForUser]);
   const { deals: dealsList } = useDealsContext();
   const { conversations } = useConversationsContext();
   const [viewMode, setViewMode] = useState<ViewMode>('lead');

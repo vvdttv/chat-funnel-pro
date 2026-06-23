@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, ToggleLeft, ToggleRight, UserRound, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, ToggleLeft, ToggleRight, UserRound, CalendarClock, AlertTriangle, Network } from 'lucide-react';
 import {
   useBrokersContext,
   type Broker,
@@ -7,6 +7,8 @@ import {
   type BrokerInput,
   type BrokerChannel,
 } from '@/hooks/useBrokers';
+import { useFunnelAccess } from '@/hooks/useFunnelAccess';
+import { useFunnelsContext } from '@/hooks/useFunnels';
 
 const inputCls = 'w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50 placeholder:text-muted-foreground';
 const labelCls = 'text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block';
@@ -17,6 +19,47 @@ const CHANNEL_LABELS: Record<BrokerChannel, string> = {
   ligacao: 'Ligação',
 };
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+// ========== FUNNEL ACCESS EDITOR (J-2b-1c) ==========
+// Define a quais funis o corretor tem acesso. A roleta de cada funil so
+// distribui entre quem tem acesso. Requer corretor vinculado a um login (userId).
+const FunnelAccessEditor = ({ broker }: { broker: Broker }) => {
+  const { funnels } = useFunnelsContext();
+  const { funnelsForUser, toggleAccess } = useFunnelAccess();
+  if (!broker.userId) {
+    return (
+      <div className="mt-2 pt-2 border-t border-border">
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Network size={11} /> Vincule um login (campo "Usuário") para definir acesso aos funis.
+        </p>
+      </div>
+    );
+  }
+  const granted = funnelsForUser(broker.userId);
+  return (
+    <div className="mt-2 pt-2 border-t border-border">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+        <Network size={11} /> Acesso aos funis
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {funnels.map(f => {
+          const on = granted.includes(f.id);
+          return (
+            <button
+              key={f.id}
+              onClick={() => toggleAccess(broker.userId as string, f.id, !on)}
+              className={'text-[10px] px-2 py-1 rounded-full border transition-colors ' +
+                (on ? 'bg-primary/15 border-primary/40 text-primary font-medium' : 'bg-secondary border-border text-muted-foreground')}
+            >
+              {f.name}
+            </button>
+          );
+        })}
+        {funnels.length === 0 && <span className="text-[10px] text-muted-foreground">Nenhum funil cadastrado</span>}
+      </div>
+    </div>
+  );
+};
 
 // ========== BROKER FORM ==========
 
@@ -259,6 +302,7 @@ const BrokersManager = () => {
                 ))}
               </div>
               <AvailabilityEditor broker={broker} availability={availability} />
+              <FunnelAccessEditor broker={broker} />
             </div>
           ))}
     </div>
