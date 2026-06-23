@@ -14,6 +14,7 @@ import AuthPage from "./pages/AuthPage.tsx";
 // fazem parte do bundle inicial do CRM).
 const ConfigurarIaPage = lazy(() => import("./pages/ConfigurarIaPage.tsx"));
 const CorrespondentePanel = lazy(() => import("./pages/CorrespondentePanel.tsx"));
+const GarantiaPanel = lazy(() => import("./pages/GarantiaPanel.tsx"));
 const BrokerPanel = lazy(() => import("./pages/BrokerPanel.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/" element={<ProtectedRoute><HomeByRole /></ProtectedRoute>} />
               <Route path="/correspondente" element={<CorrespondentePanel />} />
+              <Route path="/garantia" element={<GarantiaPanel />} />
               <Route path="/corretor" element={<BrokerPanel />} />
               <Route path="/configurar-ia" element={<ProtectedRoute><ConfigurarIaPage /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1532,6 +1532,34 @@ export type Database = {
           to_stage_id: string
         }[]
       }
+      start_guarantee_analysis: {
+        Args: {
+          p_analysis_id: string
+        }
+        Returns: {
+          analysis_id: string
+          status: string
+          analysis_started_at: string
+        }[]
+      }
+      submit_guarantee_devolutiva: {
+        Args: {
+          p_analysis_id: string
+          p_result: string
+          p_guarantee_type?: string
+          p_conditions?: string
+          p_reason?: string
+          p_retomada_prazo_dias?: number
+          p_custom_fields_response?: Json
+        }
+        Returns: {
+          analysis_id: string
+          status: string
+          result: string
+          deal_id: string
+          new_stage_id: string
+        }[]
+      }
       set_deal_field_value: {
         Args: {
           p_deal_id: string
