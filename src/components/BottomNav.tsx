@@ -1,12 +1,80 @@
-import { useState } from 'react';
-import { Users, Clock, BarChart3, Settings, RefreshCw, Bot } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Users,
+  Clock,
+  BarChart3,
+  Settings,
+  RefreshCw,
+  Bot,
+  LayoutGrid,
+  ClipboardCheck,
+  FileSignature,
+  ShieldCheck,
+  Briefcase,
+  HeadsetIcon,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { forceRefresh } from '@/lib/force-refresh';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BottomNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
+
+// Atalhos para os painéis externos ao CRM (rotas fora do Index). Cada item
+// declara explicitamente quais papéis podem acessar — espelha a regra de
+// gating na própria página, então se um curioso clicar sem permissão, o
+// painel já redireciona pra '/'.
+type PanelEntry = {
+  to: string;
+  label: string;
+  icon: typeof Users;
+  allow: (ctx: { isAdmin: boolean; roles: string[] }) => boolean;
+};
+
+const PANEL_ENTRIES: PanelEntry[] = [
+  {
+    to: '/correspondente',
+    label: 'Correspondente',
+    icon: HeadsetIcon,
+    allow: ({ isAdmin, roles }) =>
+      isAdmin || roles.includes('atendente') || roles.includes('correspondente'),
+  },
+  {
+    to: '/garantia',
+    label: 'Garantia (locação)',
+    icon: ShieldCheck,
+    allow: ({ isAdmin }) => isAdmin,
+  },
+  {
+    to: '/vistorias',
+    label: 'Vistorias',
+    icon: ClipboardCheck,
+    allow: ({ isAdmin }) => isAdmin,
+  },
+  {
+    to: '/contratos',
+    label: 'Contratos',
+    icon: FileSignature,
+    allow: ({ isAdmin }) => isAdmin,
+  },
+  {
+    to: '/corretor',
+    label: 'Corretor',
+    icon: Briefcase,
+    allow: ({ isAdmin, roles }) => isAdmin || roles.includes('corretor'),
+  },
+];
 
 const leftTabs = [
   { id: 'leads', icon: Users, label: 'Leads' },
@@ -21,7 +89,17 @@ const rightTabs = [
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   const [refreshing, setRefreshing] = useState(false);
+  const [panelsOpen, setPanelsOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isAdmin, roles } = useAuth();
+
+  // Filtra os atalhos pelo papel do usuário. Recalcula só quando a lista de
+  // papéis muda — evita re-render desnecessário em cada clique do dropdown.
+  const visiblePanels = useMemo(
+    () => PANEL_ENTRIES.filter((p) => p.allow({ isAdmin, roles })),
+    [isAdmin, roles],
+  );
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -76,6 +154,42 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
           <span className="text-[10px] font-medium">Sync</span>
         </button>
         {rightTabs.map(renderTab)}
+        {visiblePanels.length > 0 && (
+          <DropdownMenu open={panelsOpen} onOpenChange={setPanelsOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Abrir painéis"
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors active:scale-95 transition-transform ${
+                  panelsOpen ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <LayoutGrid size={22} strokeWidth={panelsOpen ? 2.5 : 1.8} />
+                <span className="text-[10px] font-medium">Painéis</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-56">
+              <DropdownMenuLabel>Painéis dedicados</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {visiblePanels.map((panel) => {
+                const Icon = panel.icon;
+                return (
+                  <DropdownMenuItem
+                    key={panel.to}
+                    onSelect={() => {
+                      setPanelsOpen(false);
+                      navigate(panel.to);
+                    }}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Icon size={16} className="text-muted-foreground" />
+                    <span>{panel.label}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </nav>
   );
