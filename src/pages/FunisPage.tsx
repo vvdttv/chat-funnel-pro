@@ -8,6 +8,7 @@ import { Users, ChevronRight, ChevronLeft, X, AlertTriangle, Send, Lock, Message
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useCardWidgets } from '@/hooks/useCardWidgets';
+import { DealContractAction } from '@/components/DealContractAction';
 import { useFunnelsContext } from '@/hooks/useFunnels';
 import { useAuth } from '@/hooks/useAuth';
 import { useFunnelAccess } from '@/hooks/useFunnelAccess';
@@ -1074,6 +1075,7 @@ const DealDetailSheet = ({ deal, onClose, onPendingStepChange, onLost }: { deal:
               <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
                 <ReassignDealRow deal={deal} />
                 <DealStatusActions deal={deal} onLost={() => onLost?.(deal)} />
+                <DealContractAction deal={deal} />
                 <div className="bg-secondary rounded-xl p-3 mb-4">
                   <p className="text-xs text-muted-foreground mb-2">Tags</p>
                   <TagSelector dealId={deal.id} />
