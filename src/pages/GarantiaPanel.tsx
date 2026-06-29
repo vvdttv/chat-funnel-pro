@@ -65,13 +65,14 @@ const Stopwatch = ({ since }: { since: string }) => {
 // ========== DETALHE ==========
 
 const AnalysisDetail = ({ analysis, onClose }: { analysis: GuaranteeAnalysis; onClose: () => void }) => {
-  const { loadDocuments, loadComments, addComment, uploadAnalystDoc, startAnalysis, submitDevolutiva } = useGuaranteeAnalysesContext();
+  const { loadDocuments, loadComments, addComment, uploadAnalystDoc, startAnalysis, submitDevolutiva, setGuaranteeType: rpcSetGuaranteeType } = useGuaranteeAnalysesContext();
   const [docs, setDocs] = useState<GuaranteeAnalysisDocument[]>([]);
   const [comments, setComments] = useState<GuaranteeAnalysisComment[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [busy, setBusy] = useState(false);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [generalComment, setGeneralComment] = useState('');
+  const [typeDraft, setTypeDraft] = useState<GuaranteeType | ''>(analysis.guaranteeType ?? '');
 
   // Form de devolutiva
   const [result, setResult] = useState<GuaranteeAnalysisResult>('approved');
@@ -170,6 +171,33 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: GuaranteeAnalysis; on
           <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
             <span className="text-xs text-muted-foreground flex items-center gap-1.5"><ShieldCheck size={13} /> Tipo de garantia</span>
             <span className="text-sm font-medium text-foreground">{GUARANTEE_LABEL[analysis.guaranteeType] ?? analysis.guaranteeType}</span>
+          </div>
+        )}
+
+        {analysis.status === 'received' && !analysis.guaranteeType && (
+          <div className="bg-card border border-warning/30 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-warning flex items-center gap-1.5"><ShieldCheck size={13} /> Definir tipo de garantia</p>
+            <p className="text-[11px] text-muted-foreground">Selecione o tipo para que a analise siga. Se escolher seguro-fianca ou titulo de capitalizacao, a seguradora e o atendente sao roteados automaticamente pela roleta.</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {GUARANTEE_TYPES.map(t => (
+                <button key={t.value} onClick={() => setTypeDraft(t.value)}
+                  className={`px-2 py-1.5 rounded-lg text-[11px] font-medium active:scale-95 ${typeDraft === t.value ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={async () => {
+              if (!typeDraft) return;
+              setBusy(true);
+              const r = await rpcSetGuaranteeType(analysis.id, typeDraft as GuaranteeType);
+              setBusy(false);
+              if (r.error) alert('Erro: ' + r.error);
+              else if (r.routed) alert('Tipo definido. Roteado automaticamente para a seguradora pela roleta.');
+            }} disabled={!typeDraft || busy}
+              className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+              {busy && <Loader2 size={12} className="animate-spin" />}
+              Confirmar tipo
+            </button>
           </div>
         )}
 

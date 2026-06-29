@@ -31,6 +31,8 @@ export interface GuaranteeAnalysis {
   receivedAt: string;
   analysisStartedAt: string | null;
   returnedAt: string | null;
+  insurerId: string | null;
+  insurerAttendantId: string | null;
 }
 
 export interface GuaranteeAnalysisDocument {
@@ -66,6 +68,8 @@ type DBAnalysisRow = {
   received_at: string;
   analysis_started_at: string | null;
   returned_at: string | null;
+  insurer_id: string | null;
+  insurer_attendant_id: string | null;
 };
 
 function rowToAnalysis(r: DBAnalysisRow): GuaranteeAnalysis {
@@ -83,6 +87,8 @@ function rowToAnalysis(r: DBAnalysisRow): GuaranteeAnalysis {
     receivedAt: r.received_at,
     analysisStartedAt: r.analysis_started_at,
     returnedAt: r.returned_at,
+    insurerId: r.insurer_id,
+    insurerAttendantId: r.insurer_attendant_id,
   };
 }
 
@@ -227,10 +233,34 @@ export function useGuaranteeAnalyses() {
     return {};
   }, []);
 
+  // J-2b-4: admin define o tipo da garantia. Se seguro_fianca / titulo_capitalizacao,
+  // a propria RPC dispara a roleta de seguradoras.
+  const setGuaranteeType = useCallback(async (analysisId: string, type: GuaranteeType) => {
+    const { data, error } = await supabase.rpc('set_guarantee_type', {
+      p_analysis_id: analysisId,
+      p_type: type,
+    });
+    if (error) { console.error('[useGuaranteeAnalyses] setGuaranteeType', error); return { error: error.message }; }
+    const row = Array.isArray(data) ? data[0] : data;
+    return { routed: row?.out_routed_to_insurer as boolean };
+  }, []);
+
+  // J-2b-4: admin sobrescreve manualmente a seguradora/atendente.
+  const assignInsurerToAnalysis = useCallback(async (analysisId: string, insurerId: string, attendantId?: string | null) => {
+    const { error } = await supabase.rpc('assign_insurer_to_analysis', {
+      p_analysis_id: analysisId,
+      p_insurer_id: insurerId,
+      p_attendant_id: attendantId ?? null,
+    });
+    if (error) { console.error('[useGuaranteeAnalyses] assignInsurer', error); return { error: error.message }; }
+    return {};
+  }, []);
+
   return {
     analyses, loading, error,
     loadDocuments, loadComments, addComment, uploadAnalystDoc,
     startAnalysis, submitDevolutiva,
+    setGuaranteeType, assignInsurerToAnalysis,
   };
 }
 

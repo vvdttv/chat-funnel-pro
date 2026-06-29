@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { properties, formatCurrency, Property, Funnel, FunnelStage, Touchpoint, customFields as initialFields, CustomField, FieldType, FieldObject, FIELD_TYPE_LABELS, FIELD_OBJECT_LABELS, FIELD_TYPE_CATEGORIES, TouchpointExecutor, MessageType } from '@/data/mockData';
 import { useStageMetrics } from '@/hooks/useStageMetrics';
-import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play, ListChecks, Landmark, UserRound, GraduationCap } from 'lucide-react';
+import { Building2, Smartphone, Bot, Plus, Copy, ExternalLink, ChevronRight, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Pencil, Trash2, GripVertical, X, User, Zap, Phone, Mail, MessageSquare, Clock, Database, Lock, List, LayoutGrid, DollarSign, Users, TrendingUp, ArrowRight, Timer, Target, Type as TypeIcon, Image as ImageIcon, Volume2, Video, Sparkles, Loader2, LogOut, Shield, MessageSquareText, Search, Play, ListChecks, Landmark, UserRound, GraduationCap, ShieldCheck, ClipboardCheck, FileSignature } from 'lucide-react';
 import { IAAuditTab } from '@/components/configurador-ia/IAAuditTab';
 import { IASimulator } from '@/components/configurador-ia/IASimulator';
 import { ConfiguradorIaFlow } from '@/components/configurador-ia/ConfiguradorIaFlow';
@@ -26,6 +26,9 @@ import CorrespondentsManager from '@/components/CorrespondentsManager';
 import BrokersManager from '@/components/BrokersManager';
 import PropertiesManager from '@/components/PropertiesManager';
 import DevolutivaFieldsManager from '@/components/DevolutivaFieldsManager';
+import InsurersManager from '@/components/InsurersManager';
+import InspectorsManager from '@/components/InspectorsManager';
+import LeaseContractFieldsManager from '@/components/LeaseContractFieldsManager';
 import FeedbackPermissionsManager from '@/components/FeedbackPermissionsManager';
 import { PersonasProvider } from '@/hooks/usePersonas';
 import { WhatsappNumbersProvider } from '@/hooks/useWhatsappNumbers';
@@ -33,7 +36,10 @@ import { QualificationCriteriaProvider } from '@/hooks/useQualificationCriteria'
 import { CorrespondentBanksProvider } from '@/hooks/useCorrespondentBanks';
 import { BrokersProvider } from '@/hooks/useBrokers';
 import { PropertiesProvider } from '@/hooks/useProperties';
-type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades' | 'criterios' | 'correspondentes' | 'corretores' | 'campos_devolutiva' | 'treinador';
+import { InsurersProvider } from '@/hooks/useInsurers';
+import { InspectorsProvider } from '@/hooks/useInspectors';
+import { LeaseContractsProvider } from '@/hooks/useLeaseContracts';
+type SettingsTab = 'config_ia' | 'funis' | 'personas' | 'imoveis' | 'numeros' | 'campos' | 'card_layout' | 'usuarios' | 'seguranca' | 'atividades' | 'criterios' | 'correspondentes' | 'corretores' | 'campos_devolutiva' | 'treinador' | 'seguradoras' | 'vistoriadores' | 'campos_contrato';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?: boolean }[] = [
   { id: 'config_ia', label: 'Config IA', icon: Sparkles, adminOnly: true },
@@ -43,6 +49,9 @@ const tabs: { id: SettingsTab; label: string; icon: typeof Building2; adminOnly?
   { id: 'usuarios', label: 'Equipe', icon: Users, adminOnly: true },
   { id: 'correspondentes', label: 'Correspondentes', icon: Landmark, adminOnly: true },
   { id: 'campos_devolutiva', label: 'Campos Devolutiva', icon: ListChecks, adminOnly: true },
+  { id: 'seguradoras', label: 'Seguradoras', icon: ShieldCheck, adminOnly: true },
+  { id: 'vistoriadores', label: 'Vistoriadores', icon: ClipboardCheck, adminOnly: true },
+  { id: 'campos_contrato', label: 'Campos Contrato', icon: FileSignature, adminOnly: true },
   { id: 'corretores', label: 'Corretores', icon: UserRound, adminOnly: true },
   { id: 'seguranca', label: 'Segurança', icon: Shield },
   { id: 'card_layout', label: 'Card', icon: LayoutGrid },
@@ -1203,6 +1212,12 @@ const ConfigPageInner = () => {
 
         {activeTab === 'campos_devolutiva' && isAdmin && <DevolutivaFieldsManager />}
 
+        {activeTab === 'seguradoras' && isAdmin && <InsurersManager />}
+
+        {activeTab === 'vistoriadores' && isAdmin && <InspectorsManager />}
+
+        {activeTab === 'campos_contrato' && isAdmin && <LeaseContractFieldsManager />}
+
         {activeTab === 'corretores' && isAdmin && <BrokersManager />}
 
         {activeTab === 'usuarios' && <UsersManager />}
@@ -1236,7 +1251,13 @@ const ConfigPage = () => (
         <CorrespondentBanksProvider>
           <BrokersProvider>
             <PropertiesProvider>
-              <ConfigPageInner />
+              <InsurersProvider>
+                <InspectorsProvider>
+                  <LeaseContractsProvider>
+                    <ConfigPageInner />
+                  </LeaseContractsProvider>
+                </InspectorsProvider>
+              </InsurersProvider>
             </PropertiesProvider>
           </BrokersProvider>
         </CorrespondentBanksProvider>

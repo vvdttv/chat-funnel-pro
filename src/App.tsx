@@ -16,6 +16,8 @@ const ConfigurarIaPage = lazy(() => import("./pages/ConfigurarIaPage.tsx"));
 const CorrespondentePanel = lazy(() => import("./pages/CorrespondentePanel.tsx"));
 const GarantiaPanel = lazy(() => import("./pages/GarantiaPanel.tsx"));
 const BrokerPanel = lazy(() => import("./pages/BrokerPanel.tsx"));
+const VistoriasPanel = lazy(() => import("./pages/VistoriasPanel.tsx"));
+const ContratosPanel = lazy(() => import("./pages/ContratosPanel.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const RouteFallback = () => (
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="/correspondente" element={<CorrespondentePanel />} />
               <Route path="/garantia" element={<GarantiaPanel />} />
               <Route path="/corretor" element={<BrokerPanel />} />
+              <Route path="/vistorias" element={<VistoriasPanel />} />
+              <Route path="/contratos" element={<ContratosPanel />} />
               <Route path="/configurar-ia" element={<ProtectedRoute><ConfigurarIaPage /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
