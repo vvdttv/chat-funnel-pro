@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
   Loader2, FileText, Clock, CheckCircle2, XCircle, AlertCircle, LogOut, ShieldCheck,
-  Play, Send, Paperclip, MessageSquarePlus, ExternalLink, ChevronLeft,
+  Play, Send, Paperclip, MessageSquarePlus, ExternalLink, ChevronLeft, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -14,6 +14,7 @@ import {
   type GuaranteeAnalysisResult,
   type GuaranteeType,
 } from '@/hooks/useGuaranteeAnalyses';
+import { InsurersProvider, useInsurersContext } from '@/hooks/useInsurers';
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   received: { label: 'Recebida', cls: 'bg-warning/15 text-warning' },
@@ -59,6 +60,161 @@ const Stopwatch = ({ since }: { since: string }) => {
     <span className="font-mono text-sm text-primary tabular-nums">
       {h > 0 ? pad(h) + ':' : ''}{pad(m)}:{pad(s)}
     </span>
+  );
+};
+
+// ========== OVERRIDE DE SEGURADORA ==========
+
+/**
+ * Permite ao admin trocar a seguradora/atendente da analise quando a roleta
+ * caiu em alguem indisponivel. So aparece para tipos que envolvem seguradora
+ * (seguro_fianca, titulo_capitalizacao) e enquanto a analise esta em curso
+ * (status in_analysis). A RPC `assign_insurer_to_analysis` valida que o
+ * atendente pertence a seguradora escolhida.
+ */
+const InsurerOverrideCard = ({ analysis }: { analysis: GuaranteeAnalysis }) => {
+  const { insurers, attendants, loading } = useInsurersContext();
+  const { assignInsurerToAnalysis } = useGuaranteeAnalysesContext();
+  const [editing, setEditing] = useState(false);
+  const [insurerId, setInsurerId] = useState<string>(analysis.insurerId ?? '');
+  const [attendantId, setAttendantId] = useState<string>(analysis.insurerAttendantId ?? '');
+  const [busy, setBusy] = useState(false);
+
+  const isRoulettedType =
+    analysis.guaranteeType === 'seguro_fianca' || analysis.guaranteeType === 'titulo_capitalizacao';
+  const canOverride = isRoulettedType && analysis.status === 'in_analysis';
+
+  const currentInsurer = useMemo(
+    () => insurers.find(i => i.id === analysis.insurerId) ?? null,
+    [insurers, analysis.insurerId],
+  );
+  const currentAttendant = useMemo(
+    () => attendants.find(a => a.id === analysis.insurerAttendantId) ?? null,
+    [attendants, analysis.insurerAttendantId],
+  );
+
+  const insurerOptions = useMemo(
+    () => insurers.filter(i => i.isActive).sort((a, b) => a.position - b.position),
+    [insurers],
+  );
+  const attendantOptions = useMemo(
+    () => attendants
+      .filter(a => a.isActive && a.insurerId === insurerId)
+      .sort((x, y) => x.position - y.position),
+    [attendants, insurerId],
+  );
+
+  if (!canOverride) return null;
+
+  const handleApply = async () => {
+    if (!insurerId) { alert('Selecione a seguradora.'); return; }
+    setBusy(true);
+    const { error } = await assignInsurerToAnalysis(
+      analysis.id,
+      insurerId,
+      attendantId || null,
+    );
+    setBusy(false);
+    if (error) { alert('Erro ao reatribuir: ' + error); return; }
+    setEditing(false);
+    // Realtime do GuaranteeAnalysesProvider atualiza a analise. Nao fechamos
+    // o detalhe para o admin ver o novo atendente refletido no card.
+  };
+
+  const handleCancel = () => {
+    setInsurerId(analysis.insurerId ?? '');
+    setAttendantId(analysis.insurerAttendantId ?? '');
+    setEditing(false);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <ShieldCheck size={13} /> Seguradora atribuida
+        </span>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="text-[11px] text-primary font-medium active:scale-95 flex items-center gap-1"
+          >
+            <RefreshCw size={11} /> Trocar
+          </button>
+        )}
+      </div>
+
+      {!editing ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">
+            {currentInsurer ? currentInsurer.name : <span className="text-muted-foreground italic">Sem seguradora</span>}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Atendente: {currentAttendant ? currentAttendant.name : <span className="italic">sem atendente</span>}
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <Loader2 size={12} className="animate-spin" /> Carregando seguradoras...
+        </div>
+      ) : insurerOptions.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground py-2">
+          Nenhuma seguradora ativa cadastrada. Cadastre em Config &gt; Seguradoras.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <div>
+            <label className="text-[10px] text-muted-foreground">Seguradora</label>
+            <select
+              value={insurerId}
+              onChange={e => { setInsurerId(e.target.value); setAttendantId(''); }}
+              className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50"
+            >
+              <option value="">(selecione)</option>
+              {insurerOptions.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+          </div>
+          {insurerId && (
+            <div>
+              <label className="text-[10px] text-muted-foreground">Atendente (opcional)</label>
+              <select
+                value={attendantId}
+                onChange={e => setAttendantId(e.target.value)}
+                className="w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border focus:border-primary/50"
+              >
+                <option value="">(roleta da seguradora escolhe)</option>
+                {attendantOptions.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+              {attendantOptions.length === 0 && (
+                <p className="text-[10px] text-warning mt-1">
+                  Esta seguradora nao tem atendentes ativos. A RPC vai falhar; cadastre antes.
+                </p>
+              )}
+            </div>
+          )}
+          <div className="flex gap-1.5 pt-1">
+            <button
+              onClick={handleCancel}
+              disabled={busy}
+              className="flex-1 px-3 py-2 rounded-lg bg-secondary text-muted-foreground text-xs font-medium active:scale-95"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleApply}
+              disabled={busy || !insurerId}
+              className="flex-1 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5"
+            >
+              {busy && <Loader2 size={12} className="animate-spin" />}
+              Aplicar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -173,6 +329,8 @@ const AnalysisDetail = ({ analysis, onClose }: { analysis: GuaranteeAnalysis; on
             <span className="text-sm font-medium text-foreground">{GUARANTEE_LABEL[analysis.guaranteeType] ?? analysis.guaranteeType}</span>
           </div>
         )}
+
+        <InsurerOverrideCard analysis={analysis} />
 
         {analysis.status === 'received' && !analysis.guaranteeType && (
           <div className="bg-card border border-warning/30 rounded-xl p-4 space-y-2">
@@ -484,7 +642,9 @@ const GarantiaPanel = () => {
 
   return (
     <GuaranteeAnalysesProvider>
-      <PanelInner />
+      <InsurersProvider>
+        <PanelInner />
+      </InsurersProvider>
     </GuaranteeAnalysesProvider>
   );
 };
