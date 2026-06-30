@@ -146,7 +146,7 @@ const KanbanCardBase = ({ deal, widgets, onCardClick, onForcedAction }: KanbanCa
             <p className="text-xs font-semibold text-foreground truncate">{deal.leadName}</p>
           </div>
           {valueWidget && (
-            <span className="shrink-0 inline-flex items-center text-[10px] font-bold text-primary bg-primary/10 rounded px-1.5 py-0.5">
+            <span className="shrink-0 inline-flex items-center text-[10px] font-bold text-primary bg-primary/10 rounded px-1.5 py-0.5 mr-4">
               {formatCurrency(deal.value)}
             </span>
           )}

@@ -41,7 +41,7 @@ export const DealActivityOverlay = ({
       onClick={(e) => { e.stopPropagation(); onAction(); }}
       title={`${meta.title} — ${meta.cta}`}
       aria-label={`${meta.title}: ${meta.cta}`}
-      className={`absolute right-1 top-1 z-20 w-4 h-4 rounded-full ${tone.bg} ${tone.text} ring-2 ${tone.ring} flex items-center justify-center shadow-sm hover:scale-110 transition-transform`}
+      className={`absolute right-1 top-2 z-20 w-4 h-4 rounded-full ${tone.bg} ${tone.text} ring-2 ${tone.ring} flex items-center justify-center shadow-sm hover:scale-110 transition-transform`}
     >
       <Icon size={9} strokeWidth={2.5} />
     </button>
