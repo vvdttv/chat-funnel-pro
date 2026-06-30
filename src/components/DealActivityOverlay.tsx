@@ -1,6 +1,11 @@
 /**
- * Overlay exibido sobre o card do deal quando `inferForcedStep` retorna não-null.
- * Bloqueia interações de avanço/movimentação até o usuário registrar a atividade.
+ * Indicador compacto exibido no canto superior direito do card quando
+ * `inferForcedStep` retorna não-null. Apenas sinaliza que o deal precisa de
+ * ação — o clique dispara o mesmo fluxo (resolveActivity / agendar próxima).
+ *
+ * Antes era um overlay full-card com backdrop-filter: blur(), que custava
+ * uma camada de composição GPU por card. Com a virtualização rolando 10-15
+ * cards visíveis e dezenas bloqueados na visão Lead, isso travava o scroll.
  */
 import { Lock, AlertTriangle, Clock } from 'lucide-react';
 import { type ForcedStep, FORCED_STEP_LABELS } from '@/lib/activityBlocking';
@@ -11,10 +16,10 @@ const ICONS: Record<Exclude<ForcedStep, null>, typeof Lock> = {
   schedule_next: Clock,
 };
 
-const TONE: Record<Exclude<ForcedStep, null>, { bg: string; text: string }> = {
-  resolve_overdue: { bg: 'bg-destructive/15', text: 'text-destructive' },
-  register_outcome: { bg: 'bg-primary/15', text: 'text-primary' },
-  schedule_next: { bg: 'bg-warning/15', text: 'text-warning' },
+const TONE: Record<Exclude<ForcedStep, null>, { bg: string; text: string; ring: string }> = {
+  resolve_overdue: { bg: 'bg-destructive', text: 'text-destructive-foreground', ring: 'ring-destructive/30' },
+  register_outcome: { bg: 'bg-primary', text: 'text-primary-foreground', ring: 'ring-primary/30' },
+  schedule_next: { bg: 'bg-warning', text: 'text-warning-foreground', ring: 'ring-warning/30' },
 };
 
 export const DealActivityOverlay = ({
@@ -28,21 +33,17 @@ export const DealActivityOverlay = ({
   const meta = FORCED_STEP_LABELS[step];
   const tone = TONE[step];
 
+  // Badge no canto: 16px, dentro do card (right-1 top-1), com tooltip nativo.
+  // Não usa backdrop-blur — visual leve, sem custo de GPU por card.
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-background/85 backdrop-blur-sm p-4">
-      <div className="flex flex-col items-center text-center max-w-[280px]">
-        <div className={`w-12 h-12 rounded-full ${tone.bg} ${tone.text} flex items-center justify-center mb-3`}>
-          <Icon size={22} />
-        </div>
-        <p className="text-sm font-semibold text-foreground mb-1">{meta.title}</p>
-        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{meta.description}</p>
-        <button
-          onClick={onAction}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold ${tone.bg} ${tone.text} active:scale-95 transition-transform border border-current/20`}
-        >
-          {meta.cta}
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onAction(); }}
+      title={`${meta.title} — ${meta.cta}`}
+      aria-label={`${meta.title}: ${meta.cta}`}
+      className={`absolute right-1 top-1 z-20 w-4 h-4 rounded-full ${tone.bg} ${tone.text} ring-2 ${tone.ring} flex items-center justify-center shadow-sm hover:scale-110 transition-transform`}
+    >
+      <Icon size={9} strokeWidth={2.5} />
+    </button>
   );
 };
