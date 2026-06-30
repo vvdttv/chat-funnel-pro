@@ -368,7 +368,7 @@ export const KanbanBoard = ({
   }, []);
 
   return (
-    <div ref={boardRef} className="flex min-h-0 flex-1 flex-col overscroll-contain">
+    <div ref={boardRef} className="flex flex-col h-full min-h-0 overflow-hidden overscroll-contain">
       <HorizontalScroller>
         {columns.map((col, idx) => {
           const accent = col.accent || DEFAULT_ACCENTS[idx % DEFAULT_ACCENTS.length];
