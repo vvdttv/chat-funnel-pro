@@ -1,5 +1,6 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Users } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Deal } from '@/data/mockData';
 import type { CardWidget } from '@/components/CardWidgetConfig';
 import type { Tag } from '@/types/tags';
@@ -103,7 +104,7 @@ interface KanbanCardProps {
   onForcedAction?: (step: Exclude<ForcedStep, null>) => void;
 }
 
-const KanbanCard = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCardProps) => {
+const KanbanCardBase = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCardProps) => {
   const forcedStep = inferForcedStep({
     status: deal.status,
     lostSubstage: deal.lostSubstage,
@@ -201,6 +202,95 @@ const KanbanCard = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCard
   );
 };
 
+// Comparação rasa custom: re-renderiza só se algo relevante do card mudou.
+// Como tags e widgets são arrays passados por referência, comparamos por
+// identidade — quem chama deve memoizar.
+const KanbanCard = memo(KanbanCardBase, (prev, next) => {
+  if (prev.deal !== next.deal) return false;
+  if (prev.widgets !== next.widgets) return false;
+  if (prev.tags !== next.tags) return false;
+  if (prev.onClick !== next.onClick) return false;
+  if (prev.onForcedAction !== next.onForcedAction) return false;
+  return true;
+});
+
+// ============================================================================
+// VIRTUALIZED COLUMN BODY
+// ============================================================================
+
+interface VirtualColumnProps {
+  deals: Deal[];
+  widgets: CardWidget[];
+  emptyLabel: string;
+  onCardClick: (deal: Deal) => void;
+  onForcedAction?: (deal: Deal, step: Exclude<ForcedStep, null>) => void;
+}
+
+// Altura estimada de cada card (px). O virtualizer mede e ajusta dinamicamente,
+// mas começamos com um valor coerente com o layout compacto atual.
+const ESTIMATED_CARD_HEIGHT = 84;
+const CARD_GAP = 6;
+
+const VirtualColumn = ({ deals, widgets, emptyLabel, onCardClick, onForcedAction }: VirtualColumnProps) => {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: deals.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ESTIMATED_CARD_HEIGHT + CARD_GAP,
+    overscan: 6,
+    getItemKey: (index) => deals[index].id,
+  });
+
+  if (deals.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto p-1.5">
+        <p className="text-[11px] text-muted-foreground/50 text-center py-5">{emptyLabel}</p>
+      </div>
+    );
+  }
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
+  return (
+    <div
+      ref={parentRef}
+      className="kanban-vscroll flex-1 overflow-y-auto p-1.5"
+      style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+    >
+      <div style={{ height: totalSize, position: 'relative', width: '100%' }}>
+        {virtualItems.map((row) => {
+          const deal = deals[row.index];
+          return (
+            <div
+              key={row.key}
+              data-index={row.index}
+              ref={rowVirtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${row.start}px)`,
+                paddingBottom: CARD_GAP,
+              }}
+            >
+              <KanbanCard
+                deal={deal}
+                widgets={widgets}
+                tags={deal.tags || []}
+                onClick={() => onCardClick(deal)}
+                onForcedAction={onForcedAction ? (step) => onForcedAction(deal, step) : undefined}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ============================================================================
 // KANBAN BOARD
 // ============================================================================
@@ -268,26 +358,14 @@ export const KanbanBoard = ({
               )}
             </div>
 
-            {/* Cards */}
-            <div
-              className="kanban-vscroll flex-1 overflow-y-auto p-1.5 space-y-1.5"
-              style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
-            >
-              {col.deals.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground/50 text-center py-5">{emptyLabel}</p>
-              ) : (
-                col.deals.map(deal => (
-                  <KanbanCard
-                    key={deal.id}
-                    deal={deal}
-                    widgets={widgets}
-                    tags={deal.tags || []}
-                    onClick={() => onCardClick(deal)}
-                    onForcedAction={onForcedAction ? (step) => onForcedAction(deal, step) : undefined}
-                  />
-                ))
-              )}
-            </div>
+            {/* Cards — virtualizados (renderiza só os visíveis no viewport) */}
+            <VirtualColumn
+              deals={col.deals}
+              widgets={widgets}
+              emptyLabel={emptyLabel}
+              onCardClick={onCardClick}
+              onForcedAction={onForcedAction}
+            />
           </div>
         );
       })}

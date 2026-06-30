@@ -1647,6 +1647,15 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const closePanels = () => { setFiltersOpen(false); setAiOpen(false); };
   const toolbarRef = useRef<HTMLDivElement>(null);
 
+  // Callbacks estáveis: o KanbanCard é memoizado e re-renderiza se a referência
+  // de onClick/onForcedAction muda. Sem useCallback, os cards re-renderizariam
+  // a cada update de qualquer state do FunisPage.
+  const handleCardClick = useCallback((deal: Deal) => setSelectedDeal(deal), []);
+  const handleForcedAction = useCallback(
+    (deal: Deal, step: Exclude<ForcedStep, null>) => setForcedDeal({ deal, step }),
+    [],
+  );
+
   // Sincroniza funil ativo com lista carregada
   useEffect(() => {
     if (!activeFunnelId && funnels.length > 0) {
@@ -1803,8 +1812,8 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
         <KanbanBoard
           columns={columns}
           widgets={cardWidgets}
-          onCardClick={(deal) => setSelectedDeal(deal)}
-          onForcedAction={(deal, step) => setForcedDeal({ deal, step })}
+          onCardClick={handleCardClick}
+          onForcedAction={handleForcedAction}
           emptyLabel={viewMode === 'funnel' ? 'Sem leads nesta etapa' : 'Sem leads nesta fila'}
         />
       </div>
