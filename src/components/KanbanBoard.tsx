@@ -339,47 +339,52 @@ export const KanbanBoard = ({
     );
   }
 
-  // Wheel sobre a area dos cards (abaixo do header da etapa) SEMPRE rola
-  // somente os cards. Mesmo que a coluna nao tenha o que rolar, a pagina
-  // nao se mexe. O header da etapa e os gaps entre colunas continuam
-  // rolando a pagina normalmente.
-  const handleBodyWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const scroller = e.currentTarget.querySelector<HTMLDivElement>('.kanban-vscroll');
-    if (scroller && scroller.scrollHeight > scroller.clientHeight) {
-      scroller.scrollTop += e.deltaY;
+  // O quadro inteiro e um viewport fixo: wheel/swipe DENTRO dele nunca rola
+  // a pagina. Se o cursor estiver sobre uma coluna (data-kanban-column),
+  // rola apenas os cards daquela coluna. Sobre os gaps entre colunas, nao
+  // rola nada. preventDefault e sempre chamado para garantir.
+  const handleBoardWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    const column = target?.closest('[data-kanban-column]') as HTMLElement | null;
+    if (column) {
+      const scroller = column.querySelector<HTMLDivElement>('.kanban-vscroll');
+      if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+        scroller.scrollTop += e.deltaY;
+      }
     }
     e.preventDefault();
     e.stopPropagation();
   }, []);
 
   return (
-    <HorizontalScroller>
-      {columns.map((col, idx) => {
-        const accent = col.accent || DEFAULT_ACCENTS[idx % DEFAULT_ACCENTS.length];
-        const total = col.deals.reduce((sum, d) => sum + d.value, 0);
-        return (
-          <div
-            key={col.key}
-            className="w-[260px] shrink-0 rounded-md border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
-            style={{ borderTop: `2px solid hsl(${accent})` }}
-          >
-            {/* Header — magro: 28px de altura. Wheel aqui rola a pagina. */}
-            <div className="px-2.5 h-8 flex items-center justify-between border-b border-border/60 shrink-0 bg-card/60">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[11px] font-semibold text-foreground truncate">{col.name}</span>
-                <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
-                  {col.deals.length}
-                </span>
+    <div className="flex min-h-0 flex-1 flex-col" onWheel={handleBoardWheel}>
+      <HorizontalScroller>
+        {columns.map((col, idx) => {
+          const accent = col.accent || DEFAULT_ACCENTS[idx % DEFAULT_ACCENTS.length];
+          const total = col.deals.reduce((sum, d) => sum + d.value, 0);
+          return (
+            <div
+              key={col.key}
+              data-kanban-column={col.key}
+              className="w-[260px] shrink-0 rounded-md border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
+              style={{ borderTop: `2px solid hsl(${accent})` }}
+            >
+              {/* Header — magro: 28px de altura */}
+              <div className="px-2.5 h-8 flex items-center justify-between border-b border-border/60 shrink-0 bg-card/60">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-semibold text-foreground truncate">{col.name}</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                    {col.deals.length}
+                  </span>
+                </div>
+                {total > 0 && (
+                  <span className="text-[10px] font-semibold text-primary/80 shrink-0 tabular-nums">
+                    {formatCurrency(total)}
+                  </span>
+                )}
               </div>
-              {total > 0 && (
-                <span className="text-[10px] font-semibold text-primary/80 shrink-0 tabular-nums">
-                  {formatCurrency(total)}
-                </span>
-              )}
-            </div>
 
-            {/* Corpo da coluna: wheel aqui sempre rola somente os cards. */}
-            <div className="flex-1 min-h-0 flex flex-col" onWheel={handleBodyWheel}>
+              {/* Cards — virtualizados (renderiza só os visíveis no viewport) */}
               <VirtualColumn
                 deals={col.deals}
                 widgets={widgets}
@@ -388,10 +393,10 @@ export const KanbanBoard = ({
                 onForcedAction={onForcedAction}
               />
             </div>
-          </div>
-        );
-      })}
-    </HorizontalScroller>
+          );
+        })}
+      </HorizontalScroller>
+    </div>
   );
 };
 
