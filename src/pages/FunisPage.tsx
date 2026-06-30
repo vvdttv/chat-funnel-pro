@@ -1728,66 +1728,78 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
   const columns = viewMode === 'funnel' ? funnelColumns : leadColumns;
   const allCurrentDeals = useMemo(() => columns.flatMap(c => c.deals), [columns]);
 
+  const totalDeals = allCurrentDeals.length;
+  const totalValue = allCurrentDeals.reduce((sum, d) => sum + d.value, 0);
+
   return (
     <div className="flex flex-col h-full relative">
-      {/* Toolbar + panels */}
-      <div ref={toolbarRef} className="lg:max-w-5xl lg:mx-auto w-full">
-        <div className="px-4 lg:px-8 pt-2 pb-0.5">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
-              className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center active:scale-95 transition-transform shrink-0"
-              title={viewMode === 'lead' ? 'Por Lead' : 'Por Funil'}
-            >
-              {viewMode === 'lead' ? <User size={18} className="text-primary" /> : <Filter size={18} className="text-primary" />}
-            </button>
+      {/* Toolbar — full width em desktop, magra (32px) e densa */}
+      <div ref={toolbarRef} className="w-full">
+        <div className="px-3 lg:px-4 pt-2 pb-2 flex items-center gap-2">
+          <button
+            onClick={() => handleModeChange(viewMode === 'lead' ? 'funnel' : 'lead')}
+            className="h-8 px-2 rounded-md bg-card hover:bg-secondary border border-border flex items-center gap-1.5 active:scale-95 transition-all shrink-0 text-[12px] text-muted-foreground"
+            title={viewMode === 'lead' ? 'Mudar para visualização por funil' : 'Mudar para fila de atendimento'}
+          >
+            {viewMode === 'lead' ? <User size={14} className="text-primary" /> : <Filter size={14} className="text-primary" />}
+            <span className="hidden lg:inline">{viewMode === 'lead' ? 'Por lead' : 'Por funil'}</span>
+          </button>
 
-            {viewMode === 'funnel' && (
-              <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
-                <SelectTrigger className="flex-1 gap-1.5 h-10 px-3 rounded-xl bg-card border-border text-xs font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {funnels.map(funnel => {
-                    const count = dealsList.filter(d => d.funnelId === funnel.id).length;
-                    return (
-                      <SelectItem key={funnel.id} value={funnel.id}>
-                        {funnel.name} ({count})
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+          {viewMode === 'funnel' && (
+            <Select value={activeFunnelId} onValueChange={handleFunnelChange}>
+              <SelectTrigger className="gap-1.5 h-8 px-2 rounded-md bg-card border-border text-[12px] font-medium w-auto min-w-[180px] lg:min-w-[240px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {funnels.map(funnel => {
+                  const count = dealsList.filter(d => d.funnelId === funnel.id).length;
+                  return (
+                    <SelectItem key={funnel.id} value={funnel.id}>
+                      {funnel.name} ({count})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Contadores agregados — substituem os 4 cards-fila gigantes */}
+          <div className="hidden md:flex items-center gap-3 text-[11px] text-muted-foreground ml-1">
+            <span><span className="text-foreground font-semibold">{totalDeals}</span> abertos</span>
+            {totalValue > 0 && (
+              <span className="opacity-70">· {formatCurrency(totalValue)}</span>
             )}
-
-            {viewMode === 'lead' && <div className="flex-1 min-h-[40px]" onMouseDown={(e) => { e.preventDefault(); closePanels(); }} />}
-
-            <button
-              onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
-                filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
-              }`}
-            >
-              <SlidersHorizontal size={18} />
-            </button>
-
-            <button
-              onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-transform shrink-0 ${
-                aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border text-muted-foreground'
-              }`}
-            >
-              <Sparkles size={18} />
-            </button>
           </div>
+
+          <div className="flex-1" onMouseDown={(e) => { e.preventDefault(); closePanels(); }} />
+
+          <button
+            onClick={() => { setFiltersOpen(v => !v); setAiOpen(false); }}
+            className={`h-8 px-2 rounded-md border flex items-center gap-1.5 active:scale-95 transition-all shrink-0 text-[12px] ${
+              filtersOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card hover:bg-secondary border-border text-muted-foreground'
+            }`}
+          >
+            <SlidersHorizontal size={14} />
+            <span className="hidden lg:inline">Filtros</span>
+          </button>
+
+          <button
+            onClick={() => { setAiOpen(v => !v); setFiltersOpen(false); }}
+            className={`h-8 px-2 rounded-md border flex items-center gap-1.5 active:scale-95 transition-all shrink-0 text-[12px] ${
+              aiOpen ? 'bg-primary border-primary text-primary-foreground' : 'bg-card hover:bg-secondary border-border text-muted-foreground'
+            }`}
+          >
+            <Sparkles size={14} />
+            <span className="hidden lg:inline">IA</span>
+          </button>
         </div>
       </div>
 
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} onClose={() => setFiltersOpen(false)} />}
       <AIAnalysisPanel deals={allCurrentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
-      {/* Kanban Board (colunas lado a lado com scroll horizontal) */}
-      <div className="flex-1 min-h-0 lg:max-w-7xl lg:mx-auto w-full">
+      {/* Kanban Board — largura total do viewport (sem max-w) */}
+      <div className="flex-1 min-h-0 w-full">
         <KanbanBoard
           columns={columns}
           widgets={cardWidgets}

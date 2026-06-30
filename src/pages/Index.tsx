@@ -15,8 +15,17 @@ const ConfigPage = lazy(() => import('@/pages/ConfigPage'));
 const AISuggestionsPanel = lazy(() => import('@/components/AISuggestionsPanel'));
 
 const TabFallback = () => (
-  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-    Carregando…
+  <div className="w-full h-full p-4 space-y-3 animate-in fade-in duration-150">
+    <div className="h-8 w-1/3 rounded-md bg-secondary/50 animate-pulse" />
+    <div className="flex gap-3 overflow-hidden">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="w-[260px] shrink-0 space-y-2">
+          <div className="h-8 rounded-md bg-secondary/40 animate-pulse" />
+          <div className="h-16 rounded-md bg-secondary/30 animate-pulse" />
+          <div className="h-16 rounded-md bg-secondary/30 animate-pulse" />
+        </div>
+      ))}
+    </div>
   </div>
 );
 

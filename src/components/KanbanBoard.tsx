@@ -126,7 +126,7 @@ const KanbanCard = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCard
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left rounded-xl border border-border bg-card p-2.5 space-y-1.5 active:scale-[0.98] transition-transform"
+        className="w-full text-left rounded-md border border-border bg-card hover:bg-card/80 hover:border-primary/30 p-2 space-y-1 active:scale-[0.98] transition-all"
       >
         {/* Header: avatar + nome + valor */}
         <div className="flex items-start justify-between gap-2">
@@ -250,19 +250,19 @@ export const KanbanBoard = ({
         return (
           <div
             key={col.key}
-            className="w-[280px] shrink-0 rounded-xl border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
-            style={{ borderTop: `3px solid hsl(${accent})` }}
+            className="w-[260px] shrink-0 rounded-md border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
+            style={{ borderTop: `2px solid hsl(${accent})` }}
           >
-            {/* Header */}
-            <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/60 shrink-0 bg-card/60">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-semibold text-foreground truncate">{col.name}</span>
-                <span className="text-[10px] font-bold bg-secondary text-foreground rounded-full px-1.5 py-0.5 shrink-0">
+            {/* Header — magro: 28px de altura */}
+            <div className="px-2.5 h-8 flex items-center justify-between border-b border-border/60 shrink-0 bg-card/60">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[11px] font-semibold text-foreground truncate">{col.name}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
                   {col.deals.length}
                 </span>
               </div>
               {total > 0 && (
-                <span className="text-[10px] font-semibold text-primary shrink-0">
+                <span className="text-[10px] font-semibold text-primary/80 shrink-0 tabular-nums">
                   {formatCurrency(total)}
                 </span>
               )}
@@ -270,11 +270,11 @@ export const KanbanBoard = ({
 
             {/* Cards */}
             <div
-              className="kanban-vscroll flex-1 overflow-y-auto p-2 space-y-2"
+              className="kanban-vscroll flex-1 overflow-y-auto p-1.5 space-y-1.5"
               style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
             >
               {col.deals.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground/60 text-center py-6">{emptyLabel}</p>
+                <p className="text-[11px] text-muted-foreground/50 text-center py-5">{emptyLabel}</p>
               ) : (
                 col.deals.map(deal => (
                   <KanbanCard
