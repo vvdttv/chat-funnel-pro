@@ -111,7 +111,7 @@ const KanbanCard = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCard
     lastActivityAt: deal.lastActivityAt,
   });
 
-  // Pegamos os 4 widgets mais relevantes pra exibir no card compacto
+  // Selecionamos os quatro widgets mais relevantes para exibir no card compacto.
   const enabled = widgets.filter(w => w.enabled);
   const headerWidget = enabled.find(w => w.type === 'header' || w.id === 'avatar_name');
   const valueWidget = enabled.find(w => w.id === 'value');

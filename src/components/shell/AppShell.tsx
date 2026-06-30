@@ -10,9 +10,9 @@ type Props = {
   onTabChange: (id: TabId) => void;
   children: ReactNode;
   /**
-   * Quando true (paineis dedicados ex.: /correspondente), a sidebar segue ali
-   * mas o ProtectedRoute interno do painel cuida do gating; tabs apenas levam
-   * de volta para "/" + ativam a tab.
+   * Quando true (painéis dedicados, ex.: /correspondente), a sidebar continua
+   * visível mas o ProtectedRoute interno do painel cuida do gating; as abas
+   * apenas voltam para "/" e ativam a aba correspondente.
    */
   panelMode?: boolean;
 };
@@ -30,7 +30,7 @@ export function AppShell({ activeTab, onTabChange, children, panelMode = false }
     } catch { /* ignore */ }
   }, []);
 
-  // Atalho Ctrl/Cmd + B emite evento que o Sidebar escuta — sem reload.
+  // Atalho Ctrl/Cmd + B emite um evento que a Sidebar escuta — sem recarregar a página.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -55,7 +55,7 @@ export function AppShell({ activeTab, onTabChange, children, panelMode = false }
         >
           {children}
         </main>
-        {/* Mobile-only: mantém bottom-nav abaixo do conteudo */}
+        {/* Apenas em mobile: mantém o bottom-nav abaixo do conteúdo. */}
         <div className="lg:hidden">
           <BottomNav activeTab={activeTab} onTabChange={(t) => onTabChange(t as TabId)} />
         </div>

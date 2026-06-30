@@ -65,7 +65,7 @@
     --sidebar-w-expanded: 13.75rem;
   }
 
-  /* Modo compacto: -25% em padding/heights pra quem usa monitor grande (Fase 2) */
+  /* Modo compacto: reduz em 25% paddings e alturas para quem usa monitor grande (Fase 2). */
   .density-compact {
     --space-3: 0.5rem;
     --space-4: 0.75rem;

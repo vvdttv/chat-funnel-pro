@@ -37,7 +37,7 @@ export function Sidebar({ activeTab, onTabChange }: Props) {
     });
   }, []);
 
-  // Ctrl/Cmd+B vem do AppShell via evento custom — sem reload de página.
+  // O atalho Ctrl/Cmd+B vem do AppShell via evento custom — sem recarregar a página.
   useEffect(() => {
     const onToggle = () => toggle();
     window.addEventListener('omnimob:sidebar-toggle', onToggle as EventListener);
@@ -77,7 +77,7 @@ export function Sidebar({ activeTab, onTabChange }: Props) {
           {panels.length > 0 && (
             <>
               <div className={`mt-3 mb-1 px-2 text-[10px] uppercase tracking-wider text-muted-foreground ${collapsed ? 'sr-only' : ''}`}>
-                Paineis
+                Painéis
               </div>
               {panels.map((p) => (
                 <SideRoute
@@ -98,14 +98,14 @@ export function Sidebar({ activeTab, onTabChange }: Props) {
                 className={`w-full flex items-center rounded-md hover:bg-secondary transition-colors px-2 py-1.5 text-left ${
                   collapsed ? 'justify-center' : ''
                 }`}
-                aria-label="Menu do usuario"
+                aria-label="Menu do usuário"
               >
                 <span className="h-6 w-6 rounded-full bg-primary/15 border border-primary/40 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
                   {(profile?.username?.[0] || 'U').toUpperCase()}
                 </span>
                 {!collapsed && (
                   <span className="ml-2 truncate text-[12px] font-medium">
-                    {profile?.username || 'Usuario'}
+                    {profile?.username || 'Usuário'}
                   </span>
                 )}
               </button>
@@ -209,7 +209,7 @@ function DensityToggleItem() {
   };
   return (
     <DropdownMenuItem onSelect={(e) => { e.preventDefault(); toggle(); }} className="gap-2">
-      <LayoutGrid size={14} /> {isCompact ? 'Densidade: compacta OK' : 'Densidade: compacta'}
+      <LayoutGrid size={14} /> {isCompact ? 'Densidade compacta (ativa)' : 'Densidade compacta'}
     </DropdownMenuItem>
   );
 }

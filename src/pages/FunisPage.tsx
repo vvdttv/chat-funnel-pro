@@ -1733,7 +1733,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Toolbar — full width em desktop, magra (32px) e densa */}
+      {/* Barra de ferramentas: largura total no desktop, magra (32px) e densa. */}
       <div ref={toolbarRef} className="w-full">
         <div className="px-3 lg:px-4 pt-2 pb-2 flex items-center gap-2">
           <button
@@ -1763,7 +1763,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
             </Select>
           )}
 
-          {/* Contadores agregados — substituem os 4 cards-fila gigantes */}
+          {/* Contadores agregados — substituem os quatro cards de fila gigantes. */}
           <div className="hidden md:flex items-center gap-3 text-[11px] text-muted-foreground ml-1">
             <span><span className="text-foreground font-semibold">{totalDeals}</span> abertos</span>
             {totalValue > 0 && (
@@ -1798,7 +1798,7 @@ const FunisPage = ({ onPendingStepChange }: { onPendingStepChange?: (pending: bo
       {filtersOpen && <StageFilters filters={stageFilters} onChange={setStageFilters} onClose={() => setFiltersOpen(false)} />}
       <AIAnalysisPanel deals={allCurrentDeals} open={aiOpen} onClose={() => setAiOpen(false)} />
 
-      {/* Kanban Board — largura total do viewport (sem max-w) */}
+      {/* Quadro Kanban — largura total da viewport (sem limite máximo). */}
       <div className="flex-1 min-h-0 w-full">
         <KanbanBoard
           columns={columns}

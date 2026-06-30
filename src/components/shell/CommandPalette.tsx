@@ -34,7 +34,7 @@ export function CommandPalette({ open, onOpenChange, onTabChange }: Props) {
     onOpenChange(false);
   };
 
-  // Atalhos "g + letra" (Linear-style). Sequência limpa em 800ms.
+  // Atalhos "g + letra" no estilo do Linear. A sequência é limpa após 800ms.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onKey = (e: KeyboardEvent) => {
@@ -72,7 +72,7 @@ export function CommandPalette({ open, onOpenChange, onTabChange }: Props) {
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Buscar telas, paineis, acoes..." />
+      <CommandInput placeholder="Buscar telas, painéis, ações..." />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>
 
@@ -94,7 +94,7 @@ export function CommandPalette({ open, onOpenChange, onTabChange }: Props) {
         {panels.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Paineis">
+            <CommandGroup heading="Painéis">
               {panels.map((p) => {
                 const Icon = p.icon;
                 return (
@@ -109,7 +109,7 @@ export function CommandPalette({ open, onOpenChange, onTabChange }: Props) {
         )}
 
         <CommandSeparator />
-        <CommandGroup heading="Acoes">
+        <CommandGroup heading="Ações">
           <CommandItem onSelect={() => { void forceRefresh(); onOpenChange(false); }} className="gap-2">
             <RefreshCw size={14} className="text-muted-foreground" />
             <span>Sincronizar e atualizar</span>
