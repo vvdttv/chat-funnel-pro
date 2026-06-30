@@ -116,18 +116,25 @@ export function useDeals(funnels: Funnel[]) {
       const mapped = (data || []).map(row => rowToDeal(row as DBDealRow, funnelsRef.current));
       setDeals(mapped);
       setLoading(false);
-      // Carrega tags por deal em batch (RPC get_deal_tags_json, escopada por
-      // org). Best-effort: falha não derruba o board. Popula deal.tags p/ o
-      // KanbanCard renderizar os badges.
+      // Carrega TODAS as tags da org em uma única request (PostgREST embed).
+      // Antes: 1 RPC get_deal_tags_json por deal (N+1, ~1450 requests).
+      // Agora: 1 SELECT em deal_tag_assignments com join em deal_tags. RLS
+      // filtra pelos deals da org do usuário. Best-effort: falha não derruba
+      // o board.
       void (async () => {
-        const results = await Promise.all(
-          mapped.map(async (d) => {
-            const { data: tagData } = await supabase.rpc('get_deal_tags_json', { p_deal_id: d.id });
-            return [d.id, Array.isArray(tagData) ? (tagData as Deal['tags']) : []] as const;
-          }),
-        );
+        const { data: assignRows, error: assignErr } = await supabase
+          .from('deal_tag_assignments')
+          .select('deal_id, tag:deal_tags(id, name, color, organization_id, created_at)');
         if (cancelled) return;
-        const byId = new Map(results);
+        if (assignErr || !assignRows) return;
+        const byId = new Map<string, Deal['tags']>();
+        for (const row of assignRows as Array<{ deal_id: string; tag: Deal['tags'][number] | null }>) {
+          if (!row.tag) continue;
+          const list = byId.get(row.deal_id) ?? [];
+          list.push(row.tag);
+          byId.set(row.deal_id, list);
+        }
+        if (byId.size === 0) return;
         setDeals(prev => prev.map(d => byId.has(d.id) ? { ...d, tags: byId.get(d.id) } : d));
       })();
     })();
