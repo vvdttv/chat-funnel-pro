@@ -96,15 +96,23 @@ const widgetValue = (widget: CardWidget, deal: Deal): string => {
   }
 };
 
+// Constante estável: deal sem tags reusa o mesmo array em todos os cards,
+// permitindo que React.memo de fato pule re-render quando nada mudou.
+const EMPTY_TAGS: Tag[] = [];
+
 interface KanbanCardProps {
   deal: Deal;
   widgets: CardWidget[];
-  tags: Tag[];
-  onClick: () => void;
-  onForcedAction?: (step: Exclude<ForcedStep, null>) => void;
+  // Recebe o callback genérico em vez de uma closure pré-aplicada — assim o
+  // prop tem referência estável (vem de useCallback no FunisPage) e o memo
+  // realmente pula re-renders.
+  onCardClick: (deal: Deal) => void;
+  onForcedAction?: (deal: Deal, step: Exclude<ForcedStep, null>) => void;
 }
 
-const KanbanCardBase = ({ deal, widgets, tags, onClick, onForcedAction }: KanbanCardProps) => {
+const KanbanCardBase = ({ deal, widgets, onCardClick, onForcedAction }: KanbanCardProps) => {
+  const tags = deal.tags ?? EMPTY_TAGS;
+  const onClick = () => onCardClick(deal);
   const forcedStep = inferForcedStep({
     status: deal.status,
     lostSubstage: deal.lostSubstage,
@@ -196,20 +204,20 @@ const KanbanCardBase = ({ deal, widgets, tags, onClick, onForcedAction }: Kanban
       </button>
 
       {forcedStep && onForcedAction && (
-        <DealActivityOverlay step={forcedStep} onAction={() => onForcedAction(forcedStep)} />
+        <DealActivityOverlay step={forcedStep} onAction={() => onForcedAction(deal, forcedStep)} />
       )}
     </div>
   );
 };
 
 // Comparação rasa custom: re-renderiza só se algo relevante do card mudou.
-// Como tags e widgets são arrays passados por referência, comparamos por
-// identidade — quem chama deve memoizar.
+// onCardClick/onForcedAction são funções estáveis (useCallback no FunisPage),
+// então a referência do deal sozinha já decide. widgets vem do contexto e é
+// memoizado upstream.
 const KanbanCard = memo(KanbanCardBase, (prev, next) => {
   if (prev.deal !== next.deal) return false;
   if (prev.widgets !== next.widgets) return false;
-  if (prev.tags !== next.tags) return false;
-  if (prev.onClick !== next.onClick) return false;
+  if (prev.onCardClick !== next.onCardClick) return false;
   if (prev.onForcedAction !== next.onForcedAction) return false;
   return true;
 });
@@ -279,9 +287,8 @@ const VirtualColumn = ({ deals, widgets, emptyLabel, onCardClick, onForcedAction
               <KanbanCard
                 deal={deal}
                 widgets={widgets}
-                tags={deal.tags || []}
-                onClick={() => onCardClick(deal)}
-                onForcedAction={onForcedAction ? (step) => onForcedAction(deal, step) : undefined}
+                onCardClick={onCardClick}
+                onForcedAction={onForcedAction}
               />
             </div>
           );
