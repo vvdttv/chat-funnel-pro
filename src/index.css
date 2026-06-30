@@ -141,28 +141,18 @@
     background: hsl(var(--primary));
   }
 
-  /* ===== Kanban: barra de rolagem vertical fina por etapa (sempre visível) ===== */
+  /* ===== Kanban: rolagem vertical funcional por etapa, barra invisível =====
+     A roda do mouse / swipe sobre uma coluna rola os cards (overflow-y).
+     overscroll-behavior: contain (no inline style do VirtualColumn) impede
+     que o scroll vaze para a pagina quando atinge o limite. */
   .kanban-vscroll {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--secondary));
+    scrollbar-width: none;
     overflow-y: scroll;
   }
   .kanban-vscroll::-webkit-scrollbar {
-    width: 8px;
-    -webkit-appearance: none;
-  }
-  .kanban-vscroll::-webkit-scrollbar-track {
-    background: hsl(var(--secondary));
-    border-radius: 4px;
-  }
-  .kanban-vscroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.6);
-    border-radius: 4px;
-    border: 1px solid hsl(var(--secondary));
-  }
-  .kanban-vscroll::-webkit-scrollbar-thumb:hover,
-  .kanban-vscroll::-webkit-scrollbar-thumb:active {
-    background: hsl(var(--primary));
+    width: 0;
+    height: 0;
+    display: none;
   }
 }
 
