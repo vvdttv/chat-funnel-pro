@@ -43,7 +43,7 @@ export function AppShell({ activeTab, onTabChange, children, panelMode = false }
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex">
+    <div className="h-screen w-full bg-background text-foreground flex overflow-hidden">
       <Sidebar activeTab={activeTab} onTabChange={onTabChange} />
 
       <div className="flex-1 min-w-0 flex flex-col">

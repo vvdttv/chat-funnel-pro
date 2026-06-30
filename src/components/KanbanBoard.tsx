@@ -339,25 +339,36 @@ export const KanbanBoard = ({
     );
   }
 
-  // O quadro inteiro e um viewport fixo: wheel/swipe DENTRO dele nunca rola
-  // a pagina. Se o cursor estiver sobre uma coluna (data-kanban-column),
-  // rola apenas os cards daquela coluna. Sobre os gaps entre colunas, nao
-  // rola nada. preventDefault e sempre chamado para garantir.
-  const handleBoardWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement | null;
-    const column = target?.closest('[data-kanban-column]') as HTMLElement | null;
-    if (column) {
-      const scroller = column.querySelector<HTMLDivElement>('.kanban-vscroll');
-      if (scroller && scroller.scrollHeight > scroller.clientHeight) {
-        scroller.scrollTop += e.deltaY;
+  // React anexa onWheel como listener PASSIVO por padrao, e em listener
+  // passivo o preventDefault e ignorado pelo browser — o scroll vaza para
+  // a pagina. Aqui registramos o handler manualmente com { passive: false }
+  // via addEventListener, garantindo que o preventDefault funcione mesmo
+  // sobre cards (que sao <button> filhos).
+  const boardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const onWheel = (e: WheelEvent) => {
+      // Encontra a coluna sob o cursor (se houver).
+      const target = e.target as HTMLElement | null;
+      const column = target?.closest('[data-kanban-column]') as HTMLElement | null;
+      if (column) {
+        const scroller = column.querySelector<HTMLDivElement>('.kanban-vscroll');
+        if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+          scroller.scrollTop += e.deltaY;
+        }
       }
-    }
-    e.preventDefault();
-    e.stopPropagation();
+      // Sempre bloqueia o scroll da pagina enquanto o cursor estiver sobre
+      // o quadro Kanban, inclusive nos gaps entre colunas.
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    board.addEventListener('wheel', onWheel, { passive: false });
+    return () => board.removeEventListener('wheel', onWheel);
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" onWheel={handleBoardWheel}>
+    <div ref={boardRef} className="flex min-h-0 flex-1 flex-col overscroll-contain">
       <HorizontalScroller>
         {columns.map((col, idx) => {
           const accent = col.accent || DEFAULT_ACCENTS[idx % DEFAULT_ACCENTS.length];
