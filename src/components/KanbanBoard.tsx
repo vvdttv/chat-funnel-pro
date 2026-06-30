@@ -339,15 +339,15 @@ export const KanbanBoard = ({
     );
   }
 
-  // Wheel sobre QUALQUER ponto da coluna (header, cards, espaco vazio abaixo)
-  // rola os cards daquela coluna. Entre colunas (gaps), o evento nao chega aqui
-  // e o navegador rola a pagina normalmente.
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  // Wheel sobre a area dos cards (abaixo do header da etapa) SEMPRE rola
+  // somente os cards. Mesmo que a coluna nao tenha o que rolar, a pagina
+  // nao se mexe. O header da etapa e os gaps entre colunas continuam
+  // rolando a pagina normalmente.
+  const handleBodyWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     const scroller = e.currentTarget.querySelector<HTMLDivElement>('.kanban-vscroll');
-    if (!scroller) return;
-    // Se a coluna nao tem o que rolar, deixa o evento subir para a pagina.
-    if (scroller.scrollHeight <= scroller.clientHeight) return;
-    scroller.scrollTop += e.deltaY;
+    if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+      scroller.scrollTop += e.deltaY;
+    }
     e.preventDefault();
     e.stopPropagation();
   }, []);
@@ -360,11 +360,10 @@ export const KanbanBoard = ({
         return (
           <div
             key={col.key}
-            onWheel={handleWheel}
             className="w-[260px] shrink-0 rounded-md border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
             style={{ borderTop: `2px solid hsl(${accent})` }}
           >
-            {/* Header — magro: 28px de altura */}
+            {/* Header — magro: 28px de altura. Wheel aqui rola a pagina. */}
             <div className="px-2.5 h-8 flex items-center justify-between border-b border-border/60 shrink-0 bg-card/60">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-[11px] font-semibold text-foreground truncate">{col.name}</span>
@@ -379,14 +378,16 @@ export const KanbanBoard = ({
               )}
             </div>
 
-            {/* Cards — virtualizados (renderiza só os visíveis no viewport) */}
-            <VirtualColumn
-              deals={col.deals}
-              widgets={widgets}
-              emptyLabel={emptyLabel}
-              onCardClick={onCardClick}
-              onForcedAction={onForcedAction}
-            />
+            {/* Corpo da coluna: wheel aqui sempre rola somente os cards. */}
+            <div className="flex-1 min-h-0 flex flex-col" onWheel={handleBodyWheel}>
+              <VirtualColumn
+                deals={col.deals}
+                widgets={widgets}
+                emptyLabel={emptyLabel}
+                onCardClick={onCardClick}
+                onForcedAction={onForcedAction}
+              />
+            </div>
           </div>
         );
       })}
