@@ -75,18 +75,10 @@ export function useNotifications(): UseNotificationsResult {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_MS);
 
-    // Realtime (best-effort): atualiza ao inserir/atualizar do proprio usuario.
-    const channel = supabase
-      .channel('notifications-feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-
+    // Realtime desabilitado: ver useDeals.ts. O polling acima ja cobre o caso.
     return () => {
       mounted.current = false;
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, [fetchNotifications]);
 

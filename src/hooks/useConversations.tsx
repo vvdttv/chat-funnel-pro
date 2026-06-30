@@ -79,27 +79,9 @@ export function useConversations() {
       setLoading(false);
     })();
 
-    const channel = supabase
-      .channel(`conversations-org-${orgId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const row = payload.new as DBConversationRow;
-            setConversations(prev => prev.some(c => c.id === row.id) ? prev : [rowToConversation(row), ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const row = payload.new as DBConversationRow;
-            setConversations(prev => prev.map(c => c.id === row.id ? rowToConversation(row) : c));
-          } else if (payload.eventType === 'DELETE') {
-            const row = payload.old as { id?: string };
-            if (row?.id) setConversations(prev => prev.filter(c => c.id !== row.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { cancelled = true; supabase.removeChannel(channel); };
+    // Realtime desabilitado: ver useDeals.ts. Reabilitar quando o WS do
+    // self-hosted parar de derrubar canais (atualmente causa reconnect loop).
+    return () => { cancelled = true; };
   }, [orgId]);
 
   return { conversations, loading, error };

@@ -139,36 +139,13 @@ export function useDeals(funnels: Funnel[]) {
       })();
     })();
 
-    // Subscription realtime — RLS continua filtrando o que cada usuário recebe
-    const channel = supabase
-      .channel(`deals-org-${orgId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'deals' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const row = payload.new as DBDealRow;
-            setDeals(prev => prev.some(d => d.id === row.id) ? prev : [rowToDeal(row, funnelsRef.current), ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const row = payload.new as DBDealRow;
-            setDeals(prev => {
-              // Se o deal saiu da visibilidade do usuário (reatribuído a outro corretor), RLS já fará o filtro
-              // mas como o evento ainda chega, mantemos o registro se já existia.
-              const exists = prev.some(d => d.id === row.id);
-              if (!exists) return [rowToDeal(row, funnelsRef.current), ...prev];
-              return prev.map(d => d.id === row.id ? { ...rowToDeal(row, funnelsRef.current) } : d);
-            });
-          } else if (payload.eventType === 'DELETE') {
-            const row = payload.old as { id?: string };
-            if (row?.id) setDeals(prev => prev.filter(d => d.id !== row.id));
-          }
-        }
-      )
-      .subscribe();
-
+    // Subscription realtime desabilitada temporariamente: o servidor self-hosted
+    // está derrubando o canal logo após o join, causando reconnect loop que
+    // trava a aba Leads no navegador. A UI já atualiza otimisticamente nos
+    // updates locais (moveDealStage, setDealStatus, addDeal). Reabilitar
+    // quando a causa raiz do WS for resolvida (ver issue de realtime).
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
     };
   }, [orgId]);
 
