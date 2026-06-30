@@ -339,6 +339,19 @@ export const KanbanBoard = ({
     );
   }
 
+  // Wheel sobre QUALQUER ponto da coluna (header, cards, espaco vazio abaixo)
+  // rola os cards daquela coluna. Entre colunas (gaps), o evento nao chega aqui
+  // e o navegador rola a pagina normalmente.
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const scroller = e.currentTarget.querySelector<HTMLDivElement>('.kanban-vscroll');
+    if (!scroller) return;
+    // Se a coluna nao tem o que rolar, deixa o evento subir para a pagina.
+    if (scroller.scrollHeight <= scroller.clientHeight) return;
+    scroller.scrollTop += e.deltaY;
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
   return (
     <HorizontalScroller>
       {columns.map((col, idx) => {
@@ -347,6 +360,7 @@ export const KanbanBoard = ({
         return (
           <div
             key={col.key}
+            onWheel={handleWheel}
             className="w-[260px] shrink-0 rounded-md border border-border bg-secondary/40 overflow-hidden flex flex-col h-full"
             style={{ borderTop: `2px solid hsl(${accent})` }}
           >
