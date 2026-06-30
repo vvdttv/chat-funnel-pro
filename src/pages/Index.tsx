@@ -1,6 +1,6 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
-import BottomNav from '@/components/BottomNav';
-import { NotificationBell } from '@/components/NotificationBell';
+import { AppShell } from '@/components/shell/AppShell';
+import type { TabId } from '@/components/shell/navItems';
 import { useToast } from '@/hooks/use-toast';
 import { FunnelsProvider, useFunnels } from '@/hooks/useFunnels';
 import { DealsProvider, useDeals } from '@/hooks/useDeals';
@@ -21,13 +21,13 @@ const TabFallback = () => (
 );
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('leads');
+  const [activeTab, setActiveTab] = useState<TabId>('leads');
   const [hasPendingStep, setHasPendingStep] = useState(false);
   const { toast } = useToast();
   const funnelsState = useFunnels();
   const dealsState = useDeals(funnelsState.funnels);
 
-  const handleTabChange = useCallback((tab: string) => {
+  const handleTabChange = useCallback((tab: TabId) => {
     if (hasPendingStep) {
       toast({
         title: 'Registro obrigatório',
@@ -54,17 +54,11 @@ const Index = () => {
     <FunnelsProvider value={funnelsState}>
       <DealsProvider value={dealsState}>
         <ActivityTypesProvider>
-          <div className="w-full h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-            <div className="absolute top-2 right-2 z-50">
-              <NotificationBell />
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden pb-[var(--bottom-nav-h)]">
-              <Suspense fallback={<TabFallback />}>
-                {renderPage()}
-              </Suspense>
-            </div>
-            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
+          <AppShell activeTab={activeTab} onTabChange={handleTabChange}>
+            <Suspense fallback={<TabFallback />}>
+              {renderPage()}
+            </Suspense>
+          </AppShell>
         </ActivityTypesProvider>
       </DealsProvider>
     </FunnelsProvider>
