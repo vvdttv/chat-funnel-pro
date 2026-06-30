@@ -27,3 +27,10 @@ dist-ssr
 .env.*
 !.env.example
 AGENTS.md
+
+# Manual Padrao Diamond - artefatos gerados (nao versionar)
+docs/manual/builders/__pycache__/
+docs/manual/dist/
+docs/manual/screenshots/raw/
+docs/manual/screenshots/annotated/
+docs/manual/screenshots/00-auth/
