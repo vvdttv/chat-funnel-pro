@@ -1,0 +1,574 @@
+{
+  "CHAPTERS": [
+    {
+      "md_file": "00-frente-pitch.md", "module_num": 0,
+      "category": "Pitch executivo", "slug": "00-Pitch-Executivo",
+      "title": "Por que voce nunca mais opera sem o OmniMob",
+      "subtitle": "A proposta de valor unica do CRM imobiliario com IA",
+      "decisor": {
+        "headline": "O CRM que vende, qualifica e fecha enquanto sua equipe dorme.",
+        "hook": "Cada lead nao respondido em 5 minutos cai 80% na probabilidade de virar venda. O OmniMob nao tem 5 minutos: tem 5 segundos.",
+        "objectives": [
+          "Entender o ROI do OmniMob versus stack tradicional",
+          "Reconhecer as 4 alavancas de receita: velocidade, qualificacao, transbordo e auditoria",
+          "Saber por que a IA do OmniMob nao e chatbot: e funcionario com playbook",
+          "Mensurar o ganho de SLA com a roleta dupla deterministica",
+          "Decidir o piloto com seguranca: o que medir nos primeiros 30 dias"
+        ],
+        "takeaways": [
+          "Velocidade vira receita: lead respondido em 5s converte 8x mais",
+          "Qualificacao pelo MotorIA libera o corretor pra fechar",
+          "Auditoria rastreavel: cada resposta tem prompt + decision_log",
+          "Transbordo automatico: lead troca de papel sem perder tempo"
+        ],
+        "next_module": "Modulo 01 - Comecando"
+      },
+      "operador": {
+        "headline": "Voce e o motor; o OmniMob e a transmissao.",
+        "hook": "Sua agenda dobra quando voce para de triar lead frio e so encosta no lead pronto.",
+        "objectives": [
+          "Entender o que a IA faz antes do lead chegar nas suas maos",
+          "Saber a diferenca entre lead da IA e lead pra fechar",
+          "Reconhecer sinais de que o sistema esta jogando a seu favor",
+          "Saber onde sua opiniao treina a IA"
+        ],
+        "takeaways": [
+          "A IA filtra; voce fecha",
+          "Nao atende lead frio sem contexto",
+          "O sistema te avisa do que aprendeu com voce",
+          "Tudo que voce faz vira aprendizado pro time"
+        ],
+        "next_module": "Modulo 01 - Comecando"
+      }
+    },
+    {
+      "md_file": "01-comecando.md", "module_num": 1,
+      "category": "Fundamentos", "slug": "01-Comecando",
+      "title": "Comecando no OmniMob",
+      "subtitle": "Login, os 6 papeis, navegacao e primeira tela",
+      "decisor": {
+        "headline": "Cada papel ve a versao do sistema feita pra ele.",
+        "hook": "CRM tradicional entrega o mesmo painel pra todo mundo. O OmniMob entrega 6 paineis distintos - um por papel.",
+        "objectives": [
+          "Reconhecer os 6 papeis e a logica de permissionamento",
+          "Entender como o BottomNav adapta a UI por funcao",
+          "Identificar como a separacao reduz erro operacional",
+          "Decidir quantos papeis sua imobiliaria precisa ativar"
+        ],
+        "takeaways": [
+          "6 papeis, 6 versoes do sistema, zero confusao",
+          "Permissao por papel impede acao fora de escopo",
+          "Multi-papel: um usuario pode acumular funcoes",
+          "Onboarding rapido: cada papel ve so o que importa"
+        ],
+        "next_module": "Modulo 02 - Configuracoes do Admin"
+      },
+      "operador": {
+        "headline": "Voce ve o que precisa - nada mais.",
+        "hook": "Sem procurar botao em menu que nao e seu. Tudo na primeira tela.",
+        "objectives": [
+          "Fazer login com seu perfil",
+          "Identificar seu papel e o que voce ve",
+          "Navegar entre Funis, Atividades, Indicadores e IA",
+          "Saber onde estao atalhos e suporte",
+          "Reconhecer quando pedir acesso"
+        ],
+        "takeaways": [
+          "Login simples, sem decoreba",
+          "BottomNav e o seu mapa",
+          "Cada icone leva a uma area clara",
+          "Suporte e atalho na home"
+        ],
+        "next_module": "Modulo 03 - Kanban"
+      }
+    },
+    {
+      "md_file": "02-admin-config.md", "module_num": 2,
+      "category": "Configuracao do sistema", "slug": "02-Admin-Config",
+      "title": "As 18 abas de configuracao",
+      "subtitle": "Tudo que o admin liga, ajusta e governa",
+      "decisor": {
+        "headline": "Sem programador. Sem ticket. Sem refem.",
+        "hook": "Tudo que normalmente exige dev em CRM tradicional - playbook, IA, papeis, integracoes - voce muda no clique e ja vale na proxima resposta.",
+        "objectives": [
+          "Mapear as 18 alavancas de configuracao",
+          "Entender o que e seguro mexer",
+          "Reconhecer onde os custos sao controlados",
+          "Saber quando delegar pra operador"
+        ],
+        "takeaways": [
+          "Sem dependencia de fornecedor",
+          "Politica da IA: voce define",
+          "Integracoes no painel",
+          "Auditoria completa por mudanca"
+        ],
+        "next_module": "Modulo 03 - Kanban"
+      },
+      "operador": {
+        "headline": "O admin liga; o sistema obedece.",
+        "hook": "Configuracao certa = operacao no piloto automatico.",
+        "objectives": [
+          "Conhecer as 18 abas e suas funcoes",
+          "Saber onde ligar funis e papeis",
+          "Configurar integracoes",
+          "Definir politicas da IA",
+          "Cadastrar usuarios e permissoes"
+        ],
+        "takeaways": [
+          "Cada aba tem proposito claro",
+          "Mudancas valem ja na proxima conversa",
+          "Sem reinicio",
+          "Tudo revertivel via auditoria"
+        ],
+        "next_module": "Modulo 03 - Kanban"
+      }
+    },
+    {
+      "md_file": "03-admin-kanban.md", "module_num": 3,
+      "category": "Operacao", "slug": "03-Admin-Kanban",
+      "title": "Kanban e funis",
+      "subtitle": "Onde cada deal vive, anda e se transforma",
+      "decisor": {
+        "headline": "Visibilidade total. Gargalo nenhum.",
+        "hook": "Voce abre o Kanban e ve, na primeira tela, onde o dinheiro esta parado.",
+        "objectives": [
+          "Entender etapas determinadas pela IA",
+          "Reconhecer SLA por etapa",
+          "Saber ler gargalos no Kanban",
+          "Decidir intervencao baseada em dados"
+        ],
+        "takeaways": [
+          "Cada deal anda sozinho",
+          "Gargalo visual",
+          "Filtros multiplos",
+          "Sem planilha paralela"
+        ],
+        "next_module": "Modulo 04 - IA"
+      },
+      "operador": {
+        "headline": "Seus deals organizados sem voce mexer.",
+        "hook": "O sistema faz o trabalho chato; voce faz o que importa.",
+        "objectives": [
+          "Abrir o Kanban e identificar seus deals",
+          "Entender etapas e o que cada uma significa",
+          "Aprovar respostas sugeridas da IA",
+          "Mover deals manualmente quando necessario",
+          "Filtrar e priorizar o dia"
+        ],
+        "takeaways": [
+          "Card anda sozinho; voce so confirma",
+          "Sugestoes da IA economizam digitacao",
+          "Voce ve a foto do seu dia em 1 olhada",
+          "Filtros = produtividade"
+        ],
+        "next_module": "Modulo 04 - IA"
+      }
+    },
+    {
+      "md_file": "04-admin-ia.md", "module_num": 4,
+      "category": "Inteligencia", "slug": "04-Admin-IA",
+      "title": "IA: Sugestoes + Modo Treinador",
+      "subtitle": "Como aprovar, refinar e ensinar a IA do OmniMob",
+      "decisor": {
+        "headline": "A IA aprende com voce. Cada dia ela vende melhor.",
+        "hook": "Voce paga por uma IA treinada na sua operacao, com seu tom e suas objecoes.",
+        "objectives": [
+          "Entender IA generica vs IA treinada",
+          "Reconhecer o ciclo sugestao-aprovacao-aprendizado",
+          "Saber por que o Modo Treinador e vantagem competitiva",
+          "Calcular ganho mensal de qualidade da IA"
+        ],
+        "takeaways": [
+          "IA e funcionario, nao chatbot",
+          "Modo Treinador: feedback vira override aplicado",
+          "Auditoria por resposta: prompt + decision_log",
+          "Vantagem cumulativa ao longo do tempo"
+        ],
+        "next_module": "Modulo 05 - Indicadores"
+      },
+      "operador": {
+        "headline": "Voce treina; ela trabalha.",
+        "hook": "Toda vez que voce diz acertou ou errou, ela aprende - de verdade, no proximo turno.",
+        "objectives": [
+          "Abrir a Caixa de Sugestoes",
+          "Aprovar, editar ou rejeitar respostas da IA",
+          "Acionar o Modo Treinador no painel ou WhatsApp",
+          "Entender a diferenca entre os 2 canais de treino",
+          "Saber quando treinar e quando deixar passar"
+        ],
+        "takeaways": [
+          "Sugestao aprovada vai pro lead na hora",
+          "Modo Treinador: 1 feedback = 1 ajuste imediato",
+          "WhatsApp: prefixo modofeedback",
+          "Voce e o curador da IA"
+        ],
+        "next_module": "Modulo 05 - Indicadores"
+      }
+    },
+    {
+      "md_file": "05-admin-indicadores.md", "module_num": 5,
+      "category": "Gestao", "slug": "05-Admin-Indicadores",
+      "title": "Indicadores e relatorios",
+      "subtitle": "Numeros que importam, em tempo real",
+      "decisor": {
+        "headline": "Gestao por dado, nao por achismo.",
+        "hook": "Voce decide na evidencia. Cada metrica tem origem rastreavel ate a conversa.",
+        "objectives": [
+          "Mapear KPIs essenciais",
+          "Entender funil por etapa e suas taxas",
+          "Reconhecer alertas vermelhos antes de virar problema",
+          "Saber quais relatorios exportar pro board"
+        ],
+        "takeaways": [
+          "KPI em tempo real, sem ETL",
+          "Drill-down ate o deal",
+          "Alertas automaticos por meta",
+          "Exporta CSV e PDF"
+        ],
+        "next_module": "Modulo 06 - Atividades"
+      },
+      "operador": {
+        "headline": "Seu placar do dia, ao vivo.",
+        "hook": "Voce nao precisa esperar reuniao de segunda. Esta tudo na tela.",
+        "objectives": [
+          "Abrir o painel de indicadores",
+          "Entender numeros pessoais vs time",
+          "Identificar o que precisa de atencao hoje",
+          "Comparar performance entre periodos"
+        ],
+        "takeaways": [
+          "Numero proprio + numero do time",
+          "Voce ve onde melhorar",
+          "Atalho direto pro deal do gargalo",
+          "Sem planilha paralela"
+        ],
+        "next_module": "Modulo 06 - Atividades"
+      }
+    },
+    {
+      "md_file": "06-admin-atividades.md", "module_num": 6,
+      "category": "Agenda", "slug": "06-Admin-Atividades",
+      "title": "Atividades e agenda",
+      "subtitle": "Tarefas, lembretes e compromissos por deal",
+      "decisor": {
+        "headline": "Nenhum follow-up esquecido.",
+        "hook": "Toda atividade nasce de um deal, fica linkada a ele, e gera lembrete.",
+        "objectives": [
+          "Entender atividade-deal-corretor",
+          "Reconhecer SLA de atividade",
+          "Configurar alertas e escalonamento",
+          "Medir disciplina do time"
+        ],
+        "takeaways": [
+          "Atividade vinculada ao deal",
+          "Alerta antes do vencimento",
+          "Auditoria completa",
+          "Escalonamento automatico"
+        ],
+        "next_module": "Modulo 07 - Correspondente"
+      },
+      "operador": {
+        "headline": "Sua agenda com contexto.",
+        "hook": "Cada lembrete chega com o deal anexo. Voce abre e ja sabe o que falar.",
+        "objectives": [
+          "Criar atividade vinculada a um deal",
+          "Configurar lembrete e prazo",
+          "Marcar como concluida com resultado",
+          "Reagendar quando necessario"
+        ],
+        "takeaways": [
+          "So existe ligada a deal",
+          "Lembrete via notificacao + WhatsApp",
+          "Voce nunca esquece",
+          "Historico registrado"
+        ],
+        "next_module": "Modulo 07 - Correspondente"
+      }
+    },
+    {
+      "md_file": "07-correspondente.md", "module_num": 7,
+      "category": "Funil financeiro", "slug": "07-Correspondente",
+      "title": "Painel do Correspondente bancario",
+      "subtitle": "Recebimento, analise e devolucao de leads MCMV",
+      "decisor": {
+        "headline": "Aprovacao MCMV em horas, nao dias.",
+        "hook": "Lead chega pre-qualificado da IA. Correspondente so valida documento.",
+        "objectives": [
+          "Entender o fluxo lead-correspondente-retorno",
+          "Reconhecer SLA por etapa",
+          "Medir taxa de aprovacao por correspondente",
+          "Decidir politica de auto-escalonamento"
+        ],
+        "takeaways": [
+          "Lead com documento pre-validado",
+          "Cronometro por analise visivel",
+          "Roleta dupla deterministica",
+          "Auditoria de decisao"
+        ],
+        "next_module": "Modulo 08 - Corretor"
+      },
+      "operador": {
+        "headline": "Voce analisa; nao prospecta.",
+        "hook": "Acabou o tempo perdido cobrando documento.",
+        "objectives": [
+          "Abrir o painel do Correspondente",
+          "Receber leads na aba Recebidos",
+          "Mover pra Analise e validar documento",
+          "Devolver com status",
+          "Acompanhar SLA"
+        ],
+        "takeaways": [
+          "3 abas: Recebidos / Analise / Devolvidos",
+          "Cronometro visivel",
+          "Roleta automatica",
+          "Devolucao padronizada"
+        ],
+        "next_module": "Modulo 08 - Corretor"
+      }
+    },
+    {
+      "md_file": "08-corretor.md", "module_num": 8,
+      "category": "Vendas", "slug": "08-Corretor",
+      "title": "Painel do Corretor",
+      "subtitle": "Onde o vendedor opera leads quentes",
+      "decisor": {
+        "headline": "O corretor so toca em lead quente.",
+        "hook": "Voce paga corretor pra fechar venda, nao pra triar planilha.",
+        "objectives": [
+          "Entender a curadoria automatica",
+          "Reconhecer o ganho de tempo do corretor",
+          "Saber medir conversao com contexto",
+          "Decidir politica de distribuicao"
+        ],
+        "takeaways": [
+          "Corretor recebe lead pronto",
+          "Sem perda em frio",
+          "Conversao rastreavel",
+          "Roleta deterministica"
+        ],
+        "next_module": "Modulo 09 - Garantia"
+      },
+      "operador": {
+        "headline": "Seu dia, organizado por valor.",
+        "hook": "Abre o sistema e ve os leads prontos pra hoje.",
+        "objectives": [
+          "Abrir o painel do Corretor",
+          "Ver leads do dia priorizados",
+          "Aprovar respostas da IA",
+          "Agendar visita e ligacao",
+          "Fechar venda no sistema"
+        ],
+        "takeaways": [
+          "Lista priorizada do dia",
+          "Sugestao pronta pra aprovar",
+          "Agenda integrada",
+          "Fechamento com 1 clique"
+        ],
+        "next_module": "Modulo 09 - Garantia"
+      }
+    },
+    {
+      "md_file": "09-garantia.md", "module_num": 9,
+      "category": "Funil locacao", "slug": "09-Garantia",
+      "title": "Garantia locaticia",
+      "subtitle": "Administrativo e atendente da seguradora",
+      "decisor": {
+        "headline": "Locacao com seguro fechado em dias, nao semanas.",
+        "hook": "Cada dia parado em analise e dia sem aluguel cobrado.",
+        "objectives": [
+          "Entender o fluxo de aprovacao",
+          "Reconhecer override por seguradora",
+          "Medir SLA do parceiro segurador",
+          "Decidir politica de troca de seguradora"
+        ],
+        "takeaways": [
+          "3 abas: Recebidas / Analise / Devolvidas",
+          "Override por seguradora",
+          "Roleta dupla",
+          "Auditoria por analise"
+        ],
+        "next_module": "Modulo 10 - Vistoria"
+      },
+      "operador": {
+        "headline": "Voce cota; o sistema cuida do resto.",
+        "hook": "Sem ping-pong de e-mail. O OmniMob distribui, lembra e fecha.",
+        "objectives": [
+          "Abrir o Painel de Garantia",
+          "Receber pedidos na aba Recebidas",
+          "Iniciar analise (cronometro liga)",
+          "Devolver com status",
+          "Aplicar override quando necessario"
+        ],
+        "takeaways": [
+          "Fila clara, sem confusao",
+          "Cronometro mantem voce no SLA",
+          "Override por seguradora",
+          "Devolucao registrada"
+        ],
+        "next_module": "Modulo 10 - Vistoria"
+      }
+    },
+    {
+      "md_file": "10-vistoria.md", "module_num": 10,
+      "category": "Operacao imovel", "slug": "10-Vistoria",
+      "title": "Vistoria",
+      "subtitle": "Checklist por comodo, fotos e aprovacao",
+      "decisor": {
+        "headline": "Vistoria sem caderno e sem desencontro.",
+        "hook": "Foto, anotacao, checklist - tudo no app. Laudo automatico.",
+        "objectives": [
+          "Entender o fluxo vistoria-contrato",
+          "Reconhecer o ganho de tempo no fechamento",
+          "Medir aderencia de checklist",
+          "Decidir vistoriador interno vs externo"
+        ],
+        "takeaways": [
+          "Checklist padronizado por comodo",
+          "Foto direto no deal",
+          "Laudo gerado automatico",
+          "Vistoriador flexivel"
+        ],
+        "next_module": "Modulo 11 - Contrato"
+      },
+      "operador": {
+        "headline": "Voce checa; o sistema arquiva.",
+        "hook": "Esqueca a pasta com 40 fotos. O OmniMob organiza por comodo, com timestamp.",
+        "objectives": [
+          "Abrir a vistoria no app",
+          "Preencher checklist por comodo",
+          "Tirar fotos e anotacoes",
+          "Marcar pendencias",
+          "Finalizar e gerar laudo"
+        ],
+        "takeaways": [
+          "1 vistoria = 1 fluxo claro",
+          "Foto vinculada ao item",
+          "Pendencia rastreavel",
+          "Laudo PDF gerado"
+        ],
+        "next_module": "Modulo 11 - Contrato"
+      }
+    },
+    {
+      "md_file": "11-contrato.md", "module_num": 11,
+      "category": "Fechamento", "slug": "11-Contrato",
+      "title": "Contrato",
+      "subtitle": "Lifecycle: criacao, assinatura, vigencia e renovacao",
+      "decisor": {
+        "headline": "Contrato sem juridico no caminho critico.",
+        "hook": "Sem advogado pra cada locacao. Template + campos custom + assinatura digital.",
+        "objectives": [
+          "Entender o lifecycle do contrato",
+          "Reconhecer campos custom por imobiliaria",
+          "Medir tempo medio de fechamento",
+          "Decidir politica de assinatura digital"
+        ],
+        "takeaways": [
+          "Template parametrizavel",
+          "Campos custom por imobiliaria",
+          "Assinatura digital integrada",
+          "Renovacao automatica com alerta"
+        ],
+        "next_module": "Modulo 12 - Fluxos fim-a-fim"
+      },
+      "operador": {
+        "headline": "Voce monta o contrato em minutos, nao dias.",
+        "hook": "Os campos chegam preenchidos do deal. Voce confere e manda assinar.",
+        "objectives": [
+          "Criar contrato a partir do deal",
+          "Editar campos custom",
+          "Enviar pra assinatura",
+          "Acompanhar status",
+          "Renovar e encerrar"
+        ],
+        "takeaways": [
+          "Contrato puxado do deal",
+          "Assinatura via link",
+          "Status visivel no painel",
+          "Renovacao alertada"
+        ],
+        "next_module": "Modulo 12 - Fluxos fim-a-fim"
+      }
+    },
+    {
+      "md_file": "12-fluxos-fim-a-fim.md", "module_num": 12,
+      "category": "Jornadas", "slug": "12-Fluxos-Fim-a-Fim",
+      "title": "Fluxos fim-a-fim",
+      "subtitle": "Jornadas completas: MCMV e Locacao",
+      "decisor": {
+        "headline": "Do primeiro contato a chave na mao - num so sistema.",
+        "hook": "Hoje voce tem 4 sistemas, 3 planilhas e 2 grupos de WhatsApp. O OmniMob substitui tudo.",
+        "objectives": [
+          "Mapear jornada MCMV completa",
+          "Mapear jornada Locacao completa",
+          "Reconhecer pontos de transbordo",
+          "Medir tempo total de ciclo"
+        ],
+        "takeaways": [
+          "1 sistema, 6 papeis, 0 perda",
+          "Transbordo automatico",
+          "Lead nunca vai pra fila errada",
+          "Cycle time medido por jornada"
+        ],
+        "next_module": "Modulo 13 - Glossario"
+      },
+      "operador": {
+        "headline": "Voce vive sua etapa. O sistema cuida do resto.",
+        "hook": "Voce nao precisa saber o sistema inteiro. Sabe a sua parte - e ela funciona.",
+        "objectives": [
+          "Reconhecer onde voce entra na MCMV",
+          "Reconhecer onde voce entra na Locacao",
+          "Saber pra quem o deal vai depois de voce",
+          "Saber de onde veio quando chega na sua mao"
+        ],
+        "takeaways": [
+          "Voce ve sua etapa e o contexto",
+          "Sistema avisa quando o deal e seu",
+          "Transferencia suave",
+          "Voce nao perde lead na transicao"
+        ],
+        "next_module": "Modulo 13 - Glossario"
+      }
+    },
+    {
+      "md_file": "13-glossario-faq.md", "module_num": 13,
+      "category": "Referencia", "slug": "13-Glossario-FAQ",
+      "title": "Glossario e FAQ",
+      "subtitle": "Termos, atalhos e perguntas frequentes",
+      "decisor": {
+        "headline": "A linguagem comum do OmniMob.",
+        "hook": "Quando todo mundo fala o mesmo idioma, decisao acelera.",
+        "objectives": [
+          "Conhecer os termos-chave",
+          "Entender FAQ executivo",
+          "Saber onde recorrer em duvida",
+          "Reconhecer atalhos de produtividade"
+        ],
+        "takeaways": [
+          "Vocabulario comum acelera reuniao",
+          "FAQ resolve 80% das duvidas",
+          "Atalhos do admin",
+          "Suporte por canal certo"
+        ],
+        "next_module": "Voce concluiu o manual completo. Bem-vindo ao OmniMob."
+      },
+      "operador": {
+        "headline": "Sua referencia rapida.",
+        "hook": "Esta com duvida? Olha aqui antes de abrir chamado.",
+        "objectives": [
+          "Encontrar o termo que voce nao entendeu",
+          "Resolver duvida via FAQ",
+          "Conhecer atalhos do dia-a-dia",
+          "Saber pedir ajuda do jeito certo"
+        ],
+        "takeaways": [
+          "Glossario para consulta rapida",
+          "FAQ por papel",
+          "Atalhos de teclado e mouse",
+          "Suporte humano quando precisar"
+        ],
+        "next_module": "Voce concluiu o manual. Boa operacao."
+      }
+    }
+  ]
+}
